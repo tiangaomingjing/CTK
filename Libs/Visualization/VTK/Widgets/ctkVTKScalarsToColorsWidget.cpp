@@ -63,6 +63,7 @@ public:
 
   vtkControlPointsItem* CurrentControlPointsItem;
   bool EditColors;
+  bool TopWidgetsVisible;
 };
 
 // ----------------------------------------------------------------------------
@@ -75,6 +76,7 @@ ctkVTKScalarsToColorsWidgetPrivate::ctkVTKScalarsToColorsWidgetPrivate(
 {
   this->CurrentControlPointsItem = 0;
   this->EditColors = true;
+  this->TopWidgetsVisible = true;
 }
 
 // ----------------------------------------------------------------------------
@@ -86,6 +88,8 @@ void ctkVTKScalarsToColorsWidgetPrivate::setupUi(QWidget* widget)
                    q, SLOT(onPlotAdded(vtkPlot*)));
   QObject::connect(this->View, SIGNAL(boundsChanged()),
                    q, SLOT(onBoundsChanged()));
+  QObject::connect(this->View, SIGNAL(functionChanged()),
+                   q, SLOT(resetRange()));
 
   this->PointIdSpinBox->setSpecialValueText("None");
   QObject::connect(this->PointIdSpinBox, SIGNAL(valueChanged(int)),
@@ -247,10 +251,35 @@ void ctkVTKScalarsToColorsWidget::setEditColors(bool edit)
 }
 
 // ----------------------------------------------------------------------------
+bool ctkVTKScalarsToColorsWidget::areTopWidgetsVisible()const
+{
+  Q_D(const ctkVTKScalarsToColorsWidget);
+  return d->TopWidgetsVisible;
+}
+
+// ----------------------------------------------------------------------------
+void ctkVTKScalarsToColorsWidget::setTopWidgetsVisible(bool visible)
+{
+  Q_D(ctkVTKScalarsToColorsWidget);
+  d->ExpandButton->setVisible(visible);
+  d->PointIdLabel->setVisible(visible);
+  d->PointIdSpinBox->setVisible(visible);
+  foreach(QWidget* widget, this->extraWidgets())
+  {
+    widget->setVisible(visible);
+  }
+  d->TopSpacer->changeSize(visible ? 40 : 0, visible ? 20 : 0);
+  d->TopSpacer->invalidate();
+  d->TopWidgetsVisible = visible;
+}
+
+// ----------------------------------------------------------------------------
 void ctkVTKScalarsToColorsWidget::onPlotAdded(vtkPlot* plot)
 {
-  if (vtkControlPointsItem::SafeDownCast(plot))
+  vtkControlPointsItem* controlPoints = vtkControlPointsItem::SafeDownCast(plot);
+  if (controlPoints)
     {
+    this->setCurrentControlPointsItem(controlPoints);
     this->qvtkConnect(plot, vtkControlPointsItem::CurrentPointChangedEvent,
                       this, SLOT(setCurrentPoint(vtkObject*,void*)));
     }
@@ -317,15 +346,17 @@ void ctkVTKScalarsToColorsWidget::setCurrentControlPointsItem(vtkControlPointsIt
   d->CurrentControlPointsItem = item;
   if (item)
     {
-    d->ColorPickerButton->setVisible( d->EditColors &&
+    d->ColorPickerButton->setVisible( d->EditColors && d->TopWidgetsVisible &&
       (vtkColorTransferControlPointsItem::SafeDownCast(item) != 0 ||
        vtkCompositeControlPointsItem::SafeDownCast(item) != 0));
-    d->XLabel->setVisible(true);
-    d->XSpinBox->setVisible(true);
-    d->OpacityLabel->setVisible(vtkPiecewiseControlPointsItem::SafeDownCast(item) != 0 ||
-                                vtkCompositeControlPointsItem::SafeDownCast(item) != 0);
-    d->OpacitySpinBox->setVisible(vtkPiecewiseControlPointsItem::SafeDownCast(item) != 0 ||
-                                  vtkCompositeControlPointsItem::SafeDownCast(item) != 0);
+    d->XLabel->setVisible(d->TopWidgetsVisible);
+    d->XSpinBox->setVisible(d->TopWidgetsVisible);
+    d->OpacityLabel->setVisible(d->TopWidgetsVisible &&
+      (vtkPiecewiseControlPointsItem::SafeDownCast(item) != 0 ||
+       vtkCompositeControlPointsItem::SafeDownCast(item) != 0));
+    d->OpacitySpinBox->setVisible(d->TopWidgetsVisible &&
+      (vtkPiecewiseControlPointsItem::SafeDownCast(item) != 0 ||
+       vtkCompositeControlPointsItem::SafeDownCast(item) != 0));
     this->onAxesModified();
     }
   d->PointIdSpinBox->setEnabled(item != 0);
@@ -385,8 +416,19 @@ void ctkVTKScalarsToColorsWidget::updateCurrentPoint()
     return;
     }
 
-  double point[4];
+  double point[4] = {0.0};
   d->CurrentControlPointsItem->GetControlPoint(pointId, point);
+
+  vtkAxis* xAxis = d->CurrentControlPointsItem ?
+    d->CurrentControlPointsItem->GetXAxis() : d->View->chart()->GetAxis(vtkAxis::BOTTOM);
+  Q_ASSERT(xAxis);
+  if (xAxis && (xAxis->GetMinimumLimit() > point[0] || xAxis->GetMaximumLimit() < point[0]))
+    {
+    xAxis->SetMinimumLimit(qMin(xAxis->GetMinimumLimit(), point[0]));
+    xAxis->SetMaximumLimit(qMax(xAxis->GetMaximumLimit(), point[0]));
+    d->View->boundAxesToChartBounds();
+    this->onAxesModified();
+    }
 
   bool oldBlock = d->blockSignals(true);
   d->XSpinBox->setValue(point[0]);
@@ -550,6 +592,25 @@ void ctkVTKScalarsToColorsWidget::setYRange(double min, double max)
 }
 
 // ----------------------------------------------------------------------------
+void ctkVTKScalarsToColorsWidget::resetRange()
+{
+  Q_D(ctkVTKScalarsToColorsWidget);
+  vtkAxis* xAxis = d->CurrentControlPointsItem ?
+    d->CurrentControlPointsItem->GetXAxis() : d->View->chart()->GetAxis(vtkAxis::BOTTOM);
+  if (xAxis)
+    {
+    this->setXRange(xAxis->GetMinimumLimit(), xAxis->GetMaximumLimit());
+    }
+
+  vtkAxis* yAxis = d->CurrentControlPointsItem ?
+    d->CurrentControlPointsItem->GetYAxis() : d->View->chart()->GetAxis(vtkAxis::LEFT);
+  if (yAxis)
+    {
+    this->setYRange(yAxis->GetMinimumLimit(), yAxis->GetMaximumLimit());
+    }
+}
+
+// ----------------------------------------------------------------------------
 void ctkVTKScalarsToColorsWidget::onAxesModified()
 {
   Q_D(ctkVTKScalarsToColorsWidget);
@@ -614,4 +675,8 @@ void ctkVTKScalarsToColorsWidget::addExtraWidget(QWidget* extraWidget)
 {
   Q_D(const ctkVTKScalarsToColorsWidget);
   d->TopLayout->insertWidget(this->extraWidgets().count(), extraWidget);
+  if (!d->TopWidgetsVisible)
+    {
+    extraWidget->setVisible(d->TopWidgetsVisible);
+    }
 }

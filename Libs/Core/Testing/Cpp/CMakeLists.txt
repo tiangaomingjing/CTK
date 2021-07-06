@@ -26,6 +26,7 @@ set(KITTests_SRCS
   ctkBooleanMapperTest.cpp
   ctkCallbackTest1.cpp
   ctkCommandLineParserTest1.cpp
+  ctkCoreSettingsTest.cpp
   ctkCoreTestingMacrosTest.cpp
   ctkCoreTestingUtilitiesTest.cpp
   ctkExceptionTest.cpp
@@ -51,7 +52,11 @@ set(KITTests_SRCS
   ctkWorkflowTest2.cpp
   ctkWorkflowTest3.cpp
   )
-
+if(CTK_QT_VERSION VERSION_GREATER "4")
+  list(APPEND KITTests_SRCS
+    ctkUtf8Test1.cpp
+    )
+endif()
 if(HAVE_BFD)
   list(APPEND KITTests_SRCS
     ctkBinaryFileDescriptorTest1.cpp
@@ -92,6 +97,7 @@ set(Tests_Helpers_MOC_SRCS
 
 set(Tests_Helpers_MOC_CPPS
   ctkBooleanMapperTest.cpp
+  ctkCoreSettingsTest.cpp
   ctkFileLoggerTest.cpp
   ctkLinearValueProxyTest.cpp
   ctkUtilsTest.cpp
@@ -107,7 +113,7 @@ else()
 endif()
 
 if(HAVE_BFD)
-  add_executable(ctkBinaryFileDescriptorTestHelper ctkBinaryFileDescriptorTestHelper.cpp)
+  ctk_add_executable_utf8(ctkBinaryFileDescriptorTestHelper ctkBinaryFileDescriptorTestHelper.cpp)
 endif()
 
 if(MSVC)
@@ -117,11 +123,12 @@ endif()
 #
 # Test executable
 #
-add_executable(${KIT}CppTests ${Tests} ${Tests_Helpers_SRCS} ${Tests_Helpers_MOC_CPP})
+ctk_add_executable_utf8(${KIT}CppTests ${Tests} ${Tests_Helpers_SRCS} ${Tests_Helpers_MOC_CPP})
 target_link_libraries(${KIT}CppTests ${LIBRARY_NAME} ${CTK_BASE_LIBRARIES} CTKDummyPlugin)
 
 if(CTK_QT_VERSION VERSION_GREATER "4")
-  qt5_use_modules(${KIT}CppTests Test Widgets)
+  find_package(Qt5 COMPONENTS Test Widgets REQUIRED)
+  target_link_libraries(${KIT}CppTests Qt5::Test Qt5::Widgets)
 endif()
 
 if(UNIX AND NOT APPLE)
@@ -146,6 +153,7 @@ endif()
 SIMPLE_TEST( ctkBooleanMapperTest )
 SIMPLE_TEST( ctkCallbackTest1 )
 SIMPLE_TEST( ctkCommandLineParserTest1 )
+SIMPLE_TEST( ctkCoreSettingsTest )
 SIMPLE_TEST( ctkCoreTestingMacrosTest )
 SIMPLE_TEST( ctkCoreTestingUtilitiesTest )
 SIMPLE_TEST( ctkDependencyGraphTest1 )

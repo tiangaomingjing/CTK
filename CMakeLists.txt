@@ -18,7 +18,7 @@
 #
 ###########################################################################
 
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.0)
 
 foreach(p
   CMP0054 # CMake 3.1
@@ -33,6 +33,7 @@ endforeach()
 # Superbuild
 #
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
+set(SUPERBUILD_TOPLEVEL_PROJECT "CTK")
 set(EXTERNAL_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/CMakeExternals)
 set(EXTERNAL_PROJECT_FILE_PREFIX "")
 include(ExternalProject)
@@ -85,6 +86,8 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 if(NOT CMAKE_CONFIGURATION_TYPES)
   mark_as_superbuild(VARS CMAKE_BUILD_TYPE ALL_PROJECTS)
+else()
+  mark_as_superbuild(VARS CMAKE_CONFIGURATION_TYPES ALL_PROJECTS)
 endif()
 
 mark_as_superbuild(
@@ -219,6 +222,8 @@ foreach(file
   CMake/ctkMacroListFilter.cmake
   CMake/ctkMacroOptionUtils.cmake
   CMake/ctkMacroBuildLib.cmake
+  CMake/ctkFunctionAddExecutableUtf8.cmake
+  CMake/ctkFunctionExtractOptimizedLibrary.cmake
   CMake/ctkMacroBuildLibWrapper.cmake
   CMake/ctkMacroBuildPlugin.cmake
   CMake/ctkMacroBuildApp.cmake
@@ -454,14 +459,6 @@ endif()
 #-----------------------------------------------------------------------------
 # Other options
 
-# Git protocol option
-option(CTK_USE_GIT_PROTOCOL "If behind a firewall turn this OFF to use https instead." ON)
-mark_as_advanced(CTK_USE_GIT_PROTOCOL)
-set(git_protocol "git")
-if(NOT CTK_USE_GIT_PROTOCOL)
-  set(git_protocol "https")
-endif()
-
 # Let's mark as advanced some default properties
 mark_as_advanced(CMAKE_INSTALL_PREFIX)
 mark_as_advanced(DART_TESTING_TIMEOUT)
@@ -509,7 +506,6 @@ ctk_lib_option(Scripting/Python/Core
 ctk_lib_option(Scripting/Python/Widgets
                "Build the Python Widgets library" OFF)
 
-# VTK libraries have not yet been tested with Qt5
 ctk_lib_option(Visualization/VTK/Core
                "Build the VTK Core library" OFF)
 
@@ -540,7 +536,8 @@ ctk_lib_option(XNAT/Core
 ctk_lib_option(XNAT/Widgets
                "Build the XNAT Widgets library" OFF)
 
-# Save the set of enabled libs in a cache file
+# Save enabled CTK libraries in the cache to ensure expected player and translator
+# are enabled in "Libs/QtTesting".
 set(_enabled_libs)
 foreach(_lib ${CTK_LIBS})
   if(CTK_LIB_${_lib})
@@ -548,6 +545,7 @@ foreach(_lib ${CTK_LIBS})
   endif()
 endforeach()
 set(CTK_ENABLED_LIBS ${_enabled_libs} CACHE INTERNAL "" FORCE)
+
 #-----------------------------------------------------------------------------
 # CTK Applications - Use ON or OFF to indicate if the application should be built by default
 #
@@ -889,13 +887,17 @@ endif()
 
 # Check if dependencies are satisfied
 if(CTK_LIB_Scripting/Python/Core)
-  find_package(PythonInterp)
   if(NOT PYTHONINTERP_FOUND)
-    message(FATAL_ERROR "PYTHON_EXECUTABLE variable should be set to build CTK_LIB_Scripting/Python")
+    find_package(PythonInterp)
+    if(NOT PYTHONINTERP_FOUND)
+      message(FATAL_ERROR "PYTHON_EXECUTABLE variable should be set to build CTK_LIB_Scripting/Python")
+    endif()
   endif()
-  find_package(PythonLibs)
   if(NOT PYTHONLIBS_FOUND)
-    message(FATAL_ERROR "PYTHON_LIBRARIES and PYTHON_INCLUDE_DIRS should be set to build CTK_LIB_Scripting/Python")
+    find_package(PythonLibs)
+    if(NOT PYTHONLIBS_FOUND)
+      message(FATAL_ERROR "PYTHON_LIBRARIES and PYTHON_INCLUDE_DIRS should be set to build CTK_LIB_Scripting/Python")
+    endif()
   endif()
 endif()
 

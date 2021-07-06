@@ -107,17 +107,17 @@ ctkErrorLogWidget::~ctkErrorLogWidget()
 }
 
 //------------------------------------------------------------------------------
-ctkErrorLogModel* ctkErrorLogWidget::errorLogModel()const
+ctkErrorLogAbstractModel* ctkErrorLogWidget::errorLogModel()const
 {
   Q_D(const ctkErrorLogWidget);
   QAbstractItemModel* model = d->ErrorLogTableView->model();
-  ctkErrorLogModel * errorLogModel = qobject_cast<ctkErrorLogModel*>(model);
+  ctkErrorLogAbstractModel * errorLogModel = qobject_cast<ctkErrorLogAbstractModel*>(model);
   Q_ASSERT(model ? errorLogModel != 0 : true);
   return errorLogModel;
 }
 
 //------------------------------------------------------------------------------
-void ctkErrorLogWidget::setErrorLogModel(ctkErrorLogModel * newErrorLogModel)
+void ctkErrorLogWidget::setErrorLogModel(ctkErrorLogAbstractModel * newErrorLogModel)
 {
   Q_D(ctkErrorLogWidget);
 
@@ -281,7 +281,7 @@ void ctkErrorLogWidget::onSelectionChanged(const QItemSelection & selected,
   QModelIndexList selectedRows =
       d->SelectionModel->selectedRows(ctkErrorLogModel::DescriptionColumn);
 
-  qSort(selectedRows.begin(), selectedRows.end());
+  std::sort(selectedRows.begin(), selectedRows.end());
 
   QStringList descriptions;
 

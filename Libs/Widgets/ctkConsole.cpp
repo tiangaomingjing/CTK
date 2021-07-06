@@ -846,32 +846,6 @@ void ctkConsolePrivate::printString(const QString& text)
   this->textCursor().insertText(text);
 }
 
-//----------------------------------------------------------------------------
-void ctkConsolePrivate::printOutputMessage(const QString& text)
-{
-  Q_Q(ctkConsole);
-  QString textToPrint = text;
-  if (this->MessageOutputSize == 0)
-    {
-    textToPrint.prepend("\n");
-    }
-  this->MessageOutputSize += textToPrint.size();
-  q->printMessage(textToPrint, q->outputTextColor());
-}
-
-//----------------------------------------------------------------------------
-void ctkConsolePrivate::printErrorMessage(const QString& text)
-{
-  Q_Q(ctkConsole);
-  QString textToPrint = text;
-  if (this->MessageOutputSize == 0)
-    {
-    textToPrint.prepend("\n");
-    }
-  this->MessageOutputSize += textToPrint.size();
-  q->printMessage(textToPrint, q->errorTextColor());
-}
-
 //-----------------------------------------------------------------------------
 void ctkConsolePrivate::printCommand(const QString& cmd)
 {
@@ -1071,8 +1045,8 @@ void ctkConsolePrivate::pasteText(const QString& text)
     {
     this->switchToUserInputTextColor(&textCursor);
     textCursor.insertText(text);
-    this->updateCommandBuffer();
     }
+  this->updateCommandBuffer();
 }
 
 //-----------------------------------------------------------------------------
@@ -1279,6 +1253,36 @@ void ctkConsole::setRunFileOptions(const RunFileOptions& newOptions)
 }
 
 //-----------------------------------------------------------------------------
+const QString& ctkConsole::commandBuffer()
+{
+  Q_D(ctkConsole);
+  return d->commandBuffer();
+}
+
+//-----------------------------------------------------------------------------
+void ctkConsole::setCommandBuffer(const QString& command)
+{
+  Q_D(ctkConsole);
+  d->replaceCommandBuffer(command);
+}
+
+//-----------------------------------------------------------------------------
+const QStringList& ctkConsole::commandHistory()
+{
+  Q_D(ctkConsole);
+  return d->CommandHistory;
+}
+
+//-----------------------------------------------------------------------------
+void ctkConsole::setCommandHistory(const QStringList& commandHistory)
+{
+  Q_D(ctkConsole);
+  d->CommandHistory = commandHistory;
+  d->CommandHistory.append("");
+  d->CommandPosition = d->CommandHistory.size()-1;
+}
+
+//-----------------------------------------------------------------------------
 void ctkConsole::exec(const QString& command)
 {
   Q_D(ctkConsole);
@@ -1337,6 +1341,32 @@ void ctkConsole::printMessage(const QString& message, const QColor& color)
   format.setForeground(color);
   this->setFormat(format);
   d->printString(message);
+}
+
+//----------------------------------------------------------------------------
+void ctkConsole::printOutputMessage(const QString& text)
+{
+  Q_D(ctkConsole);
+  QString textToPrint = text;
+  if (d->MessageOutputSize == 0)
+    {
+    textToPrint.prepend("\n");
+    }
+  d->MessageOutputSize += textToPrint.size();
+  this->printMessage(textToPrint, this->outputTextColor());
+}
+
+//----------------------------------------------------------------------------
+void ctkConsole::printErrorMessage(const QString& text)
+{
+  Q_D(ctkConsole);
+  QString textToPrint = text;
+  if (d->MessageOutputSize == 0)
+    {
+    textToPrint.prepend("\n");
+    }
+  d->MessageOutputSize += textToPrint.size();
+  this->printMessage(textToPrint, this->errorTextColor());
 }
 
 //-----------------------------------------------------------------------------
@@ -1413,3 +1443,25 @@ QString ctkConsole::readInputLine()
   return d->commandBuffer();
 }
 
+//-----------------------------------------------------------------------------
+int ctkConsole::maxVisibleCompleterItems() const
+{
+  Q_D(const ctkConsole);
+  if (!this->completer())
+    {
+    return 0;
+    }
+  return this->completer()->maxVisibleItems();
+}
+
+//-----------------------------------------------------------------------------
+void ctkConsole::setMaxVisibleCompleterItems(int count)
+{
+  Q_D(ctkConsole);
+  if (!this->completer())
+    {
+    qWarning() << Q_FUNC_INFO << " failed: invalid completer";
+    return;
+    }
+  this->completer()->setMaxVisibleItems(count);
+}

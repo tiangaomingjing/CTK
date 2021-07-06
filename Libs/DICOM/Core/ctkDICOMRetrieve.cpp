@@ -606,11 +606,18 @@ QString ctkDICOMRetrieve::moveDestinationAETitle()const
   return d->MoveDestinationAETitle;
 }
 
+static void skipDelete(QObject* obj)
+{
+  Q_UNUSED(obj);
+  // this deleter does not delete the object from memory
+  // useful if the pointer is not owned by the smart pointer
+}
+
 //------------------------------------------------------------------------------
 void ctkDICOMRetrieve::setDatabase(ctkDICOMDatabase& dicomDatabase)
 {
   Q_D(ctkDICOMRetrieve);
-  d->Database = QSharedPointer<ctkDICOMDatabase>(&dicomDatabase);
+  d->Database = QSharedPointer<ctkDICOMDatabase>(&dicomDatabase, skipDelete);
 }
 
 //------------------------------------------------------------------------------

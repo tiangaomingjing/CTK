@@ -68,6 +68,7 @@ set(TEST_SOURCES
   ctkMenuComboBoxTest1.cpp
   ctkMenuComboBoxTest2.cpp
   ctkMenuComboBoxTest3.cpp
+  ctkMenuComboBoxTest4.cpp
   ctkMessageBoxDontShowAgainTest.cpp
   ctkModalityWidgetTest1.cpp
   ctkPathLineEditTest1.cpp
@@ -247,7 +248,7 @@ else()
   QT4_ADD_RESOURCES(Tests_RESOURCES_SRCS ${Tests_RESOURCES})
 endif()
 
-add_executable(${KIT}CppTests ${Tests} ${Tests_SRCS} ${Tests_MOC_CPP} ${Tests_UI_CPP} ${Tests_RESOURCES_SRCS})
+ctk_add_executable_utf8(${KIT}CppTests ${Tests} ${Tests_SRCS} ${Tests_MOC_CPP} ${Tests_UI_CPP} ${Tests_RESOURCES_SRCS})
 target_link_libraries(${KIT}CppTests ${LIBRARY_NAME})
 
 if(CTK_QT_VERSION VERSION_GREATER "4")
@@ -257,7 +258,9 @@ if(CTK_QT_VERSION VERSION_GREATER "4")
   endif()
   target_link_libraries(${KIT}CppTests ${KIT_target_libraries})
 endif()
-
+if(CTK_USE_QTTESTING)
+  target_link_libraries(${KIT}CppTests CTKQtTesting)
+endif()
 #
 # Add Tests
 #
@@ -332,6 +335,7 @@ SIMPLE_TEST( ctkMenuButtonTest1 )
 SIMPLE_TEST( ctkMenuComboBoxTest1 )
 SIMPLE_TEST( ctkMenuComboBoxTest2 )
 SIMPLE_TEST( ctkMenuComboBoxTest3 )
+SIMPLE_TEST( ctkMenuComboBoxTest4 )
 SIMPLE_TEST( ctkMessageBoxDontShowAgainTest )
 SIMPLE_TEST( ctkModalityWidgetTest1 )
 SIMPLE_TEST( ctkPathLineEditTest1 )

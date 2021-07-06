@@ -102,6 +102,7 @@ class CTK_WIDGETS_EXPORT ctkPathLineEdit: public QWidget
   /// changes when the content changes.
   /// The default value is AdjustToContentsOnFirstShow.
   Q_PROPERTY(SizeAdjustPolicy sizeAdjustPolicy READ sizeAdjustPolicy WRITE setSizeAdjustPolicy)
+  Q_ENUMS(SizeAdjustPolicy)
 
   /// This property holds the minimum number of characters that should fit into
   /// the path line edit.
@@ -247,7 +248,9 @@ Q_SIGNALS:
 public Q_SLOTS:
   void setCurrentPath(const QString& path);
 
-  /// Open a QFileDialog to select a file or directory and set current text to it
+  /// Open a QFileDialog to select a file or directory and set current text to it.
+  /// Type of dialog (file open, file save, select directory) is controlled by options flags
+  /// Files (chooses between file and directory dialog) and Writable (chooses between open and save).
   /// You would probably connect a browse push button like this:
   /// connect(myPushButton,SIGNAL(clicked()),myPathLineEdit,SLOT(browse()))
   /// As a conveniency, such button is provided by default via the browseButton

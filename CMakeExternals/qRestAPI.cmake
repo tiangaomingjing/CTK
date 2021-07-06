@@ -24,7 +24,7 @@ endif()
 
 if(NOT DEFINED ${proj}_DIR)
 
-  set(revision_tag "c5e4c2a7d5")
+  set(revision_tag "ddc0cfcc220d0ccd02b4afdd699d1e780dac3fa3")
   if(${proj}_REVISION_TAG)
     set(revision_tag ${${proj}_REVISION_TAG})
   endif()
@@ -36,7 +36,7 @@ if(NOT DEFINED ${proj}_DIR)
     set(location_args GIT_REPOSITORY ${${proj}_GIT_REPOSITORY}
                       GIT_TAG ${revision_tag})
   else()
-    set(location_args GIT_REPOSITORY "${git_protocol}://github.com/commontk/qRestAPI.git"
+    set(location_args GIT_REPOSITORY "${EP_GIT_PROTOCOL}://github.com/commontk/qRestAPI.git"
                       GIT_TAG ${revision_tag})
   endif()
 

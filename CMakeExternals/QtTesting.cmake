@@ -24,7 +24,7 @@ endif()
 
 if(NOT DEFINED QtTesting_DIR)
 
-  set(revision_tag 828b35edbbac6b08668809c84391003a2f513d1b)
+  set(revision_tag b5324a213dc3c4abd7b588575ea926db57aa981e)
   if(${proj}_REVISION_TAG)
     set(revision_tag ${${proj}_REVISION_TAG})
   endif()
@@ -36,7 +36,7 @@ if(NOT DEFINED QtTesting_DIR)
     set(location_args GIT_REPOSITORY ${${proj}_GIT_REPOSITORY}
                       GIT_TAG ${revision_tag})
   else()
-    set(location_args GIT_REPOSITORY "${git_protocol}://github.com/commontk/QtTesting.git"
+    set(location_args GIT_REPOSITORY "${EP_GIT_PROTOCOL}://github.com/commontk/QtTesting.git"
                       GIT_TAG ${revision_tag})
   endif()
 

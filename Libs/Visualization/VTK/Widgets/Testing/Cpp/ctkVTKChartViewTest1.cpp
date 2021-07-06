@@ -25,6 +25,7 @@
 
 // CTK includes
 #include "ctkVTKChartView.h"
+#include "ctkVTKWidgetsUtils.h"
 
 // VTK includes
 #include <vtkIntArray.h>
@@ -32,9 +33,6 @@
 #include <vtkPlotBar.h>
 #include <vtkTable.h>
 #include <vtkVersion.h>
-#if CTK_USE_QVTKOPENGLWIDGET
-#include <QVTKOpenGLWidget.h>
-#endif
 
 // STD includes
 #include <iostream>
@@ -48,11 +46,7 @@ static int data_2010[] = {9058, 10941, 9979, 10270, 8900, 11228, 14688, 12231, 1
 //-----------------------------------------------------------------------------
 int ctkVTKChartViewTest1(int argc, char * argv [] )
 {
-#if CTK_USE_QVTKOPENGLWIDGET
-    QSurfaceFormat format = QVTKOpenGLWidget::defaultFormat();
-    format.setSamples(0);
-    QSurfaceFormat::setDefaultFormat(format);
-#endif
+  ctk::vtkSetSurfaceDefaultFormat();
 
   QApplication app(argc, argv);
 
@@ -88,31 +82,19 @@ int ctkVTKChartViewTest1(int argc, char * argv [] )
 
   // Add multiple line plots, setting the colors etc
   vtkPlotBar* bar = vtkPlotBar::New();
-#if (VTK_MAJOR_VERSION <= 5)
-  bar->SetInput(table.GetPointer(), 0, 1);
-#else
   bar->SetInputData(table.GetPointer(), 0, 1);
-#endif
   bar->SetColor(0, 255, 0, 255);
   view.addPlot(bar);
   bar->Delete();
 
   bar = vtkPlotBar::New();
-#if (VTK_MAJOR_VERSION <= 5)
-  bar->SetInput(table.GetPointer(), 0, 2);
-#else
   bar->SetInputData(table.GetPointer(), 0, 2);
-#endif
   bar->SetColor(255, 0, 0, 255);
   view.addPlot(bar);
   bar->Delete();
 
   bar = vtkPlotBar::New();
-#if (VTK_MAJOR_VERSION <= 5)
-  bar->SetInput(table.GetPointer(), 0, 3);
-#else
   bar->SetInputData(table.GetPointer(), 0, 3);
-#endif
   bar->SetColor(0, 0, 255, 255);
   view.addPlot(bar);
   bar->Delete();

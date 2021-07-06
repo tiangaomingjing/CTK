@@ -131,7 +131,11 @@ int ctkPythonConsoleCompleter::cursorOffset(const QString& completion)
         break;
         }
       }
+    #if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+    QStringList lineSplit = currentCompletionText.split(".", Qt::KeepEmptyParts);
+    #else
     QStringList lineSplit = currentCompletionText.split(".", QString::KeepEmptyParts);
+    #endif
     QString functionName = lineSplit.at(lineSplit.length()-1);
     QStringList builtinFunctionPath = QStringList() << "__main__" << "__builtins__";
     QStringList userDefinedFunctionPath = QStringList() << "__main__";
@@ -186,14 +190,24 @@ int ctkPythonConsoleCompleter::parameterCountBuiltInFunction(const QString& pyth
 {
   int parameterCount = 0;
   PyObject* pFunction = this->PythonManager.pythonModule(pythonFunctionName);
-  if (pFunction && PyObject_HasAttrString(pFunction, "__doc__"))
+  if (pFunction)
     {
-    PyObject* pDoc = PyObject_GetAttrString(pFunction, "__doc__");
-    QString docString = PyString_AsString(pDoc);
-    QString argumentExtract = docString.mid(docString.indexOf("(")+1, docString.indexOf(")") - docString.indexOf("(")-1);
-    QStringList arguments = argumentExtract.split(",", QString::SkipEmptyParts);
-    parameterCount = arguments.count();
-    Py_DECREF(pDoc);
+    if (PyObject_HasAttrString(pFunction, "__doc__"))
+      {
+      PyObject* pDoc = PyObject_GetAttrString(pFunction, "__doc__");
+      if (PyString_Check(pDoc))
+        {
+        QString docString = PyString_AsString(pDoc);
+        QString argumentExtract = docString.mid(docString.indexOf("(")+1, docString.indexOf(")") - docString.indexOf("(")-1);
+        #if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+        QStringList arguments = argumentExtract.split(",", Qt::SkipEmptyParts);
+        #else
+        QStringList arguments = argumentExtract.split(",", QString::SkipEmptyParts);
+        #endif
+        parameterCount = arguments.count();
+        }
+      Py_DECREF(pDoc);
+      }
     Py_DECREF(pFunction);
     }
   return parameterCount;
@@ -206,7 +220,11 @@ int ctkPythonConsoleCompleter::parameterCountUserDefinedFunction(const QString& 
   PyObject* pFunction = this->PythonManager.pythonModule(pythonFunctionName);
   if (PyCallable_Check(pFunction))
     {
+#if PY_MAJOR_VERSION >= 3
+    PyObject* fc = PyObject_GetAttrString(pFunction, "__code__");
+#else
     PyObject* fc = PyObject_GetAttrString(pFunction, "func_code");
+#endif
     if (fc)
        {
       PyObject* ac = PyObject_GetAttrString(fc, "co_argcount");
@@ -228,7 +246,11 @@ int ctkPythonConsoleCompleter::parameterCountUserDefinedClassFunction(const QStr
   PyObject* pFunction = this->PythonManager.pythonObject(pythonFunctionName);
   if (PyCallable_Check(pFunction))
     {
+#if PY_MAJOR_VERSION >= 3
+    PyObject* fc = PyObject_GetAttrString(pFunction, "__code__");
+#else
     PyObject* fc = PyObject_GetAttrString(pFunction, "func_code");
+#endif
     if (fc)
       {
       PyObject* ac = PyObject_GetAttrString(fc, "co_argcount");
@@ -257,9 +279,14 @@ int ctkPythonConsoleCompleter::parameterCountFromDocumentation(const QString& py
         {
         QString docString = PyString_AsString(pDoc);
         QString argumentExtract = docString.mid(docString.indexOf("(")+1, docString.indexOf(")") - docString.indexOf("(")-1);
+        #if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+        QStringList arguments = argumentExtract.split(",", Qt::SkipEmptyParts);
+        #else
         QStringList arguments = argumentExtract.split(",", QString::SkipEmptyParts);
+        #endif
         parameterCount = arguments.count();
         }
+      Py_DECREF(pDoc);
       }
     Py_DECREF(pFunction);
     }
@@ -488,7 +515,11 @@ bool ctkPythonConsolePrivate::push(const QString& code)
   PyObject *res = PyObject_CallMethod(this->InteractiveConsole,
                                       const_cast<char*>("push"),
                                       const_cast<char*>("z"),
+#if PY_MAJOR_VERSION >= 3
+                                      buffer.toUtf8().data());
+#else
                                       buffer.toLatin1().data());
+#endif
   if (res)
     {
     int status = 0;
@@ -500,18 +531,6 @@ bool ctkPythonConsolePrivate::push(const QString& code)
     }
   return ret_value;
 }
-
-////----------------------------------------------------------------------------
-//void ctkPythonConsolePrivate::resetInputBuffer()
-//{
-//  if (this->InteractiveConsole)
-//    {
-//    //this->MakeCurrent();
-//    const char* code = "__ctkConsole.resetbuffer()\n";
-//    PyRun_SimpleString(code);
-//    //this->ReleaseControl();
-//    }
-//}
 
 //----------------------------------------------------------------------------
 void ctkPythonConsolePrivate::printWelcomeMessage()
@@ -571,9 +590,9 @@ void ctkPythonConsole::initialize(ctkAbstractPythonManager* newPythonManager)
   d->initializeInteractiveConsole();
 
   this->connect(PythonQt::self(), SIGNAL(pythonStdOut(QString)),
-                d, SLOT(printOutputMessage(QString)));
+                this, SLOT(printOutputMessage(QString)));
   this->connect(PythonQt::self(), SIGNAL(pythonStdErr(QString)),
-                d, SLOT(printErrorMessage(QString)));
+                this, SLOT(printErrorMessage(QString)));
 
   PythonQt::self()->setRedirectStdInCallback(
         ctkConsole::stdInRedirectCallBack, reinterpret_cast<void*>(this));
@@ -591,20 +610,6 @@ void ctkPythonConsole::initialize(ctkAbstractPythonManager* newPythonManager)
 
   this->setDisabled(false);
 }
-
-////----------------------------------------------------------------------------
-//void ctkPythonConsole::executeScript(const QString& script)
-//{
-//  Q_D(ctkPythonConsole);
-//  Q_UNUSED(script);
-
-//  d->printOutputMessage("\n");
-//  emit this->executing(true);
-////   d->Interpreter->RunSimpleString(
-////     script.toLatin1().data());
-//  emit this->executing(false);
-//  d->promptForInput();
-//}
 
 //----------------------------------------------------------------------------
 QString ctkPythonConsole::ps1() const
@@ -650,4 +655,3 @@ void ctkPythonConsole::reset()
 
   this->Superclass::reset();
 }
-

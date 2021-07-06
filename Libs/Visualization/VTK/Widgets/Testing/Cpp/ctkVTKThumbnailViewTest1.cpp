@@ -22,21 +22,18 @@
 #include <QApplication>
 #include <QTimer>
 
-// qMRML includes
+// CTK includes
 #include "ctkVTKThumbnailView.h"
+#include "ctkVTKWidgetsUtils.h"
 
 // VTK includes
-#include <vtkSmartPointer.h>
-#if CTK_USE_QVTKOPENGLWIDGET
-#include <QVTKOpenGLWidget.h>
-#endif
-
 #include <vtkActor.h>
 #include <vtkCubeSource.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
+#include <vtkSmartPointer.h>
 #include <vtkVersion.h>
 
 // STD includes
@@ -45,11 +42,7 @@
 
 int ctkVTKThumbnailViewTest1(int argc, char * argv [] )
 {
-#if CTK_USE_QVTKOPENGLWIDGET
-    QSurfaceFormat format = QVTKOpenGLWidget::defaultFormat();
-    format.setSamples(0);
-    QSurfaceFormat::setDefaultFormat(format);
-#endif
+  ctk::vtkSetSurfaceDefaultFormat();
 
   QApplication app(argc, argv);
   
@@ -61,11 +54,7 @@ int ctkVTKThumbnailViewTest1(int argc, char * argv [] )
 
   vtkPolyDataMapper *mapper = vtkPolyDataMapper::New();
   vtkCubeSource *cube= vtkCubeSource::New();
-#if (VTK_MAJOR_VERSION <= 5)
-  mapper->SetInput(cube->GetOutput());
-#else
   mapper->SetInputConnection(cube->GetOutputPort());
-#endif
   cube->Delete();
   vtkActor *actor = vtkActor::New();
   actor->SetMapper(mapper);

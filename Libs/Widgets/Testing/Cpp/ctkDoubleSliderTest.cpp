@@ -8,7 +8,7 @@
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
 
-      http://www.commontk.org/LICENSE
+      http://commontk.org/LICENSE
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,7 +46,8 @@ void ctkDoubleSliderTester::testUI()
   ctkDoubleSlider slider;
   slider.show();
 #if (QT_VERSION >= 0x50000)
-  QTest::qWaitForWindowActive(&slider);
+  bool result = QTest::qWaitForWindowActive(&slider);
+  Q_UNUSED(result);
 #else
   QTest::qWaitForWindowShown(&slider);
 #endif

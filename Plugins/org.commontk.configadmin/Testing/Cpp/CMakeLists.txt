@@ -10,13 +10,13 @@ set(MY_MOC_CXX )
 
 set(test_executable ${PROJECT_NAME}CppTests)
 
-set(${test_executable}_DEPENDENCIES ${fw_lib} ${fwtestutil_lib})
+set(${test_executable}_DEPENDENCIES ${fw_lib} ${fwtestutil_lib} CTKCore)
 
 set(my_includes)
 ctkFunctionGetIncludeDirs(my_includes ${test_executable})
 include_directories(${my_includes})
 
-add_executable(${test_executable} ${SRCS} ${MY_MOC_CXX})
+ctk_add_executable_utf8(${test_executable} ${SRCS} ${MY_MOC_CXX})
 target_link_libraries(${test_executable}
   ${${test_executable}_DEPENDENCIES}
 )

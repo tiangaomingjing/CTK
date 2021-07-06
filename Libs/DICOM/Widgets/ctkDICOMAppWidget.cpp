@@ -44,6 +44,7 @@
 #include "ctkFileDialog.h"
 
 // ctkDICOMCore includes
+#include "ctkDICOMBrowser.h"
 #include "ctkDICOMDatabase.h"
 #include "ctkDICOMFilterProxyModel.h"
 #include "ctkDICOMIndexer.h"
@@ -113,6 +114,7 @@ ctkDICOMAppWidgetPrivate::ctkDICOMAppWidgetPrivate(ctkDICOMAppWidget* parent): q
   ThumbnailGenerator = QSharedPointer <ctkDICOMThumbnailGenerator> (new ctkDICOMThumbnailGenerator);
   DICOMDatabase->setThumbnailGenerator(ThumbnailGenerator.data());
   DICOMIndexer = QSharedPointer<ctkDICOMIndexer> (new ctkDICOMIndexer);
+  DICOMIndexer->setDatabase(DICOMDatabase.data());
   IndexerProgress = 0;
   UpdateSchemaProgress = 0;
   DisplayImportSummary = true;
@@ -154,7 +156,7 @@ void ctkDICOMAppWidgetPrivate::showUpdateSchemaDialog()
     UpdateSchemaProgress->setMinimumDuration(0);
     UpdateSchemaProgress->setValue(0);
 
-    //q->connect(UpdateSchemaProgress, SIGNAL(canceled()), 
+    //q->connect(UpdateSchemaProgress, SIGNAL(canceled()),
      //       DICOMIndexer.data(), SLOT(cancel()));
 
     q->connect(DICOMDatabase.data(), SIGNAL(schemaUpdateStarted(int)),
@@ -171,7 +173,7 @@ void ctkDICOMAppWidgetPrivate::showUpdateSchemaDialog()
     q->connect(DICOMDatabase.data(), SIGNAL(schemaUpdated()),
             &DICOMModel, SLOT(reset()));
     // reset the database if canceled
-    q->connect(UpdateSchemaProgress, SIGNAL(canceled()), 
+    q->connect(UpdateSchemaProgress, SIGNAL(canceled()),
             &DICOMModel, SLOT(reset()));
     }
   UpdateSchemaProgress->show();
@@ -196,32 +198,38 @@ void ctkDICOMAppWidgetPrivate::showIndexerDialog()
     IndexerProgress->setMinimumDuration(0);
     IndexerProgress->setValue(0);
 
-    q->connect(IndexerProgress, SIGNAL(canceled()), 
+    q->connect(IndexerProgress, SIGNAL(canceled()),
                  DICOMIndexer.data(), SLOT(cancel()));
 
-    q->connect(DICOMIndexer.data(), SIGNAL(progress(int)),
-            IndexerProgress, SLOT(setValue(int)));
-    q->connect(DICOMIndexer.data(), SIGNAL(indexingFilePath(QString)),
+    // QProgressDialog requires a rate limiter when used from another thread,
+    // otherwise it crashes with stack overflow
+    // (see https://bugreports.qt.io/browse/QTBUG-83265).
+    // Since this feature is obsolete anyway (since ctkDICOMBrowser can now
+    // has built-in progress reporting of background data import), we just disable it.
+    // q->connect(DICOMIndexer.data(), SIGNAL(progress(int)),
+    //        IndexerProgress, SLOT(setValue(int)));
+
+    q->connect(DICOMIndexer.data(), SIGNAL(progressDetail(QString)),
             progressLabel, SLOT(setText(QString)));
-    q->connect(DICOMIndexer.data(), SIGNAL(indexingFilePath(QString)),
+    q->connect(DICOMIndexer.data(), SIGNAL(progressDetail(QString)),
             q, SLOT(onFileIndexed(QString)));
 
     // close the dialog
-    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete()),
-            IndexerProgress, SLOT(close()));
+    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete(int,int,int,int)),
+            q, SLOT(setIndexingResult(int,int,int,int)));
     // reset the database to show new data
-    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete()),
+    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete(int, int, int, int)),
             &DICOMModel, SLOT(reset()));
     // stop indexing and reset the database if canceled
-    q->connect(IndexerProgress, SIGNAL(canceled()), 
+    q->connect(IndexerProgress, SIGNAL(canceled()),
             DICOMIndexer.data(), SLOT(cancel()));
-    q->connect(IndexerProgress, SIGNAL(canceled()), 
+    q->connect(IndexerProgress, SIGNAL(canceled()),
             &DICOMModel, SLOT(reset()));
 
     // allow users of this widget to know that the process has finished
-    q->connect(IndexerProgress, SIGNAL(canceled()), 
+    q->connect(IndexerProgress, SIGNAL(canceled()),
             q, SIGNAL(directoryImported()));
-    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete()),
+    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete(int, int, int, int)),
             q, SIGNAL(directoryImported()));
     }
   IndexerProgress->show();
@@ -256,13 +264,6 @@ ctkDICOMAppWidget::ctkDICOMAppWidget(QWidget* _parent):Superclass(_parent),
 
   d->ThumbnailsWidget->setThumbnailSize(
     QSize(d->ThumbnailWidthSlider->value(), d->ThumbnailWidthSlider->value()));
-
-  // signals related to tracking inserts
-  connect(d->DICOMDatabase.data(), SIGNAL(patientAdded(int,QString,QString,QString)), this,
-                              SLOT(onPatientAdded(int,QString,QString,QString)));
-  connect(d->DICOMDatabase.data(), SIGNAL(studyAdded(QString)), this, SLOT(onStudyAdded(QString)));
-  connect(d->DICOMDatabase.data(), SIGNAL(seriesAdded(QString)), this, SLOT(onSeriesAdded(QString)));
-  connect(d->DICOMDatabase.data(), SIGNAL(instanceAdded(QString)), this, SLOT(onInstanceAdded(QString)));
 
   // Treeview signals
   connect(d->TreeView, SIGNAL(collapsed(QModelIndex)), this, SLOT(onTreeCollapsed(QModelIndex)));
@@ -404,7 +405,7 @@ void ctkDICOMAppWidget::setDatabaseDirectory(const QString& directory)
     {
     d->DICOMDatabase->openDatabase( databaseFileName );
     }
-  catch (std::exception e)
+  catch (std::exception &)
     {
     std::cerr << "Database error: " << qPrintable(d->DICOMDatabase->lastError()) << "\n";
     d->DICOMDatabase->closeDatabase();
@@ -495,9 +496,15 @@ void ctkDICOMAppWidget::onFileIndexed(const QString& filePath)
 {
   // Update the progress dialog when the file name changes
   // - also allows for cancel button
-  QCoreApplication::instance()->processEvents();
+
+  // QProgressDialog requires a rate limiter when used from another thread,
+  // otherwise it crashes with stack overflow
+  // (see https://bugreports.qt.io/browse/QTBUG-83265).
+  // Since this feature is obsolete anyway (since ctkDICOMBrowser can now
+  // has built-in progress reporting of background data import), we just disable it.
+  //QCoreApplication::instance()->processEvents();
+
   qDebug() << "Indexing \n\n\n\n" << filePath <<"\n\n\n";
-  
 }
 
 //----------------------------------------------------------------------------
@@ -627,38 +634,13 @@ void ctkDICOMAppWidget::onThumbnailDoubleClicked(const ctkThumbnailLabel& widget
 }
 
 //----------------------------------------------------------------------------
-void ctkDICOMAppWidget::onPatientAdded(int databaseID, QString patientID, QString patientName, QString patientBirthDate )
+void ctkDICOMAppWidget::setIndexingResult(int patientsAdded, int studiesAdded, int seriesAdded, int imagesAdded)
 {
   Q_D(ctkDICOMAppWidget);
-  Q_UNUSED(databaseID);
-  Q_UNUSED(patientID);
-  Q_UNUSED(patientName);
-  Q_UNUSED(patientBirthDate);
-  ++d->PatientsAddedDuringImport;
-}
-
-//----------------------------------------------------------------------------
-void ctkDICOMAppWidget::onStudyAdded(QString studyUID)
-{
-  Q_D(ctkDICOMAppWidget);
-  Q_UNUSED(studyUID);
-  ++d->StudiesAddedDuringImport;
-}
-
-//----------------------------------------------------------------------------
-void ctkDICOMAppWidget::onSeriesAdded(QString seriesUID)
-{
-  Q_D(ctkDICOMAppWidget);
-  Q_UNUSED(seriesUID);
-  ++d->SeriesAddedDuringImport;
-}
-
-//----------------------------------------------------------------------------
-void ctkDICOMAppWidget::onInstanceAdded(QString instanceUID)
-{
-  Q_D(ctkDICOMAppWidget);
-  Q_UNUSED(instanceUID);
-  ++d->InstancesAddedDuringImport;
+  d->PatientsAddedDuringImport = patientsAdded;
+  d->StudiesAddedDuringImport = studiesAdded;
+  d->SeriesAddedDuringImport = seriesAdded;
+  d->InstancesAddedDuringImport = imagesAdded;
 }
 
 //----------------------------------------------------------------------------
@@ -669,10 +651,7 @@ void ctkDICOMAppWidget::onImportDirectory(QString directory)
     {
     QCheckBox* copyOnImport = qobject_cast<QCheckBox*>(d->ImportDialog->bottomWidget());
     QString targetDirectory;
-    if (copyOnImport->checkState() == Qt::Checked)
-      {
-      targetDirectory = d->DICOMDatabase->databaseDirectory();
-      }
+    bool copyFiles = (copyOnImport->checkState() == Qt::Checked);
 
     // reset counts
     d->PatientsAddedDuringImport = 0;
@@ -682,7 +661,8 @@ void ctkDICOMAppWidget::onImportDirectory(QString directory)
 
     // show progress dialog and perform indexing
     d->showIndexerDialog();
-    d->DICOMIndexer->addDirectory(*d->DICOMDatabase,directory,targetDirectory);
+
+    d->DICOMIndexer->addDirectory(directory, copyFiles);
 
     // display summary result
     if (d->DisplayImportSummary)

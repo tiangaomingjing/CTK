@@ -161,7 +161,7 @@ void ctkAbstractPythonManager::initPythonQt(int flags)
   initCode << "import sys";
   foreach (const QString& path, this->pythonPaths())
     {
-    initCode << QString("sys.path.append('%1')").arg(QDir::fromNativeSeparators(path));
+    initCode << QString("sys.path.append(%1)").arg(QDir::fromNativeSeparators(path));
     }
 
   PythonQtObjectPtr _mainContext = PythonQt::self()->getMainModule();
@@ -278,6 +278,28 @@ void ctkAbstractPythonManager::setSystemExitExceptionHandlerEnabled(bool value)
 }
 
 //-----------------------------------------------------------------------------
+bool ctkAbstractPythonManager::redirectStdOutCallbackEnabled()const
+{
+  if (!PythonQt::self())
+    {
+    qWarning() << Q_FUNC_INFO << " failed: PythonQt is not initialized";
+    return false;
+    }
+  return PythonQt::self()->redirectStdOutCallbackEnabled();
+}
+
+//-----------------------------------------------------------------------------
+void ctkAbstractPythonManager::setRedirectStdOutCallbackEnabled(bool value)
+{
+  if (!PythonQt::self())
+    {
+    qWarning() << Q_FUNC_INFO << " failed: PythonQt is not initialized";
+    return;
+    }
+  PythonQt::self()->setRedirectStdOutCallbackEnabled(value);
+}
+
+//-----------------------------------------------------------------------------
 QVariant ctkAbstractPythonManager::executeString(const QString& code,
                                                  ctkAbstractPythonManager::ExecuteStringMode mode)
 {
@@ -307,21 +329,26 @@ void ctkAbstractPythonManager::executeFile(const QString& filename)
     {
     QString path = QFileInfo(filename).absolutePath();
     // See http://nedbatchelder.com/blog/200711/rethrowing_exceptions_in_python.html
+    // Re-throwing is only needed in Python 2.7
     QStringList code = QStringList()
         << "import sys"
-        << QString("sys.path.insert(0, '%1')").arg(path)
+        << QString("sys.path.insert(0, %1)").arg(ctkAbstractPythonManager::toPythonStringLiteral(path))
         << "_updated_globals = globals()"
-        << QString("_updated_globals['__file__'] = '%1'").arg(filename)
+        << QString("_updated_globals['__file__'] = %1").arg(ctkAbstractPythonManager::toPythonStringLiteral(filename))
+#if PY_MAJOR_VERSION >= 3
+        << QString("exec(open(%1).read(), _updated_globals)").arg(ctkAbstractPythonManager::toPythonStringLiteral(filename));
+#else
         << "_ctk_executeFile_exc_info = None"
         << "try:"
-        << QString("    execfile('%1', _updated_globals)").arg(filename)
-        << "except Exception, e:"
+        << QString("    execfile(%1, _updated_globals)").arg(ctkAbstractPythonManager::toPythonStringLiteral(filename))
+        << "except Exception as e:"
         << "    _ctk_executeFile_exc_info = sys.exc_info()"
         << "finally:"
         << "    del _updated_globals"
-        << QString("    if sys.path[0] == '%1': sys.path.pop(0)").arg(path)
+        << QString("    if sys.path[0] == %1: sys.path.pop(0)").arg(ctkAbstractPythonManager::toPythonStringLiteral(path))
         << "    if _ctk_executeFile_exc_info:"
         << "        raise _ctk_executeFile_exc_info[1], None, _ctk_executeFile_exc_info[2]";
+#endif
     this->executeString(code.join("\n"));
     //PythonQt::self()->handleError(); // Clear errorOccured flag
     }
@@ -371,6 +398,7 @@ QStringList ctkAbstractPythonManager::dir_object(PyObject* object,
   return results;
 }
 
+//----------------------------------------------------------------------------
 QStringList ctkAbstractPythonManager::splitByDotOutsideParenthesis(const QString& pythonVariableName)
 {
   QStringList tmpNames;
@@ -420,7 +448,6 @@ QStringList ctkAbstractPythonManager::splitByDotOutsideParenthesis(const QString
   return tmpNames;
 }
 
-
 //----------------------------------------------------------------------------
 QStringList ctkAbstractPythonManager::pythonAttributes(const QString& pythonVariableName,
                                                        const QString& module,
@@ -433,7 +460,11 @@ QStringList ctkAbstractPythonManager::pythonAttributes(const QString& pythonVari
   QString precedingModule = module;
   PyObject* object = ctkAbstractPythonManager::pythonModule(precedingModule);
   PyObject* prevObject = 0;
+  #if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+  QStringList moduleList = module.split(".", Qt::SkipEmptyParts);
+  #else
   QStringList moduleList = module.split(".", QString::SkipEmptyParts);
+  #endif
 
   foreach(const QString& module, moduleList)
     {
@@ -459,7 +490,7 @@ QStringList ctkAbstractPythonManager::pythonAttributes(const QString& pythonVari
 //    }
 //  Py_INCREF(object);
 
-  PyObject* main_object = object; // save the modue object (usually __main__ or __main__.__builtins__)
+  PyObject* main_object = object; // save the module object (usually __main__ or __main__.__builtins__)
   QString instantiated_class_name = "_ctkAbstractPythonManager_autocomplete_tmp";
   QStringList results; // the list of attributes to return
   QString line_code="";
@@ -624,7 +655,11 @@ PyObject* ctkAbstractPythonManager::pythonModule(const QString& module)
   PyObject* dict = PyImport_GetModuleDict();
   PyObject* object = 0;
   PyObject* prevObject = 0;
+  #if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+  QStringList moduleList = module.split(".", Qt::KeepEmptyParts);
+  #else
   QStringList moduleList = module.split(".", QString::KeepEmptyParts);
+  #endif
   if (!dict)
     {
     return object;
@@ -692,4 +727,13 @@ void ctkAbstractPythonManager::printStdout(const QString& text)
 void ctkAbstractPythonManager::printStderr(const QString& text)
 {
   std::cerr << qPrintable(text);
+}
+
+//-----------------------------------------------------------------------------
+QString ctkAbstractPythonManager::toPythonStringLiteral(QString path)
+{
+  path = path.replace("\\", "\\\\");
+  path = path.replace("'", "\\'");
+  // since we enclose string in single quotes, double-quotes do not require escaping
+  return "'" + path + "'";
 }

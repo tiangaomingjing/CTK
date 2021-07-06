@@ -332,6 +332,7 @@ QLayoutItem* ctkLayoutManager::processLayoutElement(QDomElement layoutElement)
     // deleted when the layout is cleared.
     d->LayoutWidgets << widget;
     }
+  QList<int> splitSizes;
   for(QDomNode child = layoutElement.firstChild();
       !child.isNull();
       child = child.nextSibling())
@@ -341,8 +342,30 @@ QLayoutItem* ctkLayoutManager::processLayoutElement(QDomElement layoutElement)
       {
       continue;
       }
+    int splitSize = child.toElement().attribute("splitSize", QString::number(0)).toInt();
+    splitSizes << splitSize;
     this->processItemElement(child.toElement(), layoutItem);
     }
+
+  // Set child item split sizes (initial position of the splitter)
+  QSplitter* splitter = qobject_cast<QSplitter*>(widget);
+  if (splitter)
+    {
+    bool splitSizeSpecified = false;
+    foreach(int i, splitSizes)
+      {
+      if (i > 0)
+        {
+        splitSizeSpecified = true;
+        break;
+        }
+      }
+    if (splitSizeSpecified)
+      {
+      splitter->setSizes(splitSizes);
+      }
+    }
+
   return layoutItem;
 }
 
@@ -392,7 +415,11 @@ void ctkLayoutManager::processItemElement(QDomElement itemElement, QLayoutItem* 
     }
   else
     {
-    childrenItem << this->processElement(itemElement.firstChild().toElement());
+    QLayoutItem* layoutItem = this->processElement(itemElement.firstChild().toElement());
+    if (layoutItem)
+      {
+      childrenItem << layoutItem;
+      }
     }
   foreach(QLayoutItem* item, childrenItem)
     {
@@ -452,6 +479,10 @@ QWidgetItem* ctkLayoutManager::widgetItemFromXML(QDomElement viewElement)
 {
   //Q_ASSERT(viewElement.tagName() == "view");
   QWidget* view = this->viewFromXML(viewElement);
+  if (!view)
+    {
+    return 0;
+    }
   this->setupView(viewElement, view);
   return new QWidgetItem(view);
 }
@@ -461,7 +492,10 @@ void ctkLayoutManager::setupView(QDomElement viewElement, QWidget* view)
 {
   Q_UNUSED(viewElement);
   Q_D(ctkLayoutManager);
-  Q_ASSERT(view);
+  if (!view)
+    {
+    return;
+    }
   view->setVisible(true);
   d->Views.insert(view);
 }

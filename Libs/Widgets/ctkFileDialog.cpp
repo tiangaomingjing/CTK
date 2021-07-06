@@ -51,6 +51,7 @@ public:
   bool AcceptButtonEnable;
   bool AcceptButtonState;
   bool IgnoreEvent;
+  bool UsingNativeDialog;
 };
 
 //------------------------------------------------------------------------------
@@ -60,24 +61,32 @@ ctkFileDialogPrivate::ctkFileDialogPrivate(ctkFileDialog& object)
   this->IgnoreEvent = false;
   this->AcceptButtonEnable = true;
   this->AcceptButtonState = true;
+  this->UsingNativeDialog = true;
 }
 
 //------------------------------------------------------------------------------
 void ctkFileDialogPrivate::init()
 {
   Q_Q(ctkFileDialog);
+  this->UsingNativeDialog = !(q->options() & QFileDialog::DontUseNativeDialog);
+  if (!this->UsingNativeDialog)
+  {
+    this->observeAcceptButton();
 
-  this->observeAcceptButton();
-
-  QObject::connect(this->listView()->selectionModel(),
-                   SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
-                   q, SLOT(onSelectionChanged()));
+    QObject::connect(this->listView()->selectionModel(),
+                    SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
+                    q, SLOT(onSelectionChanged()));
+  }
 }
 
 //------------------------------------------------------------------------------
 QPushButton* ctkFileDialogPrivate::acceptButton()const
 {
   Q_Q(const ctkFileDialog);
+  if (this->UsingNativeDialog)
+  {
+    return NULL;  // Native dialog does not support modifying or getting widget elements.
+  }
   QDialogButtonBox* buttonBox = q->findChild<QDialogButtonBox*>();
   Q_ASSERT(buttonBox);
   QDialogButtonBox::StandardButton button =
@@ -127,13 +136,6 @@ ctkFileDialog::ctkFileDialog(QWidget *parentWidget,
 {
   Q_D(ctkFileDialog);
 
-// The findChild<QDialogButtonBox*>() call fails on Mac/Qt5 because native
-// dialogs don't publish any internals. No problems on other OS.
-// Can be applied to Qt4 as well, if problems arise there.
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
-  this->setOptions(DontUseNativeDialog);
-#endif
-
   d->init();
 }
 
@@ -145,6 +147,11 @@ ctkFileDialog::~ctkFileDialog()
 //------------------------------------------------------------------------------
 void ctkFileDialog::setBottomWidget(QWidget* widget, const QString& label)
 {
+  Q_D(ctkFileDialog);
+  if (d->UsingNativeDialog)
+  {
+    return;  // Native dialog does not support modifying or getting widget elements.
+  }
   QGridLayout* gridLayout = qobject_cast<QGridLayout*>(this->layout());
   QWidget* oldBottomWidget = this->bottomWidget();
   // remove the old widget from the layout if any
@@ -171,7 +178,7 @@ void ctkFileDialog::setBottomWidget(QWidget* widget, const QString& label)
     gridLayout->addWidget(widget,4, 0,1, 2);
     }
   // The dialog button box is no longer spanned on 2 rows but on 3 rows if
-  // there is a "bottom widget" 
+  // there is a "bottom widget"
   QDialogButtonBox* buttonBox = this->findChild<QDialogButtonBox*>();
   Q_ASSERT(buttonBox);
   gridLayout->removeWidget(buttonBox);
@@ -190,6 +197,10 @@ QWidget* ctkFileDialog::bottomWidget()const
 void ctkFileDialog::setSelectionMode(QAbstractItemView::SelectionMode mode)
 {
   Q_D(ctkFileDialog);
+  if (d->UsingNativeDialog)
+  {
+    return;  // Native dialog does not support modifying or getting widget elements.
+  }
   foreach(QAbstractItemView* view, QList<QAbstractItemView*>()
           << d->listView()
           << d->treeView()
@@ -276,7 +287,7 @@ void ctkFileDialog::accept()
       }
     }
   // Don't accept read-only directories if we are in AcceptSave mode.
-  if ((this->fileMode() == Directory || this->fileMode() == DirectoryOnly) &&
+  if ((this->fileMode() == Directory) &&
       this->acceptMode() == AcceptSave)
     {
     QStringList files = this->selectedFiles();

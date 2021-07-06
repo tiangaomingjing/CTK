@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 """ This module loads all the classes from the wrapped CTK libraries into
 its namespace."""
 
@@ -9,11 +11,11 @@ _CTK_VERBOSE_IMPORT = False
 kits = []
 for kit in __kits_to_load:
   try:
-    exec "from CTK%sPythonQt import *" % (kit)
+    exec("from CTK%sPythonQt import *" % kit)
     kits.append(kit)
   except ImportError as detail:
     if _CTK_VERBOSE_IMPORT:
-      print detail
+      print(detail)
 
 def add_methodclass_to_ctkWorkflowStep_or_ctkWorkflowWidgetStep(workflowstep_class):
 

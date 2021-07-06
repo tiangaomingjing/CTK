@@ -21,6 +21,7 @@
 
 #include "ctkDICOMItem.h"
 
+#include <dcmtk/dcmdata/dcuid.h>
 #include <dcmtk/dcmdata/dctk.h>
 #include <dcmtk/dcmdata/dcostrmb.h>
 #include <dcmtk/dcmdata/dcistrmb.h>
@@ -115,7 +116,7 @@ void ctkDICOMItem::InitializeFromFile(const QString& filename,
   DcmDataset *dataset;
 
   DcmFileFormat fileformat;
-  OFCondition status = fileformat.loadFile(filename.toLatin1().data(), readXfer, groupLength, maxReadLength, readMode);
+  OFCondition status = fileformat.loadFile(filename.toUtf8().data(), readXfer, groupLength, maxReadLength, readMode);
   dataset = fileformat.getAndRemoveDataset();
 
   if (!status.good())
@@ -260,6 +261,13 @@ OFCondition ctkDICOMItem::findAndGetOFString(const DcmTag& tag, OFString& value,
   return GetDcmItem().findAndGetOFString(tag, value, pos, searchIntoSub);
 }
 
+bool ctkDICOMItem::TagExists(const DcmTag& tag) const
+{
+  EnsureDcmDataSetIsInitialized();
+  // this one const_cast allows us to declare quite a lot of methods nicely with const
+  return GetDcmItem().tagExists(tag, true);
+}
+
 bool ctkDICOMItem::CheckCondition(const OFCondition& condition)
 {
   if ( condition.bad() )
@@ -370,11 +378,11 @@ QString ctkDICOMItem::Decode( const DcmTag& tag, const OFString& raw ) const
       qtEncodingNamesForDICOMEncodingNames.insert("ISO_IR 148", "ISO-8859-9");
       qtEncodingNamesForDICOMEncodingNames.insert("ISO_IR 179", "ISO-8859-13");
       qtEncodingNamesForDICOMEncodingNames.insert("ISO_IR 192", "UTF-8");
-      // japanese
+      // Japanese
       qtEncodingNamesForDICOMEncodingNames.insert("ISO 2022 IR 13", "ISO 2022-JP"); // Single byte charset, JIS X 0201: Katakana, Romaji
       qtEncodingNamesForDICOMEncodingNames.insert("ISO 2022 IR 87", "ISO 2022-JP"); // Multi byte charset, JIS X 0208: Kanji, Kanji set
       qtEncodingNamesForDICOMEncodingNames.insert("ISO 2022 IR 159", "ISO 2022-JP");
-      // korean
+      // Korean
       qtEncodingNamesForDICOMEncodingNames.insert("ISO 2022 IR 149", "EUC-KR"); // Multi byte charset, KS X 1001: Hangul, Hanja
 
       // use all names that Qt knows by itself
@@ -416,7 +424,22 @@ QString ctkDICOMItem::Decode( const DcmTag& tag, const OFString& raw ) const
     }
     else
     {
-      std::cerr << "DICOM dataset contains some encoding that we never thought we would see(" << d->m_SpecificCharacterSet.toStdString() << "). Using default encoding." << std::endl;
+      std::cerr << "DICOM dataset contains some encoding that we never thought we would see (" << d->m_SpecificCharacterSet.toStdString() << "). Using ASCII encoding." << std::endl;
+      // Replace non-ASCII characters by "?" to avoid decoding errors and random special characters appearing in strings.
+      QString asciiString;
+      for (int i = 0; i < raw.length(); i++)
+      {
+        int ch = raw[i];
+        if (32 <= raw[i] && raw[i] < 128)
+        {
+          asciiString += raw[i];
+        }
+        else
+        {
+          asciiString += "?";
+        }
+      }
+      return asciiString;
     }
   }
 
@@ -439,7 +462,7 @@ QString ctkDICOMItem::GetAllElementValuesAsString( const DcmTag& tag ) const
 
   DcmElement* element(NULL);
   findAndGetElement(tag, element);
-  if (!element) return QString::null;
+  if (!element) return QString();
 
   const unsigned long count = element->getVM(); // value multiplicity
   for (unsigned long i = 0; i < count; ++i)
@@ -466,7 +489,7 @@ QString ctkDICOMItem::GetElementAsString( const DcmTag& tag, unsigned long pos )
   }
   else
   {
-    return QString::null;
+    return QString();
   }
 }
 
@@ -844,7 +867,7 @@ QString ctkDICOMItem::TranslateDefinedTermPatientPosition( const QString& dt )
   else
   {
     std::cerr << "Invalid enum for patient position" << std::endl;
-    return QString::null;
+    return QString();
   }
 }
 
@@ -930,13 +953,18 @@ QString ctkDICOMItem::TranslateDefinedTermModality( const QString& dt )
   else
   {
     std::cerr << "Invalid enum for patient position" << std::endl;
-    return QString::null;
+    return QString();
   }
 }
 
 QString ctkDICOMItem::TagKey( const DcmTag& tag )
 {
   return QString("(%1,%2)").arg( tag.getGroup(), 4, 16, QLatin1Char('0')).arg( tag.getElement(), 4, 16, QLatin1Char('0') );
+}
+
+QString ctkDICOMItem::TagKeyStripped( const DcmTag& tag )
+{
+  return QString("%1,%2").arg( tag.getGroup(), 4, 16, QLatin1Char('0')).arg( tag.getElement(), 4, 16, QLatin1Char('0') );
 }
 
 QString ctkDICOMItem::TagDescription( const DcmTag& tag )
@@ -950,7 +978,11 @@ QString ctkDICOMItem::TagDescription( const DcmTag& tag )
   {
     returnName = entry->getTagName();
   }
+#if OFFIS_DCMTK_VERSION_NUMBER < 364
   dcmDataDict.unlock();
+#else
+  dcmDataDict.rdunlock();
+#endif
   return returnName;
 }
 
@@ -964,7 +996,11 @@ QString ctkDICOMItem::TagVR( const DcmTag& tag )
   {
     returnVR = entry->getVR().getVRName();
   }
+#if OFFIS_DCMTK_VERSION_NUMBER < 364
   dcmDataDict.unlock();
+#else
+  dcmDataDict.rdunlock();
+#endif
   return returnVR;
 }
 
@@ -985,12 +1021,12 @@ bool ctkDICOMItem::SaveToFile(const QString& filePath) const
 {
   Q_D(const ctkDICOMItem);
 
-  if (! dynamic_cast<DcmDataset*>(d->m_DcmItem) )
+  if (!dynamic_cast<DcmDataset*>(d->m_DcmItem))
   {
     return false;
   }
-  DcmFileFormat* fileformat = new DcmFileFormat ( dynamic_cast<DcmDataset*>(d->m_DcmItem) );
-  OFCondition status = fileformat->saveFile ( qPrintable(QDir::toNativeSeparators( filePath)) );
+  DcmFileFormat* fileformat = new DcmFileFormat(dynamic_cast<DcmDataset*>(d->m_DcmItem));
+  OFCondition status = fileformat->saveFile(QDir::toNativeSeparators(filePath).toUtf8().data());
   delete fileformat;
   return status.good();
 }

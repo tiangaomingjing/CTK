@@ -37,6 +37,7 @@
 #include <vtkOpenGLContextDevice2D.h>
 #include <vtkPlot.h>
 #include <vtkRenderWindow.h>
+#include <vtkRenderer.h>
 
 //----------------------------------------------------------------------------
 static ctkLogger logger("org.commontk.visualization.vtk.widgets.ctkVTKChartView");
@@ -52,7 +53,7 @@ public:
   void init();
   void chartBounds(double* bounds)const;
 
-#if CTK_USE_QVTKOPENGLWIDGET
+#ifdef CTK_USE_QVTKOPENGLWIDGET
   vtkSmartPointer<vtkGenericOpenGLRenderWindow> RenderWindow;
 #endif
   vtkSmartPointer<vtkContextView> ContextView;
@@ -69,7 +70,7 @@ ctkVTKChartViewPrivate::ctkVTKChartViewPrivate(ctkVTKChartView& object)
   :q_ptr(&object)
 {
   this->ContextView = vtkSmartPointer<vtkContextView>::New();
-#if CTK_USE_QVTKOPENGLWIDGET
+#ifdef CTK_USE_QVTKOPENGLWIDGET
   this->RenderWindow = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
 #endif
   this->Chart = vtkSmartPointer<vtkChartXY>::New();
@@ -84,18 +85,34 @@ ctkVTKChartViewPrivate::ctkVTKChartViewPrivate(ctkVTKChartView& object)
 void ctkVTKChartViewPrivate::init()
 {
   Q_Q(ctkVTKChartView);
-#if CTK_USE_QVTKOPENGLWIDGET
+
+#ifdef CTK_USE_QVTKOPENGLWIDGET
+# if VTK_MAJOR_VERSION >= 9 || (VTK_MAJOR_VERSION >= 8 && VTK_MINOR_VERSION >= 90)
+  q->setRenderWindow(this->RenderWindow);
+# else
   q->SetRenderWindow(this->RenderWindow);
+# endif
   this->ContextView->SetRenderWindow(this->RenderWindow);
 #endif
+
+#if VTK_MAJOR_VERSION >= 9 || (VTK_MAJOR_VERSION >= 8 && VTK_MINOR_VERSION >= 90)
+  this->ContextView->SetInteractor(q->interactor());
+  q->setRenderWindow(this->ContextView->GetRenderWindow());
+#else
   this->ContextView->SetInteractor(q->GetInteractor());
   q->SetRenderWindow(this->ContextView->GetRenderWindow());
+#endif
+
   // low def for now (faster)
   //q->GetRenderWindow()->SetMultiSamples(0);
   //vtkOpenGLContextDevice2D::SafeDownCast(this->ContextView->GetContext()->GetDevice())
   //                                       ->SetStringRendererToQt();
 #ifndef Q_WS_X11
+# if VTK_MAJOR_VERSION >= 9 || (VTK_MAJOR_VERSION >= 8 && VTK_MINOR_VERSION >= 90)
+  q->renderWindow()->SetLineSmoothing(true);
+# else
   q->GetRenderWindow()->SetLineSmoothing(true);
+# endif
 #endif
   this->Chart->SetActionToButton(vtkChart::PAN, vtkContextMouseEvent::MIDDLE_BUTTON);
   this->Chart->SetActionToButton(vtkChart::SELECT, vtkContextMouseEvent::RIGHT_BUTTON);
@@ -110,6 +127,10 @@ void ctkVTKChartViewPrivate::init()
 // ----------------------------------------------------------------------------
 void ctkVTKChartViewPrivate::chartBounds(double* bounds)const
 {
+  if (!bounds)
+    {
+    return;
+    }
   Q_Q(const ctkVTKChartView);
   bounds[0] = bounds[2] = bounds[4] = bounds[6] = VTK_DOUBLE_MAX;
   bounds[1] = bounds[3] = bounds[5] = bounds[7] = VTK_DOUBLE_MIN;
@@ -127,54 +148,38 @@ void ctkVTKChartViewPrivate::chartBounds(double* bounds)const
       // bottom left
       case 0:
         // x
-        bounds[2] = bounds[2] > plotBounds[0] ?
-          plotBounds[0] : bounds[2];
-        bounds[3] = bounds[3] < plotBounds[1] ?
-          plotBounds[1] : bounds[3];
+        bounds[2] = bounds[2] > plotBounds[0] ? plotBounds[0] : bounds[2];
+        bounds[3] = bounds[3] < plotBounds[1] ? plotBounds[1] : bounds[3];
         // y
-        bounds[0] = bounds[0] > plotBounds[2] ?
-          plotBounds[2] : bounds[0];
-        bounds[1] = bounds[1] < plotBounds[3] ?
-          plotBounds[3] : bounds[1];
+        bounds[0] = bounds[0] > plotBounds[2] ? plotBounds[2] : bounds[0];
+        bounds[1] = bounds[1] < plotBounds[3] ? plotBounds[3] : bounds[1];
         break;
       // bottom right
       case 1:
         // x
-        bounds[2] = bounds[2] > plotBounds[0] ?
-          plotBounds[0] : bounds[2];
-        bounds[3] = bounds[3] < plotBounds[1] ?
-          plotBounds[1] : bounds[3];
+        bounds[2] = bounds[2] > plotBounds[0] ? plotBounds[0] : bounds[2];
+        bounds[3] = bounds[3] < plotBounds[1] ? plotBounds[1] : bounds[3];
         // y
-        bounds[4] = bounds[4] > plotBounds[2] ?
-          plotBounds[2] : bounds[4];
-        bounds[5] = bounds[5] < plotBounds[3] ?
-          plotBounds[3] : bounds[5];
+        bounds[4] = bounds[4] > plotBounds[2] ? plotBounds[2] : bounds[4];
+        bounds[5] = bounds[5] < plotBounds[3] ? plotBounds[3] : bounds[5];
         break;
       // top right
       case 2:
         // x
-        bounds[6] = bounds[6] > plotBounds[0] ?
-          plotBounds[0] : bounds[6];
-        bounds[7] = bounds[7] < plotBounds[1] ?
-          plotBounds[1] : bounds[7];
+        bounds[6] = bounds[6] > plotBounds[0] ? plotBounds[0] : bounds[6];
+        bounds[7] = bounds[7] < plotBounds[1] ? plotBounds[1] : bounds[7];
         // y
-        bounds[4] = bounds[4] > plotBounds[2] ?
-          plotBounds[2] : bounds[4];
-        bounds[5] = bounds[5] < plotBounds[3] ?
-          plotBounds[3] : bounds[5];
+        bounds[4] = bounds[4] > plotBounds[2] ? plotBounds[2] : bounds[4];
+        bounds[5] = bounds[5] < plotBounds[3] ? plotBounds[3] : bounds[5];
         break;
       // top left
       case 3:
         // x
-        bounds[6] = bounds[6] > plotBounds[0] ?
-          plotBounds[0] : bounds[6];
-        bounds[7] = bounds[7] < plotBounds[1] ?
-          plotBounds[1] : bounds[7];
+        bounds[6] = bounds[6] > plotBounds[0] ? plotBounds[0] : bounds[6];
+        bounds[7] = bounds[7] < plotBounds[1] ? plotBounds[1] : bounds[7];
         // y
-        bounds[0] = bounds[0] > plotBounds[2] ?
-          plotBounds[2] : bounds[1];
-        bounds[1] = bounds[0] < plotBounds[3] ?
-          plotBounds[3] : bounds[1];
+        bounds[0] = bounds[0] > plotBounds[2] ? plotBounds[2] : bounds[1];
+        bounds[1] = bounds[0] < plotBounds[3] ? plotBounds[3] : bounds[1];
         break;
       }
     }
@@ -182,6 +187,8 @@ void ctkVTKChartViewPrivate::chartBounds(double* bounds)const
 
 // ----------------------------------------------------------------------------
 // ctkVTKChartView methods
+
+CTK_GET_CPP(ctkVTKChartView, vtkRenderWindow*, renderWindow, RenderWindow);
 
 // ----------------------------------------------------------------------------
 ctkVTKChartView::ctkVTKChartView(QWidget* parentWidget)
@@ -202,7 +209,7 @@ ctkVTKChartView::~ctkVTKChartView()
 void ctkVTKChartView::setTitle(const QString& newTitle)
 {
   Q_D(ctkVTKChartView);
-  d->Chart->SetTitle(newTitle.toLatin1().data());
+  d->Chart->SetTitle(newTitle.toUtf8().data());
 }
 
 // ----------------------------------------------------------------------------
@@ -295,10 +302,13 @@ void ctkVTKChartView::onChartUpdated()
     }
 }
 
-
 // ----------------------------------------------------------------------------
 void ctkVTKChartView::chartExtent(double* extent)const
 {
+  if (!extent)
+    {
+    return;
+    }
   extent[0] = extent[2] = extent[4] = extent[6] = VTK_DOUBLE_MAX;
   extent[1] = extent[3] = extent[5] = extent[7] = VTK_DOUBLE_MIN;
   vtkChartXY* chart = this->chart();
@@ -314,6 +324,25 @@ void ctkVTKChartView::chartExtent(double* extent)const
   axis = chart->GetAxis(vtkAxis::RIGHT);
   extent[6] = qMin(axis->GetMinimum(), extent[6]);
   extent[7] = qMax(axis->GetMaximum(), extent[7]);
+}
+
+// ----------------------------------------------------------------------------
+void ctkVTKChartView::setChartUserExtent(double* userExtent)
+{
+  if (!userExtent)
+    {
+    qCritical() << Q_FUNC_INFO << ": Invalid user extent";
+    return;
+    }
+  vtkChartXY* chart = this->chart();
+  vtkAxis* axis = chart->GetAxis(vtkAxis::BOTTOM);
+  axis->SetRange(userExtent[0], userExtent[1]);
+  axis = chart->GetAxis(vtkAxis::LEFT);
+  axis->SetRange(userExtent[2], userExtent[3]);
+  axis = chart->GetAxis(vtkAxis::TOP);
+  axis->SetRange(userExtent[4], userExtent[5]);
+  axis = chart->GetAxis(vtkAxis::RIGHT);
+  axis->SetRange(userExtent[6], userExtent[7]);
 }
 
 // ----------------------------------------------------------------------------
@@ -364,7 +393,6 @@ void ctkVTKChartView::setAxesToChartBounds()
     if (bounds[2*i] != VTK_DOUBLE_MAX)
       {
       chart->GetAxis(i)->SetRange(bounds[2*i], bounds[2*i+1]);
-      //chart->GetAxis(i)->SetBehavior(2);
       }
     }
 }

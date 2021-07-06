@@ -27,6 +27,8 @@
 
 #include "ctkDICOMWidgetsExport.h"
 
+#include "ctkDICOMModel.h"
+
 class ctkDICOMBrowserPrivate;
 class ctkDICOMDatabase;
 class ctkDICOMTableManager;
@@ -45,36 +47,60 @@ class QModelIndex;
 ///
 /// Supported operations are:
 ///
-/// * Import
+/// * Import from file system
 /// * Export
-/// * Send
 /// * Query
-/// * Remove
+/// * Send (emits signal only, requires external implementation)
 /// * Repair
+/// * Remove
+/// * Metadata
 ///
 class CTK_DICOM_WIDGETS_EXPORT ctkDICOMBrowser : public QWidget
 {
   Q_OBJECT
   Q_ENUMS(ImportDirectoryMode)
-  Q_PROPERTY(ctkDICOMDatabase* database READ database)
   Q_PROPERTY(QString databaseDirectory READ databaseDirectory WRITE setDatabaseDirectory)
+  Q_PROPERTY(QString databaseDirectorySettingsKey READ databaseDirectorySettingsKey WRITE setDatabaseDirectorySettingsKey)
+  Q_PROPERTY(QString databaseDirectoryBase READ databaseDirectoryBase WRITE setDatabaseDirectoryBase)
+  Q_PROPERTY(int patientsAddedDuringImport READ patientsAddedDuringImport)
+  Q_PROPERTY(int studiesAddedDuringImport READ studiesAddedDuringImport)
+  Q_PROPERTY(int seriesAddedDuringImport READ seriesAddedDuringImport)
+  Q_PROPERTY(int instancesAddedDuringImport READ instancesAddedDuringImport)
   Q_PROPERTY(QStringList tagsToPrecache READ tagsToPrecache WRITE setTagsToPrecache)
   Q_PROPERTY(bool displayImportSummary READ displayImportSummary WRITE setDisplayImportSummary)
-  Q_PROPERTY(ctkDICOMTableManager* dicomTableManager READ dicomTableManager)
   Q_PROPERTY(ctkDICOMBrowser::ImportDirectoryMode ImportDirectoryMode READ importDirectoryMode WRITE setImportDirectoryMode)
+  Q_PROPERTY(bool confirmRemove READ confirmRemove WRITE setConfirmRemove)
+  Q_PROPERTY(bool toolbarVisible READ isToolbarVisible WRITE setToolbarVisible)
+  Q_PROPERTY(bool databaseDirectorySelectorVisible READ isDatabaseDirectorySelectorVisible WRITE setDatabaseDirectorySelectorVisible)
+  Q_PROPERTY(bool sendActionVisible READ isSendActionVisible WRITE setSendActionVisible)
 
 public:
   typedef ctkDICOMBrowser Self;
 
   typedef QWidget Superclass;
   explicit ctkDICOMBrowser(QWidget* parent=0);
+  explicit ctkDICOMBrowser(QSharedPointer<ctkDICOMDatabase> sharedDatabase, QWidget* parent=0);
   virtual ~ctkDICOMBrowser();
 
   /// Directory being used to store the dicom database
   QString databaseDirectory() const;
 
-  /// Return settings key used to store the directory.
-  static QString databaseDirectorySettingsKey();
+  /// Get settings key used to store DatabaseDirectory in application settings.
+  QString databaseDirectorySettingsKey() const;
+
+  /// Set settings key that stores DatabaseDirectory in application settings.
+  /// Calling this method sets DatabaseDirectory from current value stored in the settings
+  /// (overwriting current value of DatabaseDirectory).
+  void setDatabaseDirectorySettingsKey(const QString& settingsKey);
+
+  /// Get the directory that will be used as a basis if databaseDirectory is specified with a relative path.
+  /// @see setDatabaseDirectoryBase, setDatabaseDirectory
+  QString databaseDirectoryBase() const;
+
+  /// Set the directory that will be used as a basis if databaseDirectory is specified with a relative path.
+  /// If DatabaseDirectoryBase is empty (by default it is) then the current working directory is used as a basis.
+/// @see databaseDirectoryBase, setDatabaseDirectory
+  void setDatabaseDirectoryBase(const QString& base);
 
   /// See ctkDICOMDatabase for description - these accessors
   /// delegate to the corresponding routines of the internal
@@ -83,25 +109,25 @@ public:
   void setTagsToPrecache(const QStringList tags);
   const QStringList tagsToPrecache();
 
-  /// Updates schema of loaded database to match the one
-  /// coded by the current version of ctkDICOMDatabase.
-  /// Also provides a dialog box for progress
-  void updateDatabaseSchemaIfNeeded();
+  Q_INVOKABLE ctkDICOMDatabase* database();
 
-  ctkDICOMDatabase* database();
+  Q_INVOKABLE ctkDICOMTableManager* dicomTableManager();
 
-  ctkDICOMTableManager* dicomTableManager();
-
-  /// Option to show or not import summary dialog.
-  /// Since the summary dialog is modal, we give the option
-  /// of disabling it for batch modes or testing.
+  /// Option to show or not import summary.
   void setDisplayImportSummary(bool);
   bool displayImportSummary();
+  /// Option to show dialog to confirm removal from the database (Remove action). Off by default.
+  void setConfirmRemove(bool);
+  bool confirmRemove();
+
   /// Accessors to status of last directory import operation
   int patientsAddedDuringImport();
   int studiesAddedDuringImport();
   int seriesAddedDuringImport();
   int instancesAddedDuringImport();
+
+  /// Set counters of imported patients, studies, series, instances to zero.
+  void resetItemsAddedDuringImportCounters();
 
   enum ImportDirectoryMode
   {
@@ -119,6 +145,15 @@ public:
   /// \internal
   Q_INVOKABLE ctkFileDialog* importDialog()const;
 
+  void setToolbarVisible(bool state);
+  bool isToolbarVisible() const;
+
+  void setDatabaseDirectorySelectorVisible(bool visible);
+  bool isDatabaseDirectorySelectorVisible() const;
+
+  void setSendActionVisible(bool visible);
+  bool isSendActionVisible() const;
+
 public Q_SLOTS:
 
   /// \brief Set value of ImportDirectoryMode settings.
@@ -130,23 +165,21 @@ public Q_SLOTS:
   void setImportDirectoryMode(ctkDICOMBrowser::ImportDirectoryMode mode);
 
   void setDatabaseDirectory(const QString& directory);
-  void onFileIndexed(const QString& filePath);
 
   /// \brief Pop-up file dialog allowing to select and import one or multiple
   /// DICOM directories.
   ///
-  /// The dialog is extented with two additional controls:
+  /// The dialog is extended with two additional controls:
   ///
   /// * **ImportDirectoryMode** combox: Allow user to select "Add Link" or "Copy" mode.
   ///   Associated settings is stored using key `DICOM/ImportDirectoryMode`.
   void openImportDialog();
 
   void openExportDialog();
+  void openSendDialog();
   void openQueryDialog();
   void onRemoveAction();
   void onRepairAction();
-
-  void onTablesDensityComboBox(QString);
 
   /// \brief Import directories
   ///
@@ -164,23 +197,59 @@ public Q_SLOTS:
   /// By default, \a mode is ImportDirectoryMode::ImportDirectoryAddLink is set.
   void importDirectory(QString directory, ctkDICOMBrowser::ImportDirectoryMode mode = ImportDirectoryAddLink);
 
+  /// \brief Import a list of files
+  ///
+  /// This can be used to externally trigger an import (i.e. for testing or to support drag-and-drop)
+  ///
+  /// By default, \a mode is ImportDirectoryMode::ImportDirectoryAddLink is set.
+  void importFiles(const QStringList& files, ctkDICOMBrowser::ImportDirectoryMode mode = ImportDirectoryAddLink);
+
+  /// Wait for all import operations to complete.
+  /// Number of imported patients, studies, series, images since the last resetItemsAddedDuringImportCounters
+  /// can be retrieved by calling patientsAddedDuringImport(), studiesAddedDuringImport(), seriesAddedDuringImport(),
+  ///  instancesAddedDuringImport() methods.
+  void waitForImportFinished();
+
   /// \deprecated importDirectory() should be used
   void onImportDirectory(QString directory, ctkDICOMBrowser::ImportDirectoryMode mode = ImportDirectoryAddLink);
 
   /// slots to capture status updates from the database during an
   /// import operation
-  void onPatientAdded(int, QString, QString, QString);
-  void onStudyAdded(QString);
-  void onSeriesAdded(QString);
-  void onInstanceAdded(QString);
+  void onIndexingProgress(int);
+  void onIndexingProgressStep(const QString&);
+  void onIndexingProgressDetail(const QString&);
+  void onIndexingUpdatingDatabase(bool updating);
+  void onIndexingComplete(int patientsAdded, int studiesAdded, int seriesAdded, int imagesAdded);
+
+  /// Show pop-up window for the user to select database directory
+  void selectDatabaseDirectory();
+
+  /// Create new database directory.
+  /// Current database directory used as a basis.
+  void createNewDatabaseDirectory();
+
+  /// Update database in-place to required schema version
+  void updateDatabase();
+
+  /// Show progress dialog for update displayed fields
+  void showUpdateDisplayedFieldsDialog();
+
+  QStringList fileListForCurrentSelection(ctkDICOMModel::IndexType level);
+
+  /// Show window that displays DICOM fields of all selected items
+  void showMetadata(const QStringList& fileList);
+
+  void removeSelectedItems(ctkDICOMModel::IndexType level);
 
 Q_SIGNALS:
-  /// Emited when directory is changed
+  /// Emitted when directory is changed
   void databaseDirectoryChanged(const QString&);
-  /// Emited when query/retrieve operation has happened
+  /// Emitted when query/retrieve operation has happened
   void queryRetrieveFinished();
-  /// Emited when the directory import operation has completed
+  /// Emitted when the directory import operation has completed
   void directoryImported();
+  /// Emitted when user requested network send. String list contains list of files to be exported.
+  void sendRequested(const QStringList&);
 
 protected:
     QScopedPointer<ctkDICOMBrowserPrivate> d_ptr;
@@ -194,7 +263,6 @@ protected:
     bool confirmDeleteSelectedUIDs(QStringList uids);
 
 protected Q_SLOTS:
-
     /// \brief Import directories
     ///
     /// This is used when user selected one or multiple
@@ -218,13 +286,11 @@ protected Q_SLOTS:
 
     /// Called to export the series associated with the selected UIDs
     /// \sa exportSelectedStudies, exportSelectedPatients
-    void exportSelectedSeries(QString dirPath, QStringList uids);
+    void exportSeries(QString dirPath, QStringList uids);
+
     /// Called to export the studies associated with the selected UIDs
     /// \sa exportSelectedSeries, exportSelectedPatients
-    void exportSelectedStudies(QString dirPath, QStringList uids);
-    /// Called to export the patients associated with the selected UIDs
-    /// \sa exportSelectedStudies, exportSelectedSeries
-    void exportSelectedPatients(QString dirPath, QStringList uids);
+    void exportSelectedItems(ctkDICOMModel::IndexType level);
 
     /// To be called when dialog finishes
     void onQueryRetrieveFinished();

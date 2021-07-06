@@ -86,7 +86,10 @@ class CTK_WIDGETS_EXPORT ctkConsole : public QWidget
   Q_PROPERTY(QList<QKeySequence> completerShortcuts READ completerShortcuts WRITE setCompleterShortcuts)
   Q_FLAGS(RunFileOption RunFileOptions)
   Q_PROPERTY(RunFileOptions runFileOptions READ runFileOptions WRITE setRunFileOptions)
-  
+  Q_PROPERTY(int maxVisibleCompleterItems READ maxVisibleCompleterItems WRITE setMaxVisibleCompleterItems)
+  Q_PROPERTY(QString commandBuffer READ commandBuffer WRITE setCommandBuffer)
+  Q_PROPERTY(QStringList commandHistory READ commandHistory WRITE setCommandHistory)
+
 public:
 
   enum EditorHint
@@ -111,22 +114,22 @@ public:
   virtual ~ctkConsole();
 
   /// Returns the current formatting that will be used by printMessage()
-  QTextCharFormat getFormat() const;
+  Q_INVOKABLE QTextCharFormat getFormat() const;
   
   /// Sets formatting that will be used by printMessage()
-  void setFormat(const QTextCharFormat& Format);
+  Q_INVOKABLE void setFormat(const QTextCharFormat& Format);
 
   /// Returns current font of python shell
-  QFont shellFont() const;
+  Q_INVOKABLE QFont shellFont() const;
 
   /// Sets font of python shell
-  void setShellFont(const QFont& font);
+  Q_INVOKABLE void setShellFont(const QFont& font);
 
   /// Return the completer of this console
-  ctkConsoleCompleter* completer() const;
+  Q_INVOKABLE ctkConsoleCompleter* completer() const;
 
   /// Set a completer for this console
-  void setCompleter(ctkConsoleCompleter* completer);
+  Q_INVOKABLE void setCompleter(ctkConsoleCompleter* completer);
 
   QColor promptColor()const;
 
@@ -172,9 +175,6 @@ public:
   /// \sa scrollBarPolicy()
   void setScrollBarPolicy(const Qt::ScrollBarPolicy& newScrollBarPolicy);
 
-  /// Prints text on the console
-  void printMessage(const QString& message, const QColor& color);
-
   /// Returns the string used as primary prompt
   virtual QString ps1() const;
 
@@ -199,6 +199,12 @@ public:
   /// \sa cursorPositionChanged(int)
   int cursorLine() const;
 
+  /// Get maximum number of items shown in the auto-complete popup.
+  int maxVisibleCompleterItems() const;
+
+  /// Set maximum number of items shown in the auto-complete popup.
+  void setMaxVisibleCompleterItems(int);
+
   static QString stdInRedirectCallBack(void * callData);
 
   /// Get the list of shortcuts that trigger the completion options.
@@ -222,6 +228,15 @@ public:
   /// \sa runFileOptions()
   void setRunFileOptions(const RunFileOptions& newOptions);
 
+  /// Get the current command buffer (text on current input line, not yet executed)
+  /// \sa setCommandBuffer()
+  virtual const QString& commandBuffer();
+
+  /// Get the command history list (previously executed commands)
+  /// \sa commandBuffer()
+  /// \sa setCommandBuffer()
+  virtual const QStringList& commandHistory();
+
 Q_SIGNALS:
 
   /// This signal emitted before and after a command is executed
@@ -240,6 +255,14 @@ public Q_SLOTS:
   /// Clears the contents of the console and display welcome message
   virtual void reset();
 
+  /// Set the the command buffer (pending command for user)
+  /// \sa commandBuffer()
+  virtual void setCommandBuffer(const QString&);
+
+  /// Set the command history (e.g. if restored from file)
+  /// \sa commandHistory()
+  virtual void setCommandHistory(const QStringList&);
+
   /// Exec the contents of the last console line
   /// \sa openFile(), runFile(QString)
   virtual void exec(const QString&);
@@ -255,6 +278,17 @@ public Q_SLOTS:
 
   /// Print the console help with shortcuts.
   virtual void printHelp();
+
+  /// Prints text on the console
+  void printMessage(const QString& message, const QColor& color);
+
+  /// Print a message
+  /// \sa ctkConsole::outputTextColor
+  void printOutputMessage(const QString& text);
+
+  /// Print a message
+  /// \sa ctkConsole::errorTextColor
+  void printErrorMessage(const QString& text);
 
 protected:
 

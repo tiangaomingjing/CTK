@@ -12,7 +12,10 @@ set(KIT_SRCS
   ctkDICOMAbstractThumbnailGenerator.h
   ctkDICOMDatabase.cpp
   ctkDICOMDatabase.h
+  ctkDICOMDatabase_p.h
   ctkDICOMItem.h
+  ctkDICOMDisplayedFieldGenerator.cpp
+  ctkDICOMDisplayedFieldGenerator.h
   ctkDICOMFilterProxyModel.cpp
   ctkDICOMFilterProxyModel.h
   ctkDICOMIndexer.cpp
@@ -32,11 +35,27 @@ set(KIT_SRCS
   ctkDICOMTester.h
   ctkDICOMUtil.cpp
   ctkDICOMUtil.h
+  ctkDICOMDisplayedFieldGeneratorRuleFactory.h
+  ctkDICOMDisplayedFieldGeneratorRuleFactory.cpp
+  ctkDICOMDisplayedFieldGeneratorAbstractRule.h
+  ctkDICOMDisplayedFieldGeneratorDefaultRule.h
+  ctkDICOMDisplayedFieldGeneratorDefaultRule.cpp
+  ctkDICOMDisplayedFieldGeneratorRadiotherapySeriesDescriptionRule.h
+  ctkDICOMDisplayedFieldGeneratorRadiotherapySeriesDescriptionRule.cpp
+  ctkDICOMDisplayedFieldGeneratorLastStudyDateRule.h
+  ctkDICOMDisplayedFieldGeneratorLastStudyDateRule.cpp
+  ctkDICOMDisplayedFieldGeneratorSeriesImageCountRule.h
+  ctkDICOMDisplayedFieldGeneratorSeriesImageCountRule.cpp
+  ctkDICOMDisplayedFieldGeneratorStudyNumberOfSeriesRule.h
+  ctkDICOMDisplayedFieldGeneratorStudyNumberOfSeriesRule.cpp
+  ctkDICOMDisplayedFieldGeneratorPatientNumberOfStudiesRule.h
+  ctkDICOMDisplayedFieldGeneratorPatientNumberOfStudiesRule.cpp
 )
 
 # Abstract class should not be wrapped !
 set_source_files_properties(
   ctkDICOMAbstractThumbnailGenerator.h
+  ctkDICOMDisplayedFieldGeneratorAbstractRule.h
   WRAP_EXCLUDE
   )
 
@@ -44,6 +63,9 @@ set_source_files_properties(
 set(KIT_MOC_SRCS
   ctkDICOMAbstractThumbnailGenerator.h
   ctkDICOMDatabase.h
+  ctkDICOMDisplayedFieldGenerator.h
+  ctkDICOMDisplayedFieldGenerator_p.h
+  ctkDICOMDisplayedFieldGeneratorRuleFactory.h
   ctkDICOMIndexer.h
   ctkDICOMIndexer_p.h
   ctkDICOMFilterProxyModel.h

@@ -41,6 +41,8 @@ class PythonQtObjectPtr;
 class CTK_SCRIPTING_PYTHON_CORE_EXPORT ctkAbstractPythonManager : public QObject
 {
   Q_OBJECT
+  Q_PROPERTY(bool systemExitExceptionHandlerEnabled READ systemExitExceptionHandlerEnabled WRITE setSystemExitExceptionHandlerEnabled)
+  Q_PROPERTY(bool redirectStdOutCallbackEnabled READ redirectStdOutCallbackEnabled WRITE setRedirectStdOutCallbackEnabled)
 
 public:
   typedef QObject Superclass;
@@ -77,6 +79,12 @@ public:
 
   /// \sa PythonQt::setSystemExitExceptionHandlerEnabled
   void setSystemExitExceptionHandlerEnabled(bool value);
+
+  /// \sa PythonQt::redirectStdOutCallbackEnabled
+  bool redirectStdOutCallbackEnabled()const;
+
+  /// \sa PythonQt::setRedirectStdOutCallbackEnabled
+  void setRedirectStdOutCallbackEnabled(bool value);
 
   /// This enum maps to Py_eval_input, Py_file_input and Py_single_input
   /// \see http://docs.python.org/c-api/veryhigh.html#Py_eval_input
@@ -142,6 +150,17 @@ public:
   /// Reset error flag
   /// \sa PythonQt::clearError()
   void resetErrorFlag();
+
+  /// Convert a string to a safe python string literal.
+  /// Backslash, single-quote characters are escaped
+  /// and the string is enclosed between single quotes.
+  ///
+  /// Examples:
+  ///   some simple string   => 'some simple string'
+  ///   some " string        => 'some " string'
+  ///   some other ' string  => 'some other \' string'
+  ///   some backslash \ str => 'some backslash \\ str'
+  Q_INVOKABLE static QString toPythonStringLiteral(QString path);
 
 Q_SIGNALS:
 

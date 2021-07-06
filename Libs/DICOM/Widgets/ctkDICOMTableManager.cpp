@@ -28,6 +28,7 @@
 #include <QVBoxLayout>
 #include <QResizeEvent>
 #include <QSplitter>
+#include <QTableView>
 
 class ctkDICOMTableManagerPrivate : public Ui_ctkDICOMTableManager
 {
@@ -42,10 +43,15 @@ public:
 
   void init();
   void setDICOMDatabase(ctkDICOMDatabase *db);
+  void collapseTopHeader(bool collapse);
+  void showFilterActiveWarning(ctkSearchBox* searchBox, bool showWarning);
 
   ctkDICOMDatabase* dicomDatabase;
 
   bool m_DynamicTableLayout;
+  /// Flag storing state whether automatic selection of series is enabled.
+  /// It is only needed to be able to provide a read function for the property
+  bool m_AutoSelectSeries;
 };
 
 //------------------------------------------------------------------------------
@@ -53,6 +59,7 @@ public:
 ctkDICOMTableManagerPrivate::ctkDICOMTableManagerPrivate(ctkDICOMTableManager &obj)
   : q_ptr(&obj)
   , m_DynamicTableLayout(false)
+  , m_AutoSelectSeries(true)
 {
 
 }
@@ -78,7 +85,32 @@ void ctkDICOMTableManagerPrivate::init()
   this->seriesTable->setQueryTableName("Series");
   this->seriesTable->setQueryForeignKey("StudyInstanceUID");
 
-  q->setDisplayDensity(ctkDICOMTableManager::Comfortable);
+  this->patientsSearchBox->setAlwaysShowClearIcon(true);
+  this->patientsSearchBox->setShowSearchIcon(true);
+  QObject::connect(this->patientsSearchBox, SIGNAL(textChanged(QString)),
+    this->patientsTable, SLOT(setFilterText(QString)));
+  QObject::connect(this->patientsTable, SIGNAL(filterTextChanged(QString)),
+    this->patientsSearchBox, SLOT(setText(QString)));
+  QObject::connect(this->patientsTable, SIGNAL(showFilterActiveWarning(bool)),
+    q, SLOT(showPatientsFilterActiveWarning(bool)));
+
+  this->studiesSearchBox->setAlwaysShowClearIcon(true);
+  this->studiesSearchBox->setShowSearchIcon(true);
+  QObject::connect(this->studiesSearchBox, SIGNAL(textChanged(QString)),
+    this->studiesTable, SLOT(setFilterText(QString)));
+  QObject::connect(this->studiesTable, SIGNAL(filterTextChanged(QString)),
+    this->studiesSearchBox, SLOT(setText(QString)));
+  QObject::connect(this->studiesTable, SIGNAL(showFilterActiveWarning(bool)),
+    q, SLOT(showStudiesFilterActiveWarning(bool)));
+
+  this->seriesSearchBox->setAlwaysShowClearIcon(true);
+  this->seriesSearchBox->setShowSearchIcon(true);
+  QObject::connect(this->seriesSearchBox, SIGNAL(textChanged(QString)),
+    this->seriesTable, SLOT(setFilterText(QString)));
+  QObject::connect(this->seriesTable, SIGNAL(filterTextChanged(QString)),
+    this->seriesSearchBox, SLOT(setText(QString)));
+  QObject::connect(this->seriesTable, SIGNAL(showFilterActiveWarning(bool)),
+    q, SLOT(showSeriesFilterActiveWarning(bool)));
 
   // For propagating patient selection changes
   QObject::connect(this->patientsTable, SIGNAL(selectionChanged(const QItemSelection&, const QItemSelection&)),
@@ -113,16 +145,39 @@ void ctkDICOMTableManagerPrivate::init()
 
   QObject::connect(this->seriesTable, SIGNAL(customContextMenuRequested(const QPoint&)),
                    q, SIGNAL(seriesRightClicked(const QPoint&)));
+
+  q->setTableOrientation(this->tableSplitter->orientation());
 }
 
 //------------------------------------------------------------------------------
-
 void ctkDICOMTableManagerPrivate::setDICOMDatabase(ctkDICOMDatabase* db)
 {
   this->patientsTable->setDicomDataBase(db);
   this->studiesTable->setDicomDataBase(db);
   this->seriesTable->setDicomDataBase(db);
   this->dicomDatabase = db;
+}
+
+//------------------------------------------------------------------------------
+void ctkDICOMTableManagerPrivate::collapseTopHeader(bool collapse)
+{
+  Q_Q(ctkDICOMTableManager);
+  this->patientsTable->setHeaderVisible(!collapse);
+  this->studiesTable->setHeaderVisible(!collapse);
+  this->seriesTable->setHeaderVisible(!collapse);
+  this->headerWidget->setVisible(collapse);
+}
+
+//------------------------------------------------------------------------------
+void ctkDICOMTableManagerPrivate::showFilterActiveWarning(ctkSearchBox* searchBox, bool showWarning)
+{
+  QPalette palette;
+  if (showWarning)
+  {
+    palette.setColor(QPalette::Base, Qt::yellow);
+    palette.setColor(QPalette::Text, Qt::black);
+  }
+  searchBox->setPalette(palette);
 }
 
 //----------------------------------------------------------------------------
@@ -161,10 +216,11 @@ void ctkDICOMTableManager::setDICOMDatabase(ctkDICOMDatabase* db)
 }
 
 //------------------------------------------------------------------------------
-void ctkDICOMTableManager::setTableOrientation(const Qt::Orientation &o) const
+void ctkDICOMTableManager::setTableOrientation(const Qt::Orientation &o)
 {
-  Q_D(const ctkDICOMTableManager);
+  Q_D(ctkDICOMTableManager);
   d->tableSplitter->setOrientation(o);
+  d->collapseTopHeader(o == Qt::Vertical);
 }
 
 //------------------------------------------------------------------------------
@@ -219,13 +275,13 @@ void ctkDICOMTableManager::onPatientsSelectionChanged(const QStringList &uids)
   patientCondition.first = "Patients.UID";
   Q_D(ctkDICOMTableManager);
   if (!uids.empty())
-    {
-      patientCondition.second = uids;
-    }
+  {
+    patientCondition.second = uids;
+  }
   else
-    {
-      patientCondition.second = d->patientsTable->uidsForAllRows();
-    }
+  {
+    patientCondition.second = d->patientsTable->uidsForAllRows();
+  }
   d->studiesTable->addSqlWhereCondition(patientCondition);
   d->seriesTable->addSqlWhereCondition(patientCondition);
 }
@@ -237,13 +293,13 @@ void ctkDICOMTableManager::onStudiesSelectionChanged(const QStringList &uids)
   studiesCondition.first = "Studies.StudyInstanceUID";
   Q_D(ctkDICOMTableManager);
   if (!uids.empty())
-    {
-      studiesCondition.second = uids;
-    }
+  {
+    studiesCondition.second = uids;
+  }
   else
-    {
-      studiesCondition.second = d->studiesTable->uidsForAllRows();
-    }
+  {
+    studiesCondition.second = d->studiesTable->uidsForAllRows();
+  }
   d->seriesTable->addSqlWhereCondition(studiesCondition);
 }
 
@@ -254,10 +310,109 @@ void ctkDICOMTableManager::setDynamicTableLayout(bool dynamic)
   d->m_DynamicTableLayout = dynamic;
 }
 
+//------------------------------------------------------------------------------
 bool ctkDICOMTableManager::dynamicTableLayout() const
 {
   Q_D(const ctkDICOMTableManager);
   return d->m_DynamicTableLayout;
+}
+
+//------------------------------------------------------------------------------
+void ctkDICOMTableManager::setAutoSelectSeries(bool autoSelect)
+{
+  Q_D(ctkDICOMTableManager);
+
+  if (autoSelect == d->m_AutoSelectSeries)
+  {
+    return;
+  }
+
+  if (autoSelect)
+  {
+    QAbstractItemView::SelectionMode selectionMode = static_cast<QAbstractItemView::SelectionMode>(this->selectionMode());
+    if (selectionMode == QAbstractItemView::SingleSelection)
+    {
+      QObject::connect( d->studiesTable, SIGNAL(selectionChanged(const QStringList&)),
+                        d->seriesTable, SLOT(selectFirst()) );
+    }
+    else
+    {
+      QObject::connect( d->studiesTable, SIGNAL(selectionChanged(const QStringList&)),
+                        d->seriesTable, SLOT(selectAll()) );
+    }
+  }
+  else
+  {
+    QObject::disconnect( d->studiesTable, SIGNAL(selectionChanged(const QStringList&)),
+                         d->seriesTable, SLOT(selectAll()) );
+    QObject::disconnect( d->studiesTable, SIGNAL(selectionChanged(const QStringList&)),
+                         d->seriesTable, SLOT(selectFirst()) );
+    // Remove selection to avoid loading any previously auto-selected series
+    d->seriesTable->clearSelection();
+  }
+
+  d->m_AutoSelectSeries = autoSelect;
+}
+
+//------------------------------------------------------------------------------
+bool ctkDICOMTableManager::autoSelectSeries() const
+{
+  Q_D(const ctkDICOMTableManager);
+  return d->m_AutoSelectSeries;
+}
+
+//------------------------------------------------------------------------------
+void ctkDICOMTableManager::setSelectionMode(int mode)
+{
+  Q_D(ctkDICOMTableManager);
+
+  if (mode == this->selectionMode())
+  {
+    return;
+  }
+
+  QAbstractItemView::SelectionMode selectionMode = static_cast<QAbstractItemView::SelectionMode>(mode);
+  d->patientsTable->tableView()->setSelectionMode(selectionMode);
+  d->studiesTable->tableView()->setSelectionMode(selectionMode);
+  d->seriesTable->tableView()->setSelectionMode(selectionMode);
+
+  // Re-connect the proper slots for studies
+  QObject::disconnect( d->patientsTable, SIGNAL(selectionChanged(const QStringList&)),
+                       d->studiesTable, SLOT(selectAll()) );
+  QObject::disconnect( d->patientsTable, SIGNAL(selectionChanged(const QStringList&)),
+                       d->studiesTable, SLOT(selectFirst()) );
+  if (selectionMode == QAbstractItemView::SingleSelection)
+  {
+    QObject::connect( d->patientsTable, SIGNAL(selectionChanged(const QStringList&)),
+                      d->studiesTable, SLOT(selectFirst()) );
+  }
+  else
+  {
+    QObject::connect( d->patientsTable, SIGNAL(selectionChanged(const QStringList&)),
+                      d->studiesTable, SLOT(selectAll()) );
+  }
+
+  // Re-connect the proper slots for series
+  if (this->autoSelectSeries())
+  {
+    this->setAutoSelectSeries(false);
+    this->setAutoSelectSeries(true);
+  }
+}
+
+//------------------------------------------------------------------------------
+int ctkDICOMTableManager::selectionMode() const
+{
+  Q_D(const ctkDICOMTableManager);
+  QAbstractItemView::SelectionMode patientSelectionMode = d->patientsTable->tableView()->selectionMode();
+  QAbstractItemView::SelectionMode studySelectionMode =   d->studiesTable->tableView()->selectionMode();
+  QAbstractItemView::SelectionMode seriesSelectionMode =  d->seriesTable->tableView()->selectionMode();
+  if (patientSelectionMode != studySelectionMode || patientSelectionMode != seriesSelectionMode)
+  {
+    qWarning() << Q_FUNC_INFO << ": Inconsistent selection mode in the tables. Patient selection mode is returned";
+  }
+
+  return static_cast<int>(patientSelectionMode);
 }
 
 //------------------------------------------------------------------------------
@@ -277,57 +432,8 @@ void ctkDICOMTableManager::resizeEvent(QResizeEvent *e)
   if (!d->m_DynamicTableLayout)
     return;
 
-  //Minimum size = 800 * 1.28 = 1024 => use horizontal layout (otherwise table size would be too small)
-  this->setTableOrientation(e->size().width() > 1.28*this->minimumWidth() ? Qt::Horizontal : Qt::Vertical);
-}
-
-//------------------------------------------------------------------------------
-void ctkDICOMTableManager::setDisplayDensity(DisplayDensity density)
-{
-  Q_D(ctkDICOMTableManager);
-
-  // Compact density
-  if (density == ctkDICOMTableManager::Compact)
-  {
-    d->patientsTable->setTableSectionSize(15);
-    d->studiesTable->setTableSectionSize(15);
-    d->seriesTable->setTableSectionSize(15);
-  }
-  // Cozy density
-  if (density == ctkDICOMTableManager::Cozy)
-  {
-    d->patientsTable->setTableSectionSize(20);
-    d->studiesTable->setTableSectionSize(20);
-    d->seriesTable->setTableSectionSize(20);
-  }
-  // Comfortable density
-  if (density == ctkDICOMTableManager::Comfortable)
-  {
-    d->patientsTable->setTableSectionSize(30);
-    d->studiesTable->setTableSectionSize(30);
-    d->seriesTable->setTableSectionSize(30);
-  }
-}
-
-//------------------------------------------------------------------------------
-ctkDICOMTableManager::DisplayDensity ctkDICOMTableManager::displayDensity()
-{
-  Q_D(ctkDICOMTableManager);
-  int sectionSize;
-  sectionSize = d->patientsTable->tableSectionSize();
-
-  if (sectionSize == 30)
-  {
-    return ctkDICOMTableManager::Comfortable;
-  }
-  else if (sectionSize == 20)
-  {
-    return ctkDICOMTableManager::Cozy;
-  }
-  else /* if (sectionSize == 15) */
-  {
-    return ctkDICOMTableManager::Compact;
-  }
+  // If the table is 2x wider than tall then use horizontal layout
+  this->setTableOrientation(e->size().width() > 2 * e->size().height() ? Qt::Horizontal : Qt::Vertical);
 }
 
 //------------------------------------------------------------------------------
@@ -347,4 +453,45 @@ ctkDICOMTableView* ctkDICOMTableManager::seriesTable()
 {
   Q_D( ctkDICOMTableManager );
   return(d->seriesTable);
+}
+
+//------------------------------------------------------------------------------
+bool ctkDICOMTableManager::isBatchUpdate()const
+{
+  Q_D(const ctkDICOMTableManager);
+  return d->patientsTable->isBatchUpdate();
+}
+
+//------------------------------------------------------------------------------
+bool ctkDICOMTableManager::setBatchUpdate(bool enable)
+{
+  Q_D(ctkDICOMTableManager);
+  if (enable == this->isBatchUpdate())
+  {
+    return enable;
+  }
+  d->patientsTable->setBatchUpdate(enable);
+  d->studiesTable->setBatchUpdate(enable);
+  d->seriesTable->setBatchUpdate(enable);
+  return !enable;
+}
+
+//----------------------------------------------------------------------------
+void ctkDICOMTableManager::showPatientsFilterActiveWarning(bool showWarning)
+{
+  Q_D(ctkDICOMTableManager);
+  d->showFilterActiveWarning(d->patientsSearchBox, showWarning);
+}
+
+//----------------------------------------------------------------------------
+void ctkDICOMTableManager::showStudiesFilterActiveWarning(bool showWarning)
+{
+  Q_D(ctkDICOMTableManager);
+  d->showFilterActiveWarning(d->studiesSearchBox, showWarning);
+}
+//----------------------------------------------------------------------------
+void ctkDICOMTableManager::showSeriesFilterActiveWarning(bool showWarning)
+{
+  Q_D(ctkDICOMTableManager);
+  d->showFilterActiveWarning(d->seriesSearchBox, showWarning);
 }

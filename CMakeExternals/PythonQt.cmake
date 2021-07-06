@@ -72,15 +72,19 @@ if(NOT DEFINED PYTHONQT_INSTALL_DIR)
   endif()
 
   # Python is required
-  find_package(PythonLibs)
   if(NOT PYTHONLIBS_FOUND)
-    message(FATAL_ERROR "error: Python is required to build ${PROJECT_NAME}")
+    find_package(PythonLibs)
+    if(NOT PYTHONLIBS_FOUND)
+      message(FATAL_ERROR "error: Python is required to build ${PROJECT_NAME}")
+    endif()
   endif()
 
+  ctkFunctionExtractOptimizedLibrary(PYTHON_LIBRARIES PYTHON_LIBRARY)
+
   if (CTK_QT_VERSION VERSION_GREATER "4")
-    set(revision_tag 8462a54a3281aff550730530c999cee4eb453bea) # patched-8
+    set(revision_tag c306140442feb6e76d4bae672c48cd7f11d9b0cd) # patched-9
   else()
-    set(revision_tag 1afe4f8906345063b25047652e8962f641010a55) # patched-5
+    set(revision_tag 90c08fb0d523622d2de9e7a91f4ef116a66a8801) # patched-5
   endif()
 
   if(${proj}_REVISION_TAG)
@@ -94,7 +98,7 @@ if(NOT DEFINED PYTHONQT_INSTALL_DIR)
     set(location_args GIT_REPOSITORY ${${proj}_GIT_REPOSITORY}
                       GIT_TAG ${revision_tag})
   else()
-    set(location_args GIT_REPOSITORY "${git_protocol}://github.com/commontk/PythonQt.git"
+    set(location_args GIT_REPOSITORY "${EP_GIT_PROTOCOL}://github.com/commontk/PythonQt.git"
                       GIT_TAG ${revision_tag})
   endif()
 

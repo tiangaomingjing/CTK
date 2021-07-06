@@ -139,7 +139,16 @@ void ctkVTKScalarsToColorsView::addPlot(vtkPlot* plot)
 void ctkVTKScalarsToColorsView::onBoundsChanged()
 {
   this->boundAxesToChartBounds();
-  this->setAxesToChartBounds();
+
+  // Set range to bounds only if range is invalid. Otherwise keep it as is, because
+  // the user wants to keep the range they set after a transfer function is shifted
+  double extent[8];
+  this->chartExtent(extent);
+  if (extent[0] >= extent[1])
+    {
+    this->setAxesToChartBounds();
+    }
+
   this->Superclass::onChartUpdated();
 }
 
@@ -433,6 +442,7 @@ void ctkVTKScalarsToColorsView::setLookuptTableToPlots(vtkLookupTable* lut)
     plot->SetLookupTable(lut);
     }
   this->onChartUpdated();
+  emit functionChanged();
 }
 
 // ----------------------------------------------------------------------------
@@ -450,6 +460,7 @@ void ctkVTKScalarsToColorsView
     plot->SetColorTransferFunction(colorTF);
     }
   this->onChartUpdated();
+  emit functionChanged();
 }
 
 // ----------------------------------------------------------------------------
@@ -468,6 +479,7 @@ void ctkVTKScalarsToColorsView
     plot->SetOpacityFunction(opacityTF);
     }
   this->onChartUpdated();
+  emit functionChanged();
 }
 
 // ----------------------------------------------------------------------------
@@ -485,6 +497,7 @@ void ctkVTKScalarsToColorsView
     plot->SetPiecewiseFunction(piecewiseTF);
     }
   this->onChartUpdated();
+  emit functionChanged();
 }
 
 // ----------------------------------------------------------------------------

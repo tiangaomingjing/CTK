@@ -25,6 +25,7 @@
 
 // CTK includes
 #include "ctkVTKScalarsToColorsView.h"
+#include "ctkVTKWidgetsUtils.h"
 
 // VTK includes
 #include <vtkChartXY.h>
@@ -38,9 +39,6 @@
 #include <vtkSmartPointer.h>
 #include <vtkTable.h>
 #include <vtkVersion.h>
-#if CTK_USE_QVTKOPENGLWIDGET
-#include <QVTKOpenGLWidget.h>
-#endif
 
 // STD includes
 #include <iostream>
@@ -48,11 +46,7 @@
 //-----------------------------------------------------------------------------
 int ctkVTKScalarsToColorsViewTest2(int argc, char * argv [] )
 {
-#if CTK_USE_QVTKOPENGLWIDGET
-    QSurfaceFormat format = QVTKOpenGLWidget::defaultFormat();
-    format.setSamples(0);
-    QSurfaceFormat::setDefaultFormat(format);
-#endif
+  ctk::vtkSetSurfaceDefaultFormat();
 
   QApplication app(argc, argv);
 
@@ -71,13 +65,7 @@ int ctkVTKScalarsToColorsViewTest2(int argc, char * argv [] )
   image->SetDimensions(256, 256, 1);
   image->SetSpacing(20000., 30., 900000000.);
   image->SetOrigin(-251234568., 0.00001, 40.2);
-#if (VTK_MAJOR_VERSION <= 5)
-  image->SetScalarTypeToUnsignedChar();
-  image->SetNumberOfScalarComponents(1); // image holds one value intensities
-  image->AllocateScalars(); // allocate storage for image data
-#else
   image->AllocateScalars(VTK_UNSIGNED_CHAR, 1);
-#endif
   unsigned char * ptr = static_cast<unsigned char *>(image->GetScalarPointer());
   for (int i=0; i<256*256*1; ++i)
     {
@@ -87,11 +75,7 @@ int ctkVTKScalarsToColorsViewTest2(int argc, char * argv [] )
   // Histogram
   vtkSmartPointer<vtkImageAccumulate> histogram =
     vtkSmartPointer<vtkImageAccumulate>::New();
-#if (VTK_MAJOR_VERSION <= 5)
-  histogram->SetInput(image);
-#else
   histogram->SetInputData(image);
-#endif
   histogram->SetComponentExtent(0, 255, 0 , 0 , 0, 0);
   histogram->Update();
   vtkAbstractArray* bins =
@@ -116,11 +100,7 @@ int ctkVTKScalarsToColorsViewTest2(int argc, char * argv [] )
   //Histogram Plot
   vtkSmartPointer<vtkPlotBar> histogramPlot =
     vtkSmartPointer<vtkPlotBar>::New();
-#if (VTK_MAJOR_VERSION <= 5)
-  histogramPlot->SetInput(table, 0, 1);
-#else
   histogramPlot->SetInputData(table, 0, 1);
-#endif
   histogramPlot->SetColor(0.078, 0.008, 0);//not exactly black...just because.
   histogramPlot->GetPen()->SetLineType(vtkPen::NO_PEN);
 

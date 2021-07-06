@@ -51,19 +51,15 @@ class CTK_DICOM_WIDGETS_EXPORT ctkDICOMTableManager : public QWidget
   Q_PROPERTY(bool dynamicTableLayout READ dynamicTableLayout WRITE setDynamicTableLayout)
 
   /**
-  * Properties for the different table views (patients, studies, series). 
-  */
-  Q_PROPERTY( ctkDICOMTableView* patientsTable READ patientsTable )
-  Q_PROPERTY( ctkDICOMTableView* studiesTable READ studiesTable )
-  Q_PROPERTY( ctkDICOMTableView* seriesTable READ seriesTable )
+    * Property for automatic selection of series when a study is selected. On by default
+    */
+  Q_PROPERTY(bool autoSelectSeries READ autoSelectSeries WRITE setAutoSelectSeries)
 
-  Q_ENUMS(DisplayDensity)
   /**
-  * This property holds the density of tables in the table Manager. There are three denisity
-  * levels: Comfortable (least dense), Cozy and Compact (most dense).
-   */
-
-  Q_PROPERTY(ctkDICOMTableManager::DisplayDensity displayDensity READ displayDensity WRITE setDisplayDensity);
+    * Property for selection mode of the contained three table views.
+    * QAbstractItemView::SelectionMode values are cast to/from integer. ExtendedSelection by default
+    */
+  Q_PROPERTY(int selectionMode READ selectionMode WRITE setSelectionMode);
 
 public:
   typedef QWidget Superclass;
@@ -76,45 +72,56 @@ public:
    * @brief Set the ctkDICOMDatabase
    * @param db the dicom database which should be used
    */
-  void setDICOMDatabase(ctkDICOMDatabase* db);
+  Q_INVOKABLE void setDICOMDatabase(ctkDICOMDatabase* db);
 
-  void setTableOrientation(const Qt::Orientation&) const;
+  void setTableOrientation(const Qt::Orientation&);
   Qt::Orientation tableOrientation();
 
   /**
    * @brief Get the current selection of the dicomTableViews
    * @return a list with the uids of the selected items
    */
-  QStringList currentPatientsSelection();
-  QStringList currentStudiesSelection();
-  QStringList currentSeriesSelection();
+  Q_INVOKABLE QStringList currentPatientsSelection();
+  Q_INVOKABLE QStringList currentStudiesSelection();
+  Q_INVOKABLE QStringList currentSeriesSelection();
 
   void setDynamicTableLayout(bool);
   bool dynamicTableLayout() const;
 
-  void updateTableViews();
+  void setAutoSelectSeries(bool);
+  bool autoSelectSeries() const;
 
-  enum DisplayDensity
-  {
-    Compact = 0,
-    Cozy = 1,
-    Comfortable = 2
-  };
+  void setSelectionMode(int mode);
+  int selectionMode() const;
 
-  DisplayDensity displayDensity();
-  void setDisplayDensity(DisplayDensity density);
+  Q_INVOKABLE void updateTableViews();
 
-  ctkDICOMTableView* patientsTable();
-  ctkDICOMTableView* studiesTable();
-  ctkDICOMTableView* seriesTable();
+  Q_INVOKABLE ctkDICOMTableView* patientsTable();
+  Q_INVOKABLE ctkDICOMTableView* studiesTable();
+  Q_INVOKABLE ctkDICOMTableView* seriesTable();
 
+  /**
+  * @brief Get if view is in batch update mode.
+  * \sa setBatchUpdate
+  */
+  Q_INVOKABLE bool isBatchUpdate() const;
+  /**
+  * @brief Enable/disable batch update on the view.
+  * While in batch update mode, database changes will not update the view.
+  * When batch update is disabled then pending notifications are be processed.
+  */
+  Q_INVOKABLE bool setBatchUpdate(bool);
 
 public Q_SLOTS:
-
   void onPatientsQueryChanged(const QStringList&);
   void onStudiesQueryChanged(const QStringList&);
   void onPatientsSelectionChanged(const QStringList&);
   void onStudiesSelectionChanged(const QStringList&);
+
+protected Q_SLOTS:
+  void showPatientsFilterActiveWarning(bool);
+  void showStudiesFilterActiveWarning(bool);
+  void showSeriesFilterActiveWarning(bool);
 
 Q_SIGNALS:
   /// Signals for propagating selection changes of the different tables
@@ -136,15 +143,12 @@ Q_SIGNALS:
   void studiesRightClicked(const QPoint&);
   void seriesRightClicked(const QPoint&);
 
-
 protected:
-
   virtual void resizeEvent(QResizeEvent *);
 
   QScopedPointer<ctkDICOMTableManagerPrivate> d_ptr;
 
 private:
-
   Q_DECLARE_PRIVATE(ctkDICOMTableManager)
   Q_DISABLE_COPY(ctkDICOMTableManager)
 };

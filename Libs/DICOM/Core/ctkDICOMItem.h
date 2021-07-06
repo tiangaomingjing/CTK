@@ -169,6 +169,13 @@ public:
     static bool CheckCondition(const OFCondition&);
 
     ///
+    /// \brief Check if an element with the given attribute tag exists in the dataset
+    ///
+    /// @param key tag key to be searched
+    /// @return true if tag found, false otherwise
+    bool TagExists(const DcmTag& tag) const;
+
+    ///
     /// \brief Get-methods for for all subtypes of DcmByteString
     ///
     QString          GetAllElementValuesAsString( const DcmTag& tag ) const;
@@ -223,6 +230,9 @@ public:
     /// \brief Nicely formatted (group,element) version of a tag
     ///
     static QString TagKey( const DcmTag& tag );
+    /// \brief Formatted group,element version of a tag.
+    /// The difference from \sa TagKey is the lack of parentheses
+    static QString TagKeyStripped( const DcmTag& tag );
 
     ///
     /// \brief Description (name) of the tag

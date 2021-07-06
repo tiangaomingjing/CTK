@@ -361,7 +361,6 @@ QString ctkDICOMObjectListWidget::metadataAsText(bool allFiles /*=false*/)
 // --------------------------------------------------------------------------
 void ctkDICOMObjectListWidget::copyMetadata()
 {
-  Q_D(ctkDICOMObjectListWidget);
   QClipboard *clipboard = QApplication::clipboard();
   clipboard->setText(metadataAsText());
 }
@@ -369,7 +368,6 @@ void ctkDICOMObjectListWidget::copyMetadata()
 // --------------------------------------------------------------------------
 void ctkDICOMObjectListWidget::copyAllFilesMetadata()
 {
-  Q_D(ctkDICOMObjectListWidget);
   QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
   QClipboard *clipboard = QApplication::clipboard();
   clipboard->setText(metadataAsText(true));
@@ -389,10 +387,7 @@ void ctkDICOMObjectListWidget::onFilterChanged()
   if (showWarning)
     {
     palette.setColor(QPalette::Base, Qt::yellow);
-    }
-  else
-    {
-    palette.setColor(QPalette::Base, Qt::white);
+    palette.setColor(QPalette::Text, Qt::black);
     }
   d->metadataSearchBox->setPalette(palette);
 }

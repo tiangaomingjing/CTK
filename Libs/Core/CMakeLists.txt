@@ -37,6 +37,8 @@ set(KIT_SRCS
   ctkCallback.h
   ctkCommandLineParser.cpp
   ctkCommandLineParser.h
+  ctkCoreSettings.cpp
+  ctkCoreSettings.h
   ctkCoreTestingUtilities.cpp
   ctkCoreTestingUtilities.tpp
   ctkCoreTestingUtilities.h
@@ -44,6 +46,8 @@ set(KIT_SRCS
   ctkDependencyGraph.h
   ctkErrorLogAbstractMessageHandler.cpp
   ctkErrorLogAbstractMessageHandler.h
+  ctkErrorLogAbstractModel.cpp
+  ctkErrorLogAbstractModel.h
   ctkErrorLogContext.h
   ctkErrorLogFDMessageHandler.cpp
   ctkErrorLogFDMessageHandler.h
@@ -98,7 +102,9 @@ set(KIT_MOC_SRCS
   ctkBooleanMapper.h
   ctkCallback.h
   ctkCommandLineParser.h
+  ctkCoreSettings.h
   ctkErrorLogAbstractMessageHandler.h
+  ctkErrorLogAbstractModel.h
   ctkErrorLogFDMessageHandler_p.h
   ctkErrorLogLevel.h
   ctkErrorLogQtMessageHandler.h

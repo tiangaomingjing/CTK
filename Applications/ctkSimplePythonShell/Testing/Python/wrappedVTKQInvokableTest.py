@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import qt
 
@@ -7,7 +8,7 @@ import qt
 from vtk import *
 
 t = _testWrappedVTKQInvokableInstance.getTable()
-print t.GetClassName()
+print(t.GetClassName())
 
 t2 = vtkTable()
 _testWrappedVTKQInvokableInstance.setTable(t2)

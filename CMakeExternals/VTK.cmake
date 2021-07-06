@@ -37,7 +37,7 @@ if(NOT DEFINED VTK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
     set(location_args GIT_REPOSITORY ${${proj}_GIT_REPOSITORY}
                       GIT_TAG ${revision_tag})
   else()
-    set(location_args GIT_REPOSITORY "${git_protocol}://vtk.org/VTK.git"
+    set(location_args GIT_REPOSITORY "${EP_GIT_PROTOCOL}://vtk.org/VTK.git"
                       GIT_TAG ${revision_tag})
   endif()
 
@@ -47,9 +47,10 @@ if(NOT DEFINED VTK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   endif()
 
   if(CTK_LIB_Scripting/Python/Core_PYTHONQT_USE_VTK)
+    ctkFunctionExtractOptimizedLibrary(PYTHON_LIBRARIES PYTHON_LIBRARY)
     list(APPEND additional_vtk_cmakevars
       -DPYTHON_EXECUTABLE:PATH=${PYTHON_EXECUTABLE}
-      -DPYTHON_LIBRARIES:FILEPATH=${PYTHON_LIBRARIES}
+      -DPYTHON_LIBRARY:FILEPATH=${PYTHON_LIBRARY}
       -DPYTHON_DEBUG_LIBRARIES:FILEPATH=${PYTHON_DEBUG_LIBRARIES}
       )
   endif()
@@ -107,3 +108,16 @@ mark_as_superbuild(
   VARS VTK_DIR:PATH
   LABELS "FIND_PACKAGE"
   )
+
+if(VTK_PYTHON_VERSION VERSION_GREATER "2.7")
+  # Propagate variables expected when VTK searches for python
+  mark_as_superbuild(
+    VARS
+      Python3_INCLUDE_DIR:PATH
+      Python3_ROOT_DIR:PATH
+      Python3_LIBRARY:FILEPATH
+      Python3_LIBRARY_DEBUG:FILEPATH
+      Python3_LIBRARY_RELEASE:FILEPATH
+      Python3_EXECUTABLE:FILEPATH
+    )
+endif()

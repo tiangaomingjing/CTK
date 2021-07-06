@@ -70,9 +70,6 @@ vtkScalarsToColorsContextItem::vtkScalarsToColorsContextItem()
 
   this->LastSceneSize = vtkVector2i(0, 0);
 
-  this->LimitRange[0] = VTK_DOUBLE_MIN;
-  this->LimitRange[1] = VTK_DOUBLE_MAX;
-
   vtkSmartPointer<vtkBrush> b = vtkSmartPointer<vtkBrush>::New();
   b->SetOpacityF(0);
 
@@ -93,7 +90,15 @@ vtkScalarsToColorsContextItem::vtkScalarsToColorsContextItem()
     vtkSmartPointer<vtkScalarsToColorsPreviewChart>::New();
   AddItem(this->PreviewChart.GetPointer());
 
-  this->SetColorTransferFunction(CTK_NULLPTR);
+  vtkSmartPointer<vtkPiecewiseFunction> opacityFunction = vtkSmartPointer<vtkPiecewiseFunction>::New();
+  opacityFunction->AddPoint(0.0, 0.0);
+  opacityFunction->AddPoint(255.0, 1.0);
+
+  this->ColorTransferFunction = vtkSmartPointer<vtkDiscretizableColorTransferFunction>::New();
+  this->ColorTransferFunction->SetScalarOpacityFunction(opacityFunction);
+  this->ColorTransferFunction->EnableOpacityMappingOn();
+
+  this->BuildColorTransferFunction();
 }
 
 // ----------------------------------------------------------------------------
@@ -105,78 +110,81 @@ vtkScalarsToColorsContextItem::~vtkScalarsToColorsContextItem()
 }
 
 // ----------------------------------------------------------------------------
-void vtkScalarsToColorsContextItem::SetColorTransferFunction(
-  vtkScalarsToColors* ctf)
+void vtkScalarsToColorsContextItem::SetLeftAxisMode(int mode)
 {
-  if (ctf == CTK_NULLPTR)
-  {
-    this->SetDiscretizableColorTransferFunction(CTK_NULLPTR);
-    return;
-  }
-
-  if (ctf->IsA("vtkDiscretizableColorTransferFunction"))
-  {
-    this->SetDiscretizableColorTransferFunction(
-      vtkDiscretizableColorTransferFunction::SafeDownCast(ctf));
-  }
-  else if (ctf->IsA("vtkColorTransferFunction"))
-  {
-    vtkSmartPointer<vtkColorTransferFunction> newCtf =
-      vtkColorTransferFunction::SafeDownCast(ctf);
-
-    vtkSmartPointer<vtkDiscretizableColorTransferFunction> dctf =
-      vtkSmartPointer<vtkDiscretizableColorTransferFunction>::New();
-    dctf->vtkColorTransferFunction::DeepCopy(newCtf);
-
-    vtkSmartPointer<vtkPiecewiseFunction> opacityFunction =
-      vtkSmartPointer<vtkPiecewiseFunction>::New();
-    opacityFunction->AddPoint(0.0, 0.0);
-    opacityFunction->AddPoint(255.0, 1.0);
-    dctf->SetScalarOpacityFunction(opacityFunction);
-    dctf->EnableOpacityMappingOn();
-
-    this->SetDiscretizableColorTransferFunction(dctf);
-  }
+  this->HistogramChart->SetLeftAxisMode(mode);
 }
 
 // ----------------------------------------------------------------------------
-void vtkScalarsToColorsContextItem::SetDiscretizableColorTransferFunction(
-  vtkDiscretizableColorTransferFunction* colorTransfer)
+int vtkScalarsToColorsContextItem::GetLeftAxisMode()
 {
-  vtkSmartPointer<vtkCompositeControlPointsItem> oldControlPoints =
-    this->EditorChart->GetControlPointsItem();
+  return this->HistogramChart->GetLeftAxisMode();
+}
 
-  if (oldControlPoints != CTK_NULLPTR)
+// ----------------------------------------------------------------------------
+void vtkScalarsToColorsContextItem::CopyColorTransferFunction(
+  vtkScalarsToColors* ctf)
+{
+  this->ResetColorTransferFunction();
+
+  if (ctf == CTK_NULLPTR)
   {
-    oldControlPoints->RemoveObservers(vtkCommand::EndEvent);
-    oldControlPoints->RemoveObservers(
-      vtkControlPointsItem::CurrentPointEditEvent);
+    this->SetVisibleRange(0, 255);
+
+    vtkSmartPointer<vtkPiecewiseFunction> pf = vtkSmartPointer<vtkPiecewiseFunction>::New();
+    pf->AddPoint(0.0, 0.0);
+    pf->AddPoint(255.0, 1.0);
+    vtkSmartPointer<vtkDiscretizableColorTransferFunction> dctf = vtkSmartPointer<vtkDiscretizableColorTransferFunction>::New();
+    dctf->EnableOpacityMappingOn();
+    this->ColorTransferFunction->DeepCopy(dctf);
+    this->ColorTransferFunction->GetScalarOpacityFunction()->DeepCopy(pf);
+    this->ColorTransferFunction->EnableOpacityMappingOn();
+  }
+  else
+  {
+    this->SetVisibleRange(ctf->GetRange()[0], ctf->GetRange()[1]);
+
+    if (ctf->IsA("vtkDiscretizableColorTransferFunction"))
+    {
+      vtkDiscretizableColorTransferFunction* dctf = vtkDiscretizableColorTransferFunction::SafeDownCast(ctf);
+      vtkPiecewiseFunction* pf = dctf->GetScalarOpacityFunction();
+      this->ColorTransferFunction->DeepCopy(dctf);
+      this->ColorTransferFunction->GetScalarOpacityFunction()->DeepCopy(pf);
+      this->ColorTransferFunction->EnableOpacityMappingOn();
+    }
+    else
+    {
+      this->ColorTransferFunction->DeepCopy(ctf);
+    }
   }
 
-  this->ColorTransferFunction = colorTransfer;
+  this->BuildColorTransferFunction();
+}
 
+// ----------------------------------------------------------------------------
+void vtkScalarsToColorsContextItem::ResetColorTransferFunction()
+{
+  this->EditorChart->SetColorTransferFunction(0);
+  this->PreviewChart->SetColorTransferFunction(0);
+  this->HistogramChart->SetLookupTable(0);
+}
+
+// ----------------------------------------------------------------------------
+void vtkScalarsToColorsContextItem::BuildColorTransferFunction()
+{
   this->EditorChart->SetColorTransferFunction(this->ColorTransferFunction);
-
   this->PreviewChart->SetColorTransferFunction(this->ColorTransferFunction);
-
   this->HistogramChart->SetLookupTable(this->ColorTransferFunction);
 
   vtkSmartPointer<vtkCompositeControlPointsItem> controlPoints =
     this->EditorChart->GetControlPointsItem();
-
   controlPoints->AddObserver(vtkCommand::EndEvent,
     this->PrivateEventForwarder, &EventForwarder::ForwardEvent);
   controlPoints->AddObserver(vtkControlPointsItem::CurrentPointEditEvent,
     this->PrivateEventForwarder, &EventForwarder::ForwardEvent);
 
-  /// Set the preview chart range to the color transfer function range
+  // todo could be replaced by event when OriginalRange changes
   this->RecalculateChartsRange();
-}
-
-// ----------------------------------------------------------------------------
-vtkScalarsToColors* vtkScalarsToColorsContextItem::GetColorTransferFunction()
-{
-  return this->ColorTransferFunction;
 }
 
 // ----------------------------------------------------------------------------
@@ -198,7 +206,6 @@ void vtkScalarsToColorsContextItem::SetHistogramTable(vtkTable* table,
 void vtkScalarsToColorsContextItem::SetDataRange(double min, double max)
 {
   this->EditorChart->SetDataRange(min, max);
-  this->RecalculateChartsRange();
 }
 
 // ----------------------------------------------------------------------------
@@ -210,6 +217,12 @@ double* vtkScalarsToColorsContextItem::GetDataRange()
 // ----------------------------------------------------------------------------
 void vtkScalarsToColorsContextItem::SetCurrentRange(double min, double max)
 {
+  if (min == this->GetCurrentRange()[0]
+   && max == this->GetCurrentRange()[1])
+  {
+    return;
+  }
+
   this->EditorChart->SetCurrentRange(min, max);
 }
 
@@ -220,40 +233,43 @@ double* vtkScalarsToColorsContextItem::GetCurrentRange()
 }
 
 // ----------------------------------------------------------------------------
+void vtkScalarsToColorsContextItem::SetVisibleRange(double min, double max)
+{
+  if (min == this->GetVisibleRange()[0]
+   && max == this->GetVisibleRange()[1])
+  {
+    return;
+  }
+
+  this->EditorChart->SetOriginalRange(min, max);
+  this->RecalculateChartsRange();
+}
+
+// ----------------------------------------------------------------------------
+double* vtkScalarsToColorsContextItem::GetVisibleRange()
+{
+  return this->EditorChart->GetOriginalRange();
+}
+
+// ----------------------------------------------------------------------------
 void vtkScalarsToColorsContextItem::CenterRange(double center)
 {
   this->EditorChart->CenterRange(center);
 }
 
 // ----------------------------------------------------------------------------
-double* vtkScalarsToColorsContextItem::GetLimitRange()
-{
-  return LimitRange;
-}
-
-// ----------------------------------------------------------------------------
 void vtkScalarsToColorsContextItem::RecalculateChartsRange()
 {
-  if (this->GetDiscretizableColorTransferFunction() == CTK_NULLPTR)
-  {
-    return;
-  }
-
-  /// Recalculate limit range
-  double* ctfRange = this->GetDiscretizableColorTransferFunction()->GetRange();
-  this->LimitRange[0] = std::min(ctfRange[0], this->GetDataRange()[0]);
-  this->LimitRange[1] = std::max(ctfRange[1], this->GetDataRange()[1]);
-
   this->EditorChart->GetAxis(vtkAxis::BOTTOM)->SetUnscaledRange(
-    this->LimitRange);
+    this->GetVisibleRange());
   this->EditorChart->RecalculateBounds();
 
   this->HistogramChart->GetAxis(vtkAxis::BOTTOM)->SetUnscaledRange(
-    this->LimitRange);
+    this->GetVisibleRange());
   this->HistogramChart->RecalculateBounds();
 
   this->PreviewChart->GetAxis(vtkAxis::BOTTOM)->SetUnscaledRange(
-    this->LimitRange);
+    this->GetVisibleRange());
   this->PreviewChart->RecalculateBounds();
 }
 

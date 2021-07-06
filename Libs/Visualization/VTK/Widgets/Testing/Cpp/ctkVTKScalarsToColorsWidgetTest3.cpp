@@ -24,8 +24,10 @@
 #include <QTimer>
 
 // CTK includes
+#include "ctkCoreTestingMacros.h"
 #include "ctkVTKScalarsToColorsView.h"
 #include "ctkVTKScalarsToColorsWidget.h"
+#include "ctkVTKWidgetsUtils.h"
 
 // VTK includes
 #include <vtkChartXY.h>
@@ -33,9 +35,6 @@
 #include <vtkPiecewiseFunction.h>
 #include <vtkPlot.h>
 #include <vtkSmartPointer.h>
-#if CTK_USE_QVTKOPENGLWIDGET
-#include <QVTKOpenGLWidget.h>
-#endif
 
 // STD includes
 #include <iostream>
@@ -43,11 +42,7 @@
 //-----------------------------------------------------------------------------
 int ctkVTKScalarsToColorsWidgetTest3(int argc, char * argv [] )
 {
-#if CTK_USE_QVTKOPENGLWIDGET
-    QSurfaceFormat format = QVTKOpenGLWidget::defaultFormat();
-    format.setSamples(0);
-    QSurfaceFormat::setDefaultFormat(format);
-#endif
+  ctk::vtkSetSurfaceDefaultFormat();
 
   QApplication app(argc, argv);
 
@@ -63,10 +58,18 @@ int ctkVTKScalarsToColorsWidgetTest3(int argc, char * argv [] )
   ctf->AddRGBPoint(1.,  183./255., 7./255., 140./255.);
 
   ctkVTKScalarsToColorsWidget widget(0);
+
+  // check default values
+  CHECK_BOOL(widget.editColors(), true)
+  CHECK_BOOL(widget.areTopWidgetsVisible(), true)
+  CHECK_NULL(widget.currentControlPointsItem())
+
   // add transfer function item
   widget.view()->addColorTransferFunction(ctf);
   widget.view()->setAxesToChartBounds();
   widget.show();
+
+  CHECK_NOT_NULL(widget.currentControlPointsItem())
 
   if (argc < 2 || QString(argv[1]) != "-I")
     {
