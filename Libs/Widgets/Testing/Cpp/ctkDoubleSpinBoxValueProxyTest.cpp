@@ -59,6 +59,8 @@ void getSpyReport(QSignalSpy& spy, QString expectedValue)
 class ctkDoubleSpinBoxValueProxyTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkDoubleSpinBoxValueProxyTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
 
   void testSetValue();
@@ -272,4 +274,4 @@ void ctkDoubleSpinBoxValueProxyTester::testSetCoefficient_data()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkDoubleSpinBoxValueProxyTest)
-#include "moc_ctkDoubleSpinBoxValueProxyTest.cpp"
+#include "ctkDoubleSpinBoxValueProxyTest.moc"

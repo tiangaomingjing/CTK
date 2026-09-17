@@ -46,15 +46,17 @@ class CTK_VISUALIZATION_VTK_CORE_EXPORT vtkScalarsToColorsContextItem
 public:
   static vtkScalarsToColorsContextItem* New();
 
-  /// Set/Get the color transfer function as a vtkScalarsToColors
-  void SetColorTransferFunction(vtkScalarsToColors* ctf);
-  vtkScalarsToColors* GetColorTransferFunction();
+  /// Set/Get the left axis mode.
+  /// This controls the axis range computation.
+  /// \see vtkScalarsToColorsHistogramChart::SetLeftAxisMode
+  void SetLeftAxisMode(int mode);
+  int GetLeftAxisMode();
 
-  /// Set/Get the color transfer function as a
-  /// vtkDiscretizableColorTransferFunction
-  void SetDiscretizableColorTransferFunction(
-    vtkDiscretizableColorTransferFunction* dctf);
+  /// Copy the color transfer function as a vtkDiscretizableColorTransferFunction
+  void CopyColorTransferFunction(vtkScalarsToColors* ctf);
   vtkDiscretizableColorTransferFunction* GetDiscretizableColorTransferFunction();
+  void ResetColorTransferFunction();
+  void BuildColorTransferFunction();
 
   /// Set the table used by the histogram chart
   void SetHistogramTable(vtkTable* table,
@@ -75,16 +77,17 @@ public:
   void SetCurrentRange(double min, double max);
   double* GetCurrentRange();
 
-  /// Center the color tranfer function around \center
-  void CenterRange(double center);
+  /// Get/Set the range displayed in the widget
+  void SetVisibleRange(double min, double max);
+  double* GetVisibleRange();
 
-  /// Return the range including both the transfer function and data extents
-  double* GetLimitRange();
+  /// Center the color transfer function around \center
+  void CenterRange(double center);
 
   /// Update charts range to match data and color transfer function ranges
   void RecalculateChartsRange();
 
-  /// Weight opacity control points by \opacity 
+  /// Weight opacity control points by \opacity
   void SetGlobalOpacity(double opacity);
 
   /// Reverse the color map of the transfer function. Note that opacity values
@@ -96,6 +99,7 @@ public:
   bool IsProcessingColorTransferFunction() const;
 
 protected:
+
   vtkSmartPointer<vtkDiscretizableColorTransferChart> EditorChart;
   vtkSmartPointer<vtkScalarsToColorsPreviewChart> PreviewChart;
   vtkSmartPointer<vtkScalarsToColorsHistogramChart> HistogramChart;
@@ -108,9 +112,6 @@ private:
 
   /// Cached geometry of the scene
   vtkVector2i LastSceneSize;
-
-  /// Widest possible range for charts
-  double LimitRange[2];
 
   /// Internal event forwarder
   class EventForwarder;

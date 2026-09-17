@@ -21,15 +21,16 @@
 #ifndef __ctkDICOMAppWidget_h
 #define __ctkDICOMAppWidget_h
 
-// Qt includes 
+// Qt includes
 #include <QWidget>
 
+#include <ctkDICOMDatabase.h>
 #include "ctkDICOMWidgetsExport.h"
+#include <ctkDICOMDatabase.h>
 
 class ctkDICOMAppWidgetPrivate;
 class ctkThumbnailLabel;
 class QModelIndex;
-class ctkDICOMDatabase;
 
 /// \ingroup DICOM_Widgets
 class CTK_DICOM_WIDGETS_EXPORT ctkDICOMAppWidget : public QWidget
@@ -97,19 +98,15 @@ public Q_SLOTS:
   /// an import (i.e. for testing or to support drag-and-drop)
   void onImportDirectory(QString directory);
 
-  /// slots to capture status updates from the database during an 
-  /// import operation
-  void onPatientAdded(int, QString, QString, QString);
-  void onStudyAdded(QString);
-  void onSeriesAdded(QString);
-  void onInstanceAdded(QString);
+  /// Save number of added patients, studies, series, images
+  void setIndexingResult(int, int, int, int);
 
 Q_SIGNALS:
-  /// Emited when directory is changed
+  /// Emitted when directory is changed
   void databaseDirectoryChanged(const QString&);
-  /// Emited when query/retrieve operation has happened
+  /// Emitted when query/retrieve operation has happened
   void queryRetrieveFinished();
-  /// Emited when the directory import operation has completed
+  /// Emitted when the directory import operation has completed
   void directoryImported();
 
 protected:

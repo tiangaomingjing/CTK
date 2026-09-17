@@ -8,7 +8,7 @@
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
 
-      http://www.commontk.org/LICENSE
+      http://commontk.org/LICENSE
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,29 +46,34 @@ class CustomSpy : public QObject
 {
   Q_OBJECT
 public:
-  CustomSpy()
-    {
+  explicit CustomSpy(QObject* parent = nullptr) : QObject(parent)
+  {
     this->AcknowledgedSignals = 0;
-    }
+  }
 
 public slots:
   void onValuesChanged(double min, double max)
-    {
+{
     ++this->AcknowledgedSignals;
     this->MinSpyData.append(min);
     this->MaxSpyData.append(max);
-    }
+}
 
 public:
   void getSpyReport(double min, double max)
-    {
+  {
     QCOMPARE(this->AcknowledgedSignals, 1);
 
     QCOMPARE(this->MinSpyData.size(), 1);
     ctkTest::COMPARE(this->MinSpyData[0], min);
     QCOMPARE(this->MaxSpyData.size(), 1);
     ctkTest::COMPARE(this->MaxSpyData[0], max);
-    }
+
+    // The following line is required to quiet "-Wunused-function" warnings
+    // related to the "getSpyReport()" function. This function is useful for
+    // debugging and is commented out.
+    Q_UNUSED(::getSpyReport);
+  }
 
   QList<double> MinSpyData;
   QList<double> MaxSpyData;
@@ -81,6 +86,8 @@ public:
 class ctkRangeWidgetValueProxyTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkRangeWidgetValueProxyTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
 
   void testSetValues();
@@ -429,4 +436,4 @@ void ctkRangeWidgetValueProxyTester::testSetCoefficient_data()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkRangeWidgetValueProxyTest)
-#include "moc_ctkRangeWidgetValueProxyTest.cpp"
+#include "ctkRangeWidgetValueProxyTest.moc"

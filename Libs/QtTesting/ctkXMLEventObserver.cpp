@@ -27,6 +27,7 @@
 #include <QVariant>
 
 // CTKQtTesting includes
+#include "ctkQtTestingUtility.h"
 #include "ctkXMLEventObserver.h"
 
 //-----------------------------------------------------------------------------
@@ -53,12 +54,12 @@ void ctkXMLEventObserver::recordApplicationSettings()
 {
   Q_ASSERT(this->TestUtility);
   if (!this->XMLStream)
-    {
+  {
     return;
-    }
+  }
   this->XMLStream->writeStartElement("settings");
 
-  // Informations about the application
+  // Information about the application
   this->recordApplicationSetting("name","qApp", "applicationName",
                                  QCoreApplication::applicationName());
   this->recordApplicationSetting("version" , "qApp", "applicationVersion",
@@ -67,34 +68,34 @@ void ctkXMLEventObserver::recordApplicationSettings()
   // save Geometry and State of the application
   QMainWindow* window = NULL;
   foreach(QWidget * widget, QApplication::topLevelWidgets())
-    {
+  {
     window = qobject_cast<QMainWindow*>(widget);
     if (window)
-      {
+    {
       this->recordApplicationSetting("geometry" , "MainWindow", "mainWindowGeometry",
                                      QString(window->saveGeometry().toHex()));
 
       this->recordApplicationSetting("state" , "MainWindow", "mainWindowState",
                                      QString(window->saveState().toHex()));
       break;
-      }
     }
+  }
 
   // Save extra properties from the application
   QMap<QObject*, QStringList> states = this->TestUtility->objectStateProperty();
   QMap<QObject*, QStringList>::iterator iter;
   for(iter = states.begin() ; iter!=states.end() ; ++iter)
-    {
+  {
     foreach(QString property, iter.value())
-      {
+    {
       this->recordApplicationSetting(
         QString("appsetting"),
         iter.key()->metaObject()->className(),
         property,
         iter.key()->property(property.toLatin1()).toString()
       );
-      }
     }
+  }
 
   this->XMLStream->writeEndElement();
 }
@@ -116,28 +117,59 @@ void ctkXMLEventObserver::recordApplicationSetting(const QString &startElement,
 void ctkXMLEventObserver::setStream(QTextStream* stream)
 {
   if (this->XMLStream)
-    {
+  {
     this->XMLStream->writeEndElement();
     this->XMLStream->writeEndElement();
     this->XMLStream->writeEndDocument();
     delete this->XMLStream;
     this->XMLStream = NULL;
-    }
+  }
   if (this->Stream)
-    {
+  {
     *this->Stream << this->XMLString;
-    }
+  }
   this->XMLString = QString();
   pqEventObserver::setStream(stream);
   if (this->Stream)
-    {
+  {
     this->XMLStream = new QXmlStreamWriter(&this->XMLString);
     this->XMLStream->setAutoFormatting(true);
     this->XMLStream->writeStartDocument();
     this->XMLStream->writeStartElement("QtTesting");
     this->recordApplicationSettings();
     this->XMLStream->writeStartElement("events");
+  }
+}
+
+//-----------------------------------------------------------------------------
+/// Return a copy of \a str with characters that are illegal in XML 1.0
+/// attribute values removed.
+///
+/// XML 1.0 only allows: #x9 (tab), #xA (LF), #xD (CR), and #x20 and above.
+/// Characters in the range #x1–#x8, #xB–#xC, #xE–#x1F are prohibited even
+/// as numeric character references (e.g. &#8; is invalid).  QXmlStreamWriter
+/// passes them through as raw bytes, producing malformed XML that fails
+/// validation (QtXmlPatterns FODC0002).
+///
+/// Carriage return (#xD) is legal and QXmlStreamWriter encodes it as &#13;
+/// so it round-trips correctly through the XML reader.
+static QString xmlSafeArguments(const QString& str)
+{
+  QString safe;
+  safe.reserve(str.size());
+  for (const QChar& ch : str)
+  {
+    const ushort code = ch.unicode();
+    // Keep: tab (#x9), LF (#xA), CR (#xD), and everything >= space (#x20)
+    if (code == 0x09 || code == 0x0A || code == 0x0D || code >= 0x20)
+    {
+      safe.append(ch);
     }
+    // All other control characters (0x01–0x08, 0x0B–0x0C, 0x0E–0x1F) are
+    // dropped.  For key events, the key() code field already identifies the
+    // key; the text() field is only meaningful for printable characters.
+  }
+  return safe;
 }
 
 //-----------------------------------------------------------------------------
@@ -147,18 +179,18 @@ void ctkXMLEventObserver::onRecordEvent(const QString& widget,
                                         const int& eventType)
 {
   if(this->XMLStream)
-    {
+  {
     this->XMLStream->writeStartElement("event");
     this->XMLStream->writeAttribute("widget", widget);
     this->XMLStream->writeAttribute("command", command);
-    this->XMLStream->writeAttribute("arguments", arguments);
-    this->XMLStream->writeAttribute("eventType", QString::number(eventType));
+    this->XMLStream->writeAttribute("arguments", xmlSafeArguments(arguments));
+    this->XMLStream->writeAttribute("type", ctkQtTestingUtility::eventTypeToString(eventType));
     this->XMLStream->writeEndElement();
     if (this->Stream)
-      {
+    {
       *this->Stream << this->XMLString;
-      }
+    }
     this->XMLString = QString();
     emit this->eventRecorded(widget, command, arguments, eventType);
-    }
+  }
 }

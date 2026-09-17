@@ -44,7 +44,11 @@ int ctkPythonConsoleTest1(int argc, char * argv [] )
   pythonConsole.initialize(&pythonManager);
 
   QList<QKeySequence> otherShortcuts;
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+  otherShortcuts << QKeySequence(Qt::CTRL | Qt::Key_Space);
+#else
   otherShortcuts << QKeySequence(Qt::CTRL + Qt::Key_Space);
+#endif
   otherShortcuts << Qt::Key_F1;
   pythonConsole.setCompleterShortcuts(otherShortcuts);
   pythonConsole.addCompleterShortcut(Qt::Key_Tab);
@@ -55,11 +59,10 @@ int ctkPythonConsoleTest1(int argc, char * argv [] )
 
   QTimer autoExit;
   if (argc < 2 || QString(argv[1]) != "-I")
-    {
+  {
     QObject::connect(&autoExit, SIGNAL(timeout()), &app, SLOT(quit()));
     autoExit.start(100);
-    }
+  }
 
   return app.exec();
 }
-

@@ -40,6 +40,8 @@ Q_DECLARE_METATYPE(QMessageBox::ButtonRole);
 class ctkMessageBoxDontShowAgainTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkMessageBoxDontShowAgainTester(QObject* parent = nullptr) : QObject(parent) {}
   void testExecMessageBox(ctkMessageBox& messageBox);
 
 private Q_SLOTS:
@@ -96,7 +98,7 @@ void ctkMessageBoxDontShowAgainTester::initTestCase()
 {
   // Setup QApplication for settings
   qApp->setOrganizationName("CommonToolKit");
-  qApp->setOrganizationDomain("www.commontk.org");
+  qApp->setOrganizationDomain("commontk.org");
   qApp->setApplicationName("CTK");
 }
 
@@ -142,33 +144,33 @@ void ctkMessageBoxDontShowAgainTester::testExecMessageBox(ctkMessageBox& message
 {
   QFETCH(int, buttonOrRole);
   if (buttonOrRole != QMessageBox::InvalidRole)
-    {
+  {
     if (messageBox.standardButtons() == QMessageBox::NoButton &&
         messageBox.buttons().size() == 0)
-      {
+    {
       messageBox.addButton(QMessageBox::Ok);
-      }
+    }
     if (messageBox.standardButtons() & buttonOrRole)
-      {
+    {
       QAbstractButton* button = messageBox.button(
         static_cast<QMessageBox::StandardButton>(buttonOrRole));
       QVERIFY(button);
       QTimer::singleShot(0, button, SLOT(click()));
-      }
+    }
     else
-      {
+    {
       const char* slot = 0;
       if (buttonOrRole == QMessageBox::AcceptRole)
-        {
+      {
         slot = SLOT(accept());
-        }
-      else if (buttonOrRole == QMessageBox::RejectRole)
-        {
-        slot = SLOT(reject());
-        }
-      QTimer::singleShot(0, &messageBox, slot);
       }
+      else if (buttonOrRole == QMessageBox::RejectRole)
+      {
+        slot = SLOT(reject());
+      }
+      QTimer::singleShot(0, &messageBox, slot);
     }
+  }
   // shouldn't hang
   int execResult = messageBox.exec();
   QFETCH(int, result);
@@ -261,18 +263,18 @@ void ctkMessageBoxDontShowAgainTester::testDontShowAgainCustomText()
   QString dontShowAgainText = checkBox->text();
 
   if (visible)
-    {
+  {
     // the custom text was set from the Ok box as it has the accept role
     QString expectedString = QString("Don't show this message again and always ")
       + okButton->text();
     QCOMPARE(dontShowAgainText, expectedString);
-    }
+  }
   else
-    {
+  {
     // the custom text was not added to the end of the standard message
     QString expectedString = QString("Don't show this message again");
     QCOMPARE(dontShowAgainText, expectedString);
-    }
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -475,7 +477,10 @@ void ctkMessageBoxDontShowAgainTester::testDontShowAgainSettingsKeySetDontShowAg
 void ctkMessageBoxDontShowAgainTester::testDontShowAgainSettingsKeyClickDontShowAgain()
 {
   ctkMessageBox messageBox;
-  messageBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+  messageBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+
+  messageBox.addDontShowAgainButtonRole(QMessageBox::YesRole);
+  messageBox.addDontShowAgainButtonRole(QMessageBox::NoRole);
 
   QFETCH(QString, key);
   messageBox.setDontShowAgainSettingsKey(key);
@@ -507,6 +512,10 @@ void ctkMessageBoxDontShowAgainTester::testDontShowAgainSettingsKeyClickDontShow
     << "NonExistingKey" << true << int(QMessageBox::Ok)
     << int(QMessageBox::Ok) << QMessageBox::AcceptRole
     << int(QMessageBox::Ok);
+  QTest::newRow("NonExistingKey dont show again no")
+    << "NonExistingKey" << true << int(QMessageBox::No)
+    << int(QMessageBox::No) << QMessageBox::NoRole
+    << int(QMessageBox::No);
   QTest::newRow("NonExistingKey dont show again cancel")
     << "NonExistingKey" << true << int(QMessageBox::Cancel)
     << int(QMessageBox::Cancel) << QMessageBox::RejectRole
@@ -516,6 +525,10 @@ void ctkMessageBoxDontShowAgainTester::testDontShowAgainSettingsKeyClickDontShow
     << "Show" << true << int(QMessageBox::Ok)
     << int(QMessageBox::Ok) << QMessageBox::AcceptRole
     << int(QMessageBox::Ok);
+  QTest::newRow("Show dont show again no")
+    << "Show" << true << int(QMessageBox::No)
+    << int(QMessageBox::No) << QMessageBox::NoRole
+    << int(QMessageBox::No);
   QTest::newRow("Show dont show again cancel")
     << "Show" << true << int(QMessageBox::Cancel)
     << int(QMessageBox::Cancel) << QMessageBox::RejectRole
@@ -525,6 +538,10 @@ void ctkMessageBoxDontShowAgainTester::testDontShowAgainSettingsKeyClickDontShow
     << "NonExistingKey" << false << int(QMessageBox::Ok)
     << int(QMessageBox::Ok) << QMessageBox::AcceptRole
     << int(QMessageBox::InvalidRole);
+  QTest::newRow("NonExistingKey show again no")
+    << "NonExistingKey" << false << int(QMessageBox::No)
+    << int(QMessageBox::No) << QMessageBox::NoRole
+    << int(QMessageBox::InvalidRole);
   QTest::newRow("NonExistingKey show again reject")
     << "NonExistingKey" << false << int(QMessageBox::Cancel)
     << int(QMessageBox::Cancel) << QMessageBox::RejectRole
@@ -533,6 +550,10 @@ void ctkMessageBoxDontShowAgainTester::testDontShowAgainSettingsKeyClickDontShow
   QTest::newRow("Show show again accept")
     << "Show" << false << int(QMessageBox::Ok)
     << int(QMessageBox::Ok) << QMessageBox::AcceptRole
+    << int(QMessageBox::InvalidRole);
+  QTest::newRow("Show show again no")
+    << "Show" << false << int(QMessageBox::No)
+    << int(QMessageBox::No) << QMessageBox::NoRole
     << int(QMessageBox::InvalidRole);
   QTest::newRow("Show dont show reject")
     << "Show" << false << int(QMessageBox::Cancel)
@@ -578,4 +599,4 @@ void ctkMessageBoxDontShowAgainTester::testVisible()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkMessageBoxDontShowAgainTest)
-#include "moc_ctkMessageBoxDontShowAgainTest.cpp"
+#include "ctkMessageBoxDontShowAgainTest.moc"

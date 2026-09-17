@@ -77,9 +77,9 @@ void ctkDICOMDirectoryListWidget::addDirectory()
   QString newDir = QFileDialog::getExistingDirectory(this, tr("Open Directory"));
 
   if ( !newDir.isEmpty() )
-    {
+  {
     this->addDirectory(newDir);
-    }
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -87,14 +87,18 @@ void ctkDICOMDirectoryListWidget::addDirectory(const QString& newDir)
 {
   Q_D(ctkDICOMDirectoryListWidget);
   QSqlRecord newDirRecord;
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+  newDirRecord.append(QSqlField("Dirname", QMetaType(QMetaType::QString)));
+#else
   newDirRecord.append(QSqlField("Dirname",QVariant::String));
+#endif
   newDirRecord.setValue("Dirname",newDir);
   /*bool success = */d->directoryListModel->insertRecord(-1,newDirRecord);
   bool success2 = d->directoryListModel->submitAll();
   if ( !success2 )
-    {
+  {
     qDebug() << d->directoryListModel->lastError();
-    }
+  }
   //addDirectoryQuery.prepare("insert into Directories VALUES ( :dirname )");
   //addDirectoryQuery.bindValue(":dirname",newDir);
   //addDirectoryQuery.exec();
@@ -132,8 +136,7 @@ void ctkDICOMDirectoryListWidget::setDICOMDatabase(ctkDICOMDatabase* dicomDataba
   connect ( d->directoryListView->selectionModel(),
             SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
             this,
-            SLOT(directorySelectionChanged(const QItemSelection & ,
-                                           const QItemSelection &  )));
+            SLOT(directorySelectionChanged(QItemSelection,QItemSelection)));
 }
 
 //----------------------------------------------------------------------------

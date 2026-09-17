@@ -80,56 +80,36 @@ macro(ctkMacroBuildQtPlugin)
   set(dynamicHeaders
     "${dynamicHeaders};${CMAKE_CURRENT_BINARY_DIR}/${MY_EXPORT_HEADER_PREFIX}Export.h")
 
-  # Make sure variable are cleared
-  set(MY_MOC_CPP)
-  set(MY_UI_CPP)
-  set(MY_QRC_SRCS)
-
-  # Wrap
-  set(MY_QRC_SRCS "")
-  if(CTK_QT_VERSION VERSION_GREATER "4")
-    set(target)
-    if(Qt5Core_VERSION VERSION_GREATER "5.2.0")
-      set(target TARGET ${MY_LIBNAME})
-    endif()
-    qt5_wrap_cpp(MY_MOC_CPP ${MY_MOC_SRCS} OPTIONS -DHAVE_QT5 ${target})
-
-    if(DEFINED MY_RESOURCES)
-      qt5_add_resources(MY_QRC_SRCS ${MY_RESOURCES})
-    endif()
-  else()
-    QT4_WRAP_CPP(MY_MOC_CPP ${MY_MOC_SRCS})
-    if(DEFINED MY_RESOURCES)
-      QT4_ADD_RESOURCES(MY_QRC_SRCS ${MY_RESOURCES})
-    endif()
-  endif()
-
-  if(CTK_QT_VERSION VERSION_GREATER "4")
-    if(Qt5Widgets_FOUND)
-      qt5_wrap_ui(MY_UI_CPP ${MY_UI_FORMS})
-    elseif(MY_UI_FORMS)
-      message(WARNING "Argument UI_FORMS ignored because Qt5Widgets module was not specified")
-    endif()
-  else()
-    QT4_WRAP_UI(MY_UI_CPP ${MY_UI_FORMS})
-  endif()
-
   source_group("Resources" FILES
     ${MY_RESOURCES}
     ${MY_UI_FORMS}
     )
 
-  source_group("Generated" FILES
-    ${MY_MOC_CPP}
-    ${MY_QRC_SRCS}
-    ${MY_UI_CPP}
-    )
-
   add_library(${lib_name} ${MY_LIBRARY_TYPE}
     ${MY_SRCS}
-    ${MY_MOC_CPP}
-    ${MY_UI_CPP}
-    ${MY_QRC_SRCS}
+    ${MY_RESOURCES}
+    )
+
+  target_compile_definitions(${lib_name} PRIVATE
+    HAVE_QT${CTK_QT_VERSION}
+    )
+
+  # Configure CMake Qt automatic code generation
+  set(uic_search_paths)
+  foreach(ui_src IN LISTS MY_UI_FORMS)
+    if(NOT IS_ABSOLUTE ${ui_src})
+      set(ui_src "${CMAKE_CURRENT_SOURCE_DIR}/${ui_src}")
+    endif()
+    get_filename_component(ui_path ${ui_src} PATH)
+    list(APPEND uic_search_paths ${ui_path})
+  endforeach()
+  list(REMOVE_DUPLICATES uic_search_paths)
+
+  set_target_properties(${lib_name} PROPERTIES
+    AUTOMOC ON
+    AUTORCC ON
+    AUTOUIC ON
+    AUTOUIC_SEARCH_PATHS "${uic_search_paths}"
     )
 
   # Extract library name associated with the plugin and use it as label
@@ -137,8 +117,12 @@ macro(ctkMacroBuildQtPlugin)
 
   # Apply properties to the library target.
   set(compile_flags "-DQT_PLUGIN")
-  if(CTK_QT_VERSION VERSION_GREATER "4")
+  if(CTK_QT_VERSION VERSION_EQUAL "5")
     set(compile_flags "${compile_flags} -DHAVE_QT5")
+  elseif(CTK_QT_VERSION VERSION_EQUAL "6")
+    set(compile_flags "${compile_flags} -DHAVE_QT6")
+  else()
+    message(FATAL_ERROR "Support for Qt${CTK_QT_VERSION} is not implemented")
   endif()
   set_target_properties(${lib_name}  PROPERTIES
     COMPILE_FLAGS "${compile_flags}"
@@ -190,23 +174,29 @@ macro(ctkMacroBuildQtPlugin)
 endmacro()
 
 macro(ctkMacroBuildQtDesignerPlugin)
-  if(CTK_QT_VERSION VERSION_GREATER "4")
-    find_package(Qt5 COMPONENTS Designer REQUIRED)
+  find_package(Qt${CTK_QT_VERSION} COMPONENTS Designer REQUIRED)
+  if(CTK_QT_VERSION VERSION_EQUAL "5")
+    # Variables like Qt*_DEFINITIONS may include generator expressions (genex) in newer Qt versions,
+    # which cannot be directly passed to "add_definitions()". For example, the list may include elements
+    # like "$<$<BOOL:$<TARGET_PROPERTY:QT_PLUGIN_CLASS_NAME>>:QDESIGNER_EXPORT_WIDGETS>". Stripping these using
+    # "string(GENEX_STRIP ...)" would result in an incomplete set of definitions.
+    # Therefore, we maintain the use of add_definitions()/include_directories() for Qt5 and encourage
+    # developers to rely on target usage requirements for newer versions.
     add_definitions(${Qt5Designer_DEFINITIONS})
     include_directories(${Qt5Designer_INCLUDE_DIRS})
+  else()
+    # For newer Qt versions, use target usage requirements to handle definitions and include directories.
   endif()
   ctkMacroBuildQtPlugin(
     PLUGIN_DIR designer
     ${ARGN})
-  if(CTK_QT_VERSION VERSION_GREATER "4")
-    cmake_parse_arguments(MY
-      "" # no options
-      "NAME;EXPORT_DIRECTIVE;FOLDER;PLUGIN_DIR" # one value args
-      "SRCS;MOC_SRCS;UI_FORMS;INCLUDE_DIRECTORIES;TARGET_LIBRARIES;RESOURCES" # multi value args
-      ${ARGN}
-      )
-    target_link_libraries(${MY_NAME} Qt5::Designer)
-  endif()
+  cmake_parse_arguments(MY
+    "" # no options
+    "NAME;EXPORT_DIRECTIVE;FOLDER;PLUGIN_DIR" # one value args
+    "SRCS;MOC_SRCS;UI_FORMS;INCLUDE_DIRECTORIES;TARGET_LIBRARIES;RESOURCES" # multi value args
+    ${ARGN}
+    )
+  target_link_libraries(${MY_NAME} Qt${CTK_QT_VERSION}::Designer)
 endmacro()
 
 macro(ctkMacroBuildQtIconEnginesPlugin)
@@ -220,4 +210,3 @@ macro(ctkMacroBuildQtStylesPlugin)
     PLUGIN_DIR styles
     ${ARGN})
 endmacro()
-

@@ -24,6 +24,7 @@
 
 // CTK includes
 #include "ctkFileLogger.h"
+#include "ctkUtils.h"
 
 // --------------------------------------------------------------------------
 // ctkFileLoggerPrivate
@@ -127,16 +128,15 @@ void ctkFileLogger::logMessage(const QString& msg)
 {
   Q_D(ctkFileLogger);
   if (!d->Enabled)
-    {
+  {
     return;
-    }
+  }
   QFile f(d->FilePath);
   if (!f.open(QFile::Append))
-    {
+  {
     return;
-    }
+  }
   QTextStream s(&f);
-  s << msg << endl;
+  s << msg << ctk::endl;
   f.close();
 }
-

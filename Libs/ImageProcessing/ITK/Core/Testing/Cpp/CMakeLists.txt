@@ -27,16 +27,6 @@ include_directories(
  )
 
 #
-# Test helpers
-#
-
-#set(KIT_HELPER_SRCS
-#  ctkVTKObjectTestHelper.cpp
-#  )
-
-#QT4_WRAP_CPP(KIT_HELPER_SRCS ctkVTKObjectTestHelper.h)
-
-#
 # Tests
 #
 
@@ -55,7 +45,7 @@ set(LIBRARY_NAME ${PROJECT_NAME})
 include_directories(${CMAKE_SOURCE_DIR}/Libs/Widgets)
 include_directories(${CMAKE_BINARY_DIR}/Libs/Widgets)
 
-add_executable(${KIT}CppTests ${Tests} ${KIT_HELPER_SRCS})
+ctk_add_executable_utf8(${KIT}CppTests ${Tests} ${KIT_HELPER_SRCS})
 target_link_libraries(${KIT}CppTests ${LIBRARY_NAME} ${CTK_BASE_LIBRARIES} CTKWidgets)
 
 #
@@ -73,4 +63,3 @@ if(EXISTS "${CTKData_DIR}")
   set(baseline_relative_location "Libs/ImageProcessing/ITK/Core")
   #SIMPLE_TEST(Foo ${baseline_relative_location}/${TESTNAME}.png)
 endif()
-

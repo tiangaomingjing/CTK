@@ -36,6 +36,8 @@
 class ctkLanguageComboBoxTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkLanguageComboBoxTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
 
   void testDefaults();
@@ -64,12 +66,12 @@ void ctkLanguageComboBoxTester::testSetDefaultLanguage()
   QFETCH(QString, expectedDefaultLanguage);
   QCOMPARE(languageComboBox.defaultLanguage(), expectedDefaultLanguage);
   if (!expectedDefaultLanguage.isEmpty())
-    {
+  {
     QCOMPARE(languageComboBox.count(), 1);
     QCOMPARE(languageComboBox.itemData(0).toString(), expectedDefaultLanguage);
     QCOMPARE(languageComboBox.itemText(0),
              QLocale::languageToString(QLocale(expectedDefaultLanguage).language()));
-    }
+  }
 
   // Current language
   QFETCH(QString, expectedCurrentLanguage);
@@ -101,4 +103,4 @@ void ctkLanguageComboBoxTester::testSetDefaultLanguage_data()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkLanguageComboBoxTest)
-#include "moc_ctkLanguageComboBoxTest.cpp"
+#include "ctkLanguageComboBoxTest.moc"

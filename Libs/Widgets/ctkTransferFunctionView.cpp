@@ -82,7 +82,7 @@ void ctkTransferFunctionView::resizeEvent(QResizeEvent * event)
   this->scene()->setSceneRect(sceneRect);
   foreach(QGraphicsItem * item, this->scene()->items())
     {
-    ctkTransferFunctionItem* rectItem = 
+    ctkTransferFunctionItem* rectItem =
       qgraphicsitem_cast<ctkTransferFunctionItem*>(item);
     if (rectItem)
       {
@@ -90,10 +90,19 @@ void ctkTransferFunctionView::resizeEvent(QResizeEvent * event)
       }
     }
   */
+#if (QT_VERSION >= QT_VERSION_CHECK(5,15,0))
+  QTransform zoomTransform;
+  zoomTransform.scale(event->size().width(), event->size().height());
+#else
   QMatrix zoomMatrix;
   zoomMatrix.scale(event->size().width(), event->size().height());
+#endif
   bool blocked = this->blockSignals(true);
+#if (QT_VERSION >= QT_VERSION_CHECK(5,15,0))
+  this->setTransform(zoomTransform);
+#else
   this->setMatrix(zoomMatrix);
+#endif
   this->blockSignals(blocked);
   this->QGraphicsView::resizeEvent(event);
   // Control points are resized by the view transform, we want

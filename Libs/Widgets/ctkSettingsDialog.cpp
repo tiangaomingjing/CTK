@@ -75,13 +75,13 @@ void ctkSettingsDialogPrivate::init()
   this->setupUi(q);
 
   this->SettingsButtonBox->button(QDialogButtonBox::Ok)->setToolTip(
-    q->tr("Apply settings and close dialog."));
+    ctkSettingsDialog::tr("Apply settings and close dialog."));
   this->SettingsButtonBox->button(QDialogButtonBox::Cancel)->setToolTip(
-    q->tr("Reject settings changes and close dialog."));
+    ctkSettingsDialog::tr("Reject settings changes and close dialog."));
   this->SettingsButtonBox->button(QDialogButtonBox::Reset)->setToolTip(
-    q->tr("Reset settings to their values when the dialog opened"));
+    ctkSettingsDialog::tr("Reset settings to their values when the dialog opened"));
   this->SettingsButtonBox->button(QDialogButtonBox::RestoreDefaults)->setToolTip(
-    q->tr("Restore settings to their default values."
+    ctkSettingsDialog::tr("Restore settings to their default values."
     "To cancel a \"Restore\", you can \"Reset\" the settings."));
   q->setResetButton(false);
 
@@ -126,12 +126,12 @@ QTreeWidgetItem* ctkSettingsDialogPrivate::item(const QString& label)const
 {
   QMap<QTreeWidgetItem*, ctkSettingsPanel*>::const_iterator it;
   for (it = this->Panels.constBegin(); it != this->Panels.constEnd(); ++it)
-    {
+  {
     if (it.value()->windowTitle() == label)
-      {
+    {
       return it.key();
-      }
     }
+  }
   return this->SettingsTreeWidget->invisibleRootItem();
 }
 
@@ -140,11 +140,12 @@ void ctkSettingsDialogPrivate::updatePanelTitle(ctkSettingsPanel* panel)
 {
   QTreeWidgetItem* panelItem = this->item(panel);
   QString title = panelItem->text(0);
-  title.replace(QRegExp("\\*$"),"");
+  static const QRegularExpression reTrailingStar("\\*$");
+  title.replace(reTrailingStar, "");
   if (!panel->changedSettings().isEmpty())
-    {
+  {
     title.append('*');
-    }
+  }
   panelItem->setText(0,title);
 }
 
@@ -154,27 +155,28 @@ void ctkSettingsDialogPrivate::updateRestartRequiredLabel()
   Q_Q(ctkSettingsDialog);
   QStringList restartRequiredSettings;
   foreach(const ctkSettingsPanel* panel, this->panels())
-    {
+  {
     foreach(const QString& settingKey, panel->changedSettings())
-      {
+    {
       if (panel->settingOptions(settingKey) & ctkSettingsPanel::OptionRequireRestart)
-        {
+      {
         restartRequiredSettings << (panel->settingLabel(settingKey).isEmpty() ?
           settingKey : panel->settingLabel(settingKey));
-        }
       }
     }
+  }
   bool restartRequired = !restartRequiredSettings.isEmpty();
   if (restartRequired)
-    {
-    QString header = q->tr(
-      "<b style=\"color:red\">Restart required!</b><br>\n<small>"
-      "The application must be restarted to take into account "
-      "the new values of the following properties:\n");
-    QString footer = q->tr("</small>");
+  {
+    QString header = "<b style=\"color:red\">" + ctkSettingsDialog::tr("Restart required!") + "</b><br>\n<small>";
+    header += ctkSettingsDialog::tr(
+      "The application must be restarted to take into account the new values of the following properties:"
+    );
+    header += "\n";
+    QString footer = "</small>";
     restartRequiredSettings.push_front(QString());
     this->RestartRequiredLabel->setText( header + restartRequiredSettings.join("<br>&nbsp;&nbsp;") + footer);
-    }
+  }
   this->RestartRequiredLabel->setVisible(restartRequired);
 }
 
@@ -207,10 +209,10 @@ void ctkSettingsDialog::setSettings(QSettings* settings)
   d->SettingsButtonBox->button(QDialogButtonBox::Reset)->setEnabled(false);
 
   d->Settings = settings;
-  foreach(ctkSettingsPanel* panel, d->Panels.values())
-    {
-    panel->setSettings(settings);
-    }
+  for (auto it = d->Panels.constBegin(); it != d->Panels.constEnd(); ++it)
+  {
+    it.value()->setSettings(settings);
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -236,7 +238,7 @@ void ctkSettingsDialog
 
 // --------------------------------------------------------------------------
 void ctkSettingsDialog
-::addPanel(const QString& label, ctkSettingsPanel* panel, 
+::addPanel(const QString& label, ctkSettingsPanel* panel,
            ctkSettingsPanel* parentPanel)
 {
   panel->setWindowTitle(label);
@@ -280,13 +282,13 @@ ctkSettingsPanel* ctkSettingsDialog::currentPanel()const
 ctkSettingsPanel* ctkSettingsDialog::panel(const QString& label)const
 {
   Q_D(const ctkSettingsDialog);
-  foreach(ctkSettingsPanel* settingsPanel, d->Panels.values())
+  for (auto it = d->Panels.constBegin(); it != d->Panels.constEnd(); ++it)
+  {
+    if (it.value()->windowTitle() == label)
     {
-    if (settingsPanel->windowTitle() == label)
-      {
-      return settingsPanel;
-      }
+      return it.value();
     }
+  }
   return 0;
 }
 
@@ -295,27 +297,27 @@ void ctkSettingsDialog::accept()
 {
   bool emitRestartRequested = false;
   if (this->isRestartRequired())
-    {
-    QMessageBox::StandardButton answer = QMessageBox::question(this,"Restart required",
-      "For settings to be taken into account, the application\n"
-      "must be restarted. Restart the application now ?\n",
+  {
+    QMessageBox::StandardButton answer = QMessageBox::question(this, tr("Restart required"),
+      tr("For settings to be taken into account, the application\n"
+         "must be restarted. Restart the application now ?\n"),
       QMessageBox::Yes|QMessageBox::No|QMessageBox::Cancel, QMessageBox::No);
     if (answer == QMessageBox::Cancel)
-      {
+    {
       return;
-      }
-    else
-      {
-      emitRestartRequested = (answer == QMessageBox::Yes);
-      }
     }
+    else
+    {
+      emitRestartRequested = (answer == QMessageBox::Yes);
+    }
+  }
 
   this->applySettings();
   this->Superclass::accept();
   if (emitRestartRequested)
-    {
+  {
     emit restartRequested();
-    }
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -329,10 +331,10 @@ void ctkSettingsDialog::reject()
 void ctkSettingsDialog::applySettings()
 {
   Q_D(ctkSettingsDialog);
-  foreach(ctkSettingsPanel* panel, d->Panels.values())
-    {
-    panel->applySettings();
-    }
+  for (auto it = d->Panels.constBegin(); it != d->Panels.constEnd(); ++it)
+  {
+    it.value()->applySettings();
+  }
   d->SettingsButtonBox->button(QDialogButtonBox::Reset)->setEnabled(false);
 }
 
@@ -340,10 +342,10 @@ void ctkSettingsDialog::applySettings()
 void ctkSettingsDialog::reloadSettings()
 {
   Q_D(ctkSettingsDialog);
-  foreach(ctkSettingsPanel* panel, d->Panels.values())
-    {
-    panel->reloadSettings();
-    }
+  for (auto it = d->Panels.constBegin(); it != d->Panels.constEnd(); ++it)
+  {
+    it.value()->reloadSettings();
+  }
   d->SettingsButtonBox->button(QDialogButtonBox::Reset)->setEnabled(false);
 }
 
@@ -351,10 +353,10 @@ void ctkSettingsDialog::reloadSettings()
 void ctkSettingsDialog::resetSettings()
 {
   Q_D(ctkSettingsDialog);
-  foreach(ctkSettingsPanel* panel, d->Panels.values())
-    {
-    panel->resetSettings();
-    }
+  for (auto it = d->Panels.constBegin(); it != d->Panels.constEnd(); ++it)
+  {
+    it.value()->resetSettings();
+  }
   d->SettingsButtonBox->button(QDialogButtonBox::Reset)->setEnabled(false);
 }
 
@@ -365,14 +367,14 @@ void ctkSettingsDialog::restoreDefaultSettings()
   // The panels may not contain ALL the settings of the application,
   // for the ones we don't default value, the best is to clear all of them...
   if (d->Settings)
-    {
+  {
     d->Settings->clear();
-    }
+  }
   // ... and restore settings for the ones we can
-  foreach(ctkSettingsPanel* panel, d->Panels.values())
-    {
-    panel->restoreDefaultSettings();
-    }
+  for (auto it = d->Panels.constBegin(); it != d->Panels.constEnd(); ++it)
+  {
+    it.value()->restoreDefaultSettings();
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -400,23 +402,23 @@ void ctkSettingsDialog::onDialogButtonClicked(QAbstractButton* button)
 {
   Q_D(ctkSettingsDialog);
   switch (d->SettingsButtonBox->standardButton(button))
-    {
+  {
     case QDialogButtonBox::Reset:
       this->resetSettings();
       break;
     case QDialogButtonBox::RestoreDefaults:
-      if (QMessageBox::warning(this,"Restore all settings",
-            "Are you sure you want to reset\n"
-            "all settings to their default values?\n",
+      if (QMessageBox::warning(this,tr("Restore all settings"),
+            tr("Are you sure you want to reset\n"
+               "all settings to their default values?\n"),
             QMessageBox::RestoreDefaults, QMessageBox::Cancel)
           == QMessageBox::RestoreDefaults)
-        {
+      {
         this->restoreDefaultSettings();
-        }
+      }
       break;
     default:
       break;
-    }
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -425,9 +427,14 @@ void ctkSettingsDialog::adjustTreeWidgetToContents()
   Q_D(const ctkSettingsDialog);
 
   d->SettingsTreeWidget->resizeColumnToContents(0);
+  #if (QT_VERSION >= QT_VERSION_CHECK(5,11,0))
+  int character_pixel_width = d->SettingsTreeWidget->fontMetrics().horizontalAdvance('*');
+  #else
+  int character_pixel_width = d->SettingsTreeWidget->fontMetrics().width('*');
+  #endif
   d->SettingsTreeWidget->setFixedWidth(
       qobject_cast<QAbstractItemView*>(d->SettingsTreeWidget)->sizeHintForColumn(0) +
-      d->SettingsTreeWidget->fontMetrics().width('*') +
+      character_pixel_width +
       d->SettingsTreeWidget->indentation() / 2+
       2 * d->SettingsTreeWidget->frameWidth());
 }
@@ -437,9 +444,9 @@ bool ctkSettingsDialog::event(QEvent* event)
 {
   if (event->type() == QEvent::FontChange ||
       event->type() == QEvent::StyleChange)
-    {
+  {
     this->adjustTreeWidgetToContents();
-    }
+  }
   return this->Superclass::event(event);
 }
 

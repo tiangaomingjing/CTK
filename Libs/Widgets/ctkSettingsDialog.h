@@ -23,15 +23,15 @@
 
 // Qt includes
 #include <QDialog>
+#include <QSettings>
 
 // CTK includes
 #include "ctkWidgetsExport.h"
+#include "ctkSettingsPanel.h"
 
 class QAbstractButton;
-class QSettings;
 class QTreeWidgetItem;
 class ctkSettingsDialogPrivate;
-class ctkSettingsPanel;
 
 /// \ingroup Widgets
 class CTK_WIDGETS_EXPORT ctkSettingsDialog : public QDialog
@@ -66,6 +66,8 @@ public:
   QSettings* settings()const;
   void setSettings(QSettings* settings);
 
+  /// Get the panel based on its title. The title is the string displayed to
+  /// users therefore it is a localized string (translated to different languages).
   ctkSettingsPanel* panel(const QString& panel)const;
   ctkSettingsPanel* currentPanel()const;
 

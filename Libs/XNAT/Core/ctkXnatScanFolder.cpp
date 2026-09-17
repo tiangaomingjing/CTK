@@ -48,7 +48,7 @@ public:
 
 //----------------------------------------------------------------------------
 ctkXnatScanFolder::ctkXnatScanFolder(ctkXnatObject* parent)
-  : ctkXnatObject(*new ctkXnatScanFolderPrivate(), parent, QString::null)
+  : ctkXnatObject(*new ctkXnatScanFolderPrivate(), parent, QString())
 {
   this->setId("scans");
   this->setProperty(LABEL, "Scans");
@@ -99,7 +99,7 @@ void ctkXnatScanFolder::fetchImpl()
     QString label = scan->property (LABEL);
     label = label.isEmpty() ? series_description : label;
     scan->setProperty (LABEL, label);
-    
+
     this->add(scan);
   }
 }

@@ -87,7 +87,7 @@ public:
 
 protected:
   QScopedPointer<ctkFooObjectPrivate> d_ptr;
- 
+
 private:
   Q_DECLARE_PRIVATE(ctkFooObject);
   Q_DISABLE_COPY(ctkFooObject);
@@ -141,27 +141,27 @@ double ctkFooObject::property()const
 /*!
  * Define a public class constructor with no argument
  *
- * Also make sure the Pimpl is initalized
+ * Also make sure the Pimpl is initialized
  * \see \ref CorePimpl
  */
 #define CTK_CONSTRUCTOR_NO_ARG_CPP(PUB)  \
   PUB::PUB(): d_ptr(new PUB##Private)    \
-    {                                    \
-    }
+  {                                      \
+  }
 
 /*!
  * Define a public class constructor with one argument
  *
- * Also make sure the Pimpl is initalized
+ * Also make sure the Pimpl is initialized
  * \see \ref CorePimpl
  */
 #define CTK_CONSTRUCTOR_1_ARG_CPP(PUB, _ARG1)   \
   PUB::PUB(_ARG1 _parent)                       \
     : Superclass( _parent )                     \
     , d_ptr(new PUB##Private)                   \
-    {                                           \
-    }
-    
+  {                                             \
+  }
+
 /*!
  * Define the setter in the public class.
  *

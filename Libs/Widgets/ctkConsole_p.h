@@ -53,7 +53,7 @@ public:
   virtual void keyPressEvent(QKeyEvent* e);
 
   void switchToUserInputTextColor(QTextCursor* textCursorToUpdate = 0);
-  
+
   /// Returns the end of the document
   int documentEnd() const;
 
@@ -76,18 +76,18 @@ public:
   void setCompleter(ctkConsoleCompleter* completer);
 
   void updateCompleter();
-  
+
   /// Update the contents of the command buffer from the contents of the widget.
   /// If \a commandLength is specified, buffer is updated limiting the content
   /// of the widget.
   void updateCommandBuffer(int commandLength = -1);
-  
+
   /// Replace the contents of the command buffer, updating the display
   void replaceCommandBuffer(const QString& text);
-  
+
   /// References the buffer where the current un-executed command is stored
   QString& commandBuffer();
-  
+
   /// Implements command-execution
   void internalExecuteCommand();
 
@@ -122,14 +122,6 @@ public Q_SLOTS:
   ///          Determines the word using QTextCursor::StartOfWord, EndOfWord.
   ///  FALSE - Just insert the word replacing only the text from the current position until StartOfWord
   void insertCompletion(const QString& text);
-
-  /// Print a message
-  /// \sa ctkConsole::outputTextColor
-  void printOutputMessage(const QString& text);
-
-  /// Print a message
-  /// \sa ctkConsole::errorTextColor
-  void printErrorMessage(const QString& text);
 
   /// Update the value of ScrollbarAtBottom given the current position of the scollbar
   void onScrollBarValueChanged(int value);
@@ -219,8 +211,10 @@ public:
 
   QPushButton* RunFileButton;
   QAction* RunFileAction;
+
+  /// Store path of last RunFilefile, to make it easier to re-run the same file again.
+  QString LastRunFile;
 };
 
 
 #endif
-

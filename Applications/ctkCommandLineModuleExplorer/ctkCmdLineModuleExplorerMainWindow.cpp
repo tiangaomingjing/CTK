@@ -45,11 +45,7 @@
 #include <ctkSettingsDialog.h>
 
 #include <QtConcurrentMap>
-#if (QT_VERSION < QT_VERSION_CHECK(5,0,0))
-#include <QDesktopServices>
-#else
 #include <QStandardPaths>
-#endif
 #include <QMessageBox>
 #include <QFutureSynchronizer>
 #include <QCloseEvent>
@@ -61,11 +57,7 @@ ctkCLModuleExplorerMainWindow::ctkCLModuleExplorerMainWindow(QWidget *parent) :
   QMainWindow(parent),
   ui(new Ui::ctkCmdLineModuleExplorerMainWindow),
   defaultModuleFrontendFactory(NULL),
-  #if (QT_VERSION < QT_VERSION_CHECK(5,0,0))
-  moduleManager(ctkCmdLineModuleManager::WEAK_VALIDATION, QDesktopServices::storageLocation(QDesktopServices::CacheLocation)),
-  #else
   moduleManager(ctkCmdLineModuleManager::WEAK_VALIDATION, QStandardPaths::writableLocation(QStandardPaths::CacheLocation)),
-  #endif
   directoryWatcher(&moduleManager),
   settingsDialog(NULL)
 {
@@ -133,7 +125,7 @@ ctkCLModuleExplorerMainWindow::ctkCLModuleExplorerMainWindow(QWidget *parent) :
   // Due to Qt bug 12152, we cannot listen to the "paused" signal because it is
   // not emitted directly when the QFuture is paused. Instead, it is emitted after
   // resuming the future, after the "resume" signal has been emitted... we use
-  // a polling aproach instead.
+  // a polling approach instead.
   pollPauseTimer.setInterval(300);
   connect(&pollPauseTimer, SIGNAL(timeout()), SLOT(checkModulePaused()));
   connect(&currentFutureWatcher, SIGNAL(resumed()), SLOT(currentModuleResumed()));
@@ -200,9 +192,10 @@ void ctkCLModuleExplorerMainWindow::closeEvent(QCloseEvent *event)
   {
     QMessageBox::StandardButton button =
         QMessageBox::warning(QApplication::activeWindow(),
-                             QString("Closing %1 running modules").arg(runningFrontends.size()),
-                             "Some modules are still running.\n"
-                             "Closing the application will cancel all current computations.",
+                             //: %1 is the number of running modules
+                             tr("Closing %1 running modules").arg(runningFrontends.size()),
+                             tr("Some modules are still running.\n"
+                                "Closing the application will cancel all current computations."),
                              QMessageBox::Ok | QMessageBox::Cancel);
     if (button == QMessageBox::Ok)
     {
@@ -439,7 +432,7 @@ void ctkCLModuleExplorerMainWindow::checkXMLPressed()
     moduleManager.setValidationMode(previousMode);
     QWidget* widget = QApplication::activeModalWidget();
     if (widget == NULL) widget = QApplication::activeWindow();
-    QMessageBox::critical(widget, QObject::tr("Failed while checking XML:"), except.message());
+    QMessageBox::critical(widget, tr("Failed while checking XML:"), except.message());
   }
 }
 

@@ -75,34 +75,30 @@ int TEST_NAME(int _argc, char * _argv [] )            \
 #define QCTK_EXIT_TEST(_status)    \
   QCoreApplication::exit(_status); \
   return;
-  
+
 #include "ctkWidgetsExport.h"
-  
+
 
 /// \ingroup Widgets
 class CTK_WIDGETS_EXPORT ctkTestApplication : public QObject
 {
   Q_OBJECT
-  
+
 public:
-  ctkTestApplication(int _argc, char** _argv);
+  ctkTestApplication(int _argc, char** _argv, QObject* parent = nullptr);
   ~ctkTestApplication();
 
   /// This function could be overloaded to implement test that required
   /// an active event loop
   virtual void runTest();
-  
-  /// 
+
+  ///
   /// If reportErrorsOnExit is true, then the return value will
   /// be the number of warning messages plus the number of error messages
   /// produced by QDebug during execution.
   static int exec(bool reportErrorsOnExit=false);
 
-#if QT_VERSION >= 0x50000
   static void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
-#else
-  static void messageHandler(QtMsgType type, const char *msg);
-#endif
 
   static void delay(int ms);
 
@@ -114,26 +110,26 @@ public:
 
   static void keyClick(QWidget* w, Qt::Key key, Qt::KeyboardModifiers mod, int ms);
 
-  static void mouseDown(QWidget* w, QPoint pos, Qt::MouseButton btn, 
-                        Qt::KeyboardModifiers mod, int ms);
-  
-  static void mouseUp(QWidget* w, QPoint pos, Qt::MouseButton btn, 
-                      Qt::KeyboardModifiers mod, int ms);
-  
-  static void mouseMove(QWidget* w, QPoint pos, Qt::MouseButton btn, 
+  static void mouseDown(QWidget* w, QPoint pos, Qt::MouseButton btn,
                         Qt::KeyboardModifiers mod, int ms);
 
-  static void mouseClick(QWidget* w, QPoint pos, Qt::MouseButton btn, 
+  static void mouseUp(QWidget* w, QPoint pos, Qt::MouseButton btn,
+                      Qt::KeyboardModifiers mod, int ms);
+
+  static void mouseMove(QWidget* w, QPoint pos, Qt::MouseButton btn,
+                        Qt::KeyboardModifiers mod, int ms);
+
+  static void mouseClick(QWidget* w, QPoint pos, Qt::MouseButton btn,
                          Qt::KeyboardModifiers mod, int ms);
 
-  static void mouseDClick(QWidget* w, QPoint pos, Qt::MouseButton btn, 
+  static void mouseDClick(QWidget* w, QPoint pos, Qt::MouseButton btn,
                           Qt::KeyboardModifiers mod, int ms);
 
 public Q_SLOTS:
 
   /// Slot responsible to invoke the virtual function 'runTest'.
   /// The typical use case consists in calling that slot using a singleShot QTimer
-  void runTestSlot(); 
+  void runTestSlot();
 
 private:
   QApplication*     App;

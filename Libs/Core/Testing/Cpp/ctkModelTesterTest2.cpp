@@ -8,7 +8,7 @@
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
 
-      http://www.commontk.org/LICENSE
+      http://commontk.org/LICENSE
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,9 +32,12 @@
 #include <iostream>
 
 //-----------------------------------------------------------------------------
+namespace {
 class QAbstractItemModelHelper : public QAbstractItemModel
 {
+  Q_OBJECT
 public:
+  explicit QAbstractItemModelHelper(QObject* parent = nullptr) : QAbstractItemModel(parent) {}
   virtual QModelIndex index(int, int, const QModelIndex&) const { return QModelIndex(); }
   virtual QModelIndex parent(const QModelIndex&) const { return QModelIndex(); }
   virtual int rowCount(const QModelIndex&) const { return 0; }
@@ -43,13 +46,14 @@ public:
   void emitInvalidHeaderDataChanged()
   { emit this->headerDataChanged(Qt::Vertical, 10, 10);}
 };
+} // namespace
 
 //-----------------------------------------------------------------------------
 int ctkModelTesterTest2(int argc, char * argv [] )
 {
   QCoreApplication app(argc, argv);
 
-  QObject * object = new QObject; 
+  QObject * object = new QObject;
 
   ctkModelTester ctkTester( object );
 
@@ -59,11 +63,11 @@ int ctkModelTesterTest2(int argc, char * argv [] )
       ||  ctkTester.nestedInserts() != false
       ||  ctkTester.testDataEnabled() != true
       ||  ctkTester.verbose() != true)
-    {
+  {
     std::cerr << "Line : " << __LINE__
               << " - Error in ctkModelTester::ctkModelTester" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   ctkTester.setThrowOnError(false);
   ctkTester.setNestedInserts(true);
@@ -74,11 +78,11 @@ int ctkModelTesterTest2(int argc, char * argv [] )
       ||  ctkTester.nestedInserts() != true
       ||  ctkTester.testDataEnabled() != false
       ||  ctkTester.verbose() != false)
-    {
+  {
     std::cerr << "Line : " << __LINE__
               << " - Error " << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   QModelIndex defaultModelIndex;
   ctkTester.testModelIndex(defaultModelIndex);
@@ -94,18 +98,18 @@ int ctkModelTesterTest2(int argc, char * argv [] )
   ctkTester.setModel(&helper);
   bool errorThrown = false;
   try
-    {
+  {
     helper.emitInvalidHeaderDataChanged();
-    }
+  }
   catch (...)
-    {
+  {
     errorThrown = true;
-    }
+  }
   if (!errorThrown)
-    {
+  {
     std::cerr << "ThrowOnError failed" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   QStandardItemModel model;
   ctkTester.setModel(&model);
@@ -118,3 +122,4 @@ int ctkModelTesterTest2(int argc, char * argv [] )
   return EXIT_SUCCESS;
 }
 
+#include "ctkModelTesterTest2.moc"

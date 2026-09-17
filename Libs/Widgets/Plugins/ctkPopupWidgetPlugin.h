@@ -8,7 +8,7 @@
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
 
-      http://www.commontk.org/LICENSE
+      http://commontk.org/LICENSE
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,7 +32,7 @@ class CTK_WIDGETS_PLUGINS_EXPORT ctkPopupWidgetPlugin
 
 public:
   ctkPopupWidgetPlugin(QObject* pluginParent = 0);
-  
+
   QWidget *createWidget(QWidget* parentWidget);
   QString  domXml() const;
   QIcon    icon() const;

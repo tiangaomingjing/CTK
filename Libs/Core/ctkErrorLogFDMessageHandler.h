@@ -31,10 +31,11 @@ class ctkErrorLogFDMessageHandlerPrivate;
 /// \ingroup Core
 class CTK_CORE_EXPORT ctkErrorLogFDMessageHandler : public ctkErrorLogAbstractMessageHandler
 {
+  Q_OBJECT
 public:
   typedef ctkErrorLogAbstractMessageHandler Superclass;
 
-  ctkErrorLogFDMessageHandler();
+  ctkErrorLogFDMessageHandler(QObject* parent = nullptr);
   virtual ~ctkErrorLogFDMessageHandler();
 
   static QString HandlerName;
@@ -51,4 +52,3 @@ private:
 };
 
 #endif
-

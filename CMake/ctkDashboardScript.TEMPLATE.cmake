@@ -12,10 +12,10 @@
 #     'glxinfo | grep OpenGL' to obtain GPU details.
 ####################################################################################
 
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.20.6)
 
 #
-# For additional information, see http://www.commontk.org/index.php/Dashboard_setup
+# For additional information, see http://commontk.org/index.php/Dashboard_setup
 #
 
 #-----------------------------------------------------------------------------
@@ -161,7 +161,7 @@ function(download_file url dest)
 endfunction()
 
 #
-# Download and include dashboard driver script 
+# Download and include dashboard driver script
 #
 set(url https://raw.githubusercontent.com/commontk/CTK/master/CMake/ctkDashboardDriverScript.cmake)
 set(dest ${CTEST_SCRIPT_DIRECTORY}/${CTEST_SCRIPT_NAME}.driver)

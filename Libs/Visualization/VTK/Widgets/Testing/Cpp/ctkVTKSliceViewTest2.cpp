@@ -30,6 +30,7 @@
 #include "ctkCommandLineParser.h"
 #include "ctkVTKObjectEventsObserver.h"
 #include "ctkVTKSliceView.h"
+#include "ctkVTKWidgetsUtils.h"
 
 // VTK includes
 #include <vtkImageReader2Factory.h>
@@ -39,9 +40,6 @@
 #include <vtkInteractorStyleImage.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkLightBoxRendererManager.h>
-#if CTK_USE_QVTKOPENGLWIDGET
-#include <QVTKOpenGLWidget.h>
-#endif
 
 // STD includes
 #include <iostream>
@@ -49,11 +47,7 @@
 //-----------------------------------------------------------------------------
 int ctkVTKSliceViewTest2(int argc, char * argv [] )
 {
-#if CTK_USE_QVTKOPENGLWIDGET
-    QSurfaceFormat format = QVTKOpenGLWidget::defaultFormat();
-    format.setSamples(0);
-    QSurfaceFormat::setDefaultFormat(format);
-#endif
+  ctk::vtkSetSurfaceDefaultFormat();
 
   QApplication app(argc, argv);
 
@@ -62,44 +56,44 @@ int ctkVTKSliceViewTest2(int argc, char * argv [] )
 
   // Command line parser
   ctkCommandLineParser parser;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  parser.addArgument("", "-I", QMetaType::Bool);
+  parser.addArgument("", "-D", QMetaType::QString);
+#else
   parser.addArgument("", "-I", QVariant::Bool);
   parser.addArgument("", "-D", QVariant::String);
+#endif
   bool ok = false;
   QHash<QString, QVariant> parsedArgs = parser.parseArguments(app.arguments(), &ok);
   if (!ok)
-    {
+  {
     std::cerr << qPrintable(parser.errorString()) << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   bool interactive = parsedArgs["-I"].toBool();
   QString data_directory = parsedArgs["-D"].toString();
 
   QString imageFilename = data_directory + "/" + filename;
 
-  // Instanciate the reader factory
+  // Instantiate the reader factory
   vtkSmartPointer<vtkImageReader2Factory> imageFactory =
       vtkSmartPointer<vtkImageReader2Factory>::New();
 
-  // Instanciate an image reader
+  // Instantiate an image reader
   vtkSmartPointer<vtkImageReader2> imageReader;
-  imageReader.TakeReference(imageFactory->CreateImageReader2(imageFilename.toLatin1()));
+  imageReader.TakeReference(imageFactory->CreateImageReader2(imageFilename.toUtf8()));
   if (!imageReader)
-    {
-    std::cerr << "Failed to instanciate image reader using: " 
+  {
+    std::cerr << "Failed to instantiate image reader using: "
               << qPrintable(imageFilename) << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Read image
-  imageReader->SetFileName(imageFilename.toLatin1());
-#if (VTK_MAJOR_VERSION <= 5)
-  imageReader->Update();
-  vtkImageData* image = imageReader->GetOutput();
-#else
+  imageReader->SetFileName(imageFilename.toUtf8());
   imageReader->Update(); // XXX This shouldn't be needed. See issue #467
   vtkAlgorithmOutput* imagePort = imageReader->GetOutputPort();
-#endif
 
   // Top level widget
   QWidget widget;
@@ -132,11 +126,7 @@ int ctkVTKSliceViewTest2(int argc, char * argv [] )
   ctkVTKSliceView * sliceView = new ctkVTKSliceView;
   sliceView->setRenderEnabled(true);
   sliceView->setMinimumSize(600, 600);
-#if (VTK_MAJOR_VERSION <= 5)
-  sliceView->setImageData(image);
-#else
   sliceView->setImageDataConnection(imagePort);
-#endif
   sliceView->setHighlightedBoxColor(QColor(Qt::yellow));
   sliceView->lightBoxRendererManager()->SetRenderWindowLayout(defaultRowCount, defaultColumnCount);
   sliceView->lightBoxRendererManager()->SetHighlighted(0, 0, true);
@@ -159,8 +149,8 @@ int ctkVTKSliceViewTest2(int argc, char * argv [] )
   // TODO Add image regression test
 
   if (!interactive)
-    {
+  {
     QTimer::singleShot(1000, &app, SLOT(quit()));
-    }
+  }
   return app.exec();
 }

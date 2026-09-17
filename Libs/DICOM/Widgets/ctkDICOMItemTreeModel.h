@@ -21,7 +21,7 @@
 #ifndef __ctkDICOMItemTreeModel_h
 #define __ctkDICOMItemTreeModel_h
 
-// Qt includes 
+// Qt includes
 #include <QAbstractItemModel>
 #include <QModelIndex>
 
@@ -32,6 +32,7 @@ class ctkDICOMItemTreeModelPrivate;
 /// \ingroup DICOM_Widgets
 class CTK_DICOM_WIDGETS_EXPORT ctkDICOMItemTreeModel : public QAbstractItemModel
 {
+  Q_OBJECT
 public:
   typedef QAbstractItemModel Superclass;
   explicit ctkDICOMItemTreeModel(QObject* parent=0);
@@ -39,9 +40,9 @@ public:
 
   virtual QModelIndex index(int row, int column,
                             const QModelIndex &parent = QModelIndex()) const;
-                            
+
   virtual QModelIndex parent(const QModelIndex &child) const;
-    
+
   virtual Qt::ItemFlags flags(const QModelIndex &index) const;
 
   virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;

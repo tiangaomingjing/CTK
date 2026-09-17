@@ -22,6 +22,9 @@
 
 #include "ctkDICOMModel.h"
 
+// Qt includes
+#include <QRegularExpression>
+
 //logger
 #include <ctkLogger.h>
 static ctkLogger logger("org.commontk.DICOM.Core.ctkDICOMFilterProxyModel");
@@ -63,29 +66,57 @@ ctkDICOMFilterProxyModel::~ctkDICOMFilterProxyModel(){
 //----------------------------------------------------------------------------
 void ctkDICOMFilterProxyModel::setNameSearchText(const QString &text){
     Q_D(ctkDICOMFilterProxyModel);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    this->beginFilterChange();
+#endif
     d->searchTextName = text;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+    this->endFilterChange();
+#else
     this->invalidateFilter();
+#endif
 }
 
 //----------------------------------------------------------------------------
 void ctkDICOMFilterProxyModel::setStudySearchText(const QString &text){
     Q_D(ctkDICOMFilterProxyModel);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    this->beginFilterChange();
+#endif
     d->searchTextStudy = text;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+    this->endFilterChange();
+#else
     this->invalidateFilter();
+#endif
 }
 
 //----------------------------------------------------------------------------
 void ctkDICOMFilterProxyModel::setSeriesSearchText(const QString &text){
     Q_D(ctkDICOMFilterProxyModel);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    this->beginFilterChange();
+#endif
     d->searchTextSeries = text;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+    this->endFilterChange();
+#else
     this->invalidateFilter();
+#endif
 }
 
 //----------------------------------------------------------------------------
 void ctkDICOMFilterProxyModel::setIdSearchText(const QString &text){
     Q_D(ctkDICOMFilterProxyModel);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    this->beginFilterChange();
+#endif
     d->searchTextID = text;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+    this->endFilterChange();
+#else
     this->invalidateFilter();
+#endif
 }
 
 bool ctkDICOMFilterProxyModel::filterAcceptsRow(int source_row, const QModelIndex &source_parent) const{
@@ -96,21 +127,21 @@ bool ctkDICOMFilterProxyModel::filterAcceptsRow(int source_row, const QModelInde
     if(model){
         QModelIndex index = model->index(source_row, 0, source_parent);
         if(model->data(index, ctkDICOMModel::TypeRole) == static_cast<int>(ctkDICOMModel::PatientType)){
-            QRegExp regExp = QRegExp(d->searchTextName);
+            QRegularExpression regExp = QRegularExpression(d->searchTextName);
             if(model->data(index, Qt::DisplayRole).toString().contains(regExp)){
                 return true;
             }else{
                 return false;
             }
         }else if(model->data(index, ctkDICOMModel::TypeRole) == static_cast<int>(ctkDICOMModel::StudyType)){
-            QRegExp regExp = QRegExp(d->searchTextStudy);
+            QRegularExpression regExp = QRegularExpression(d->searchTextStudy);
             if(model->data(index, Qt::DisplayRole).toString().contains(regExp)){
                 return true;
             }else{
                 return false;
             }
         }else if(model->data(index, ctkDICOMModel::TypeRole) == static_cast<int>(ctkDICOMModel::SeriesType)){
-            QRegExp regExp = QRegExp(d->searchTextSeries);
+            QRegularExpression regExp = QRegularExpression(d->searchTextSeries);
             if(model->data(index, Qt::DisplayRole).toString().contains(regExp)){
                 return true;
             }else{

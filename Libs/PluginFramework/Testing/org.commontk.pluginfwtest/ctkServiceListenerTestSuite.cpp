@@ -135,7 +135,7 @@ void ctkServiceListenerTestSuite::frameSL25a()
     QFAIL("Failed to start plugin, got exception: std::exception");
   }
 
-  // Start pSL4 that will require the serivce interface and publish
+  // Start pSL4 that will require the service interface and publish
   // ctkFooService
   try
   {
@@ -153,7 +153,7 @@ void ctkServiceListenerTestSuite::frameSL25a()
     QFAIL("Failed to start plubin, got exception.");
   }
 
-  // Start buSL3 that will require the serivce interface and get the service
+  // Start buSL3 that will require the service interface and get the service
   try
   {
     qDebug() << "Starting pSL3:" << pSL3;
@@ -304,11 +304,11 @@ void ctkServiceListenerTestSuite::frameSL25a()
 
 
   QVERIFY2(sListen.teststatus, "Service listener checks");
-  try 
+  try
   {
     //pc->disconnectServiceListener(&sListen, "serviceChanged");
     sListen.clearEvents();
-  } 
+  }
   catch (const ctkIllegalStateException& ise)
   {
     qDebug() << ise.what();
@@ -498,7 +498,7 @@ void ctkServiceListener::serviceChanged(const ctkServiceEvent& evt)
     try
     {
       qulonglong sid = sr.getProperty(ctkPluginConstants::SERVICE_ID).toLongLong();
-      QString sidFilter = QString("(") + ctkPluginConstants::SERVICE_ID + "=" + sid + ")";
+      QString sidFilter = QString("(") + ctkPluginConstants::SERVICE_ID + "=" + QString::number(sid) + ")";
       QList<ctkServiceReference> srs = pc->getServiceReferences("", sidFilter);
       if (srs.isEmpty())
       {
@@ -520,7 +520,7 @@ void ctkServiceListener::serviceChanged(const ctkServiceEvent& evt)
     catch (const std::exception& e)
     {
       teststatus = false;
-      qDebug() << "*** Unexpected excpetion when trying to lookup a"
+      qDebug() << "*** Unexpected exception when trying to lookup a"
                   " service while it is in state UNREGISTERING;"
                << e.what();
     }

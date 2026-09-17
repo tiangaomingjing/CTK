@@ -98,7 +98,10 @@ public:
   mutable QValidator::State CachedState;
   mutable int CachedDecimals;
   mutable QSize CachedSizeHint;
+  mutable QSize CachedMinimumSizeHint;
   bool ForceInputValueUpdate;
+
+  bool IsSettingValue;
 
   QPointer<ctkValueProxy> Proxy;
 

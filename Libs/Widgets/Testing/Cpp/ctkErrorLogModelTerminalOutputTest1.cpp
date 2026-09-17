@@ -45,36 +45,48 @@ bool checkTerminalOutput(const QStringList& expectedMessages)
 {
   ctkCommandLineParser parser;
   parser.setArgumentPrefix("--", "-");
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+  parser.addArgument("test-launcher", "", QMetaType::QString, "Path to test launcher");
+#else
   parser.addArgument("test-launcher", "", QVariant::String, "Path to test launcher");
+#endif
   bool ok = false;
   QHash<QString, QVariant> parsedArgs = parser.parseArguments(QCoreApplication::arguments(), &ok);
   if(!ok)
-    {
+  {
     std::cerr << "Line " << __LINE__ << " - Failed to parse arguments !" << std::endl;
     return false;
-    }
+  }
   if (parsedArgs.contains("test-launcher"))
-    {
+  {
     QString testLauncher = parsedArgs.value("test-launcher").toString();
     if (!QFile::exists(testLauncher))
-      {
+    {
       std::cerr << "Line " << __LINE__ << " - Couldn't find test launcher !\n"
                 << "\ttest-launcher:" << qPrintable(testLauncher) << std::endl;
       return false;
-      }
+    }
     QProcess process;
     process.setProcessChannelMode(QProcess::MergedChannels);
     process.start(testLauncher, QStringList() << QCoreApplication::arguments().at(0));
     process.waitForFinished(1000);
-    QString output = process.readAll();
-    QString errorMsg = checkTextMessages(__LINE__, output.split("\n"), expectedMessages);
-    if (!errorMsg.isEmpty())
+    QStringList lines;
+    for (const QString& line : QString::fromUtf8(process.readAll()).split('\n'))
+    {
+      const QString trimmed = line.trimmed();
+      if (!trimmed.isEmpty())
       {
+        lines << trimmed;
+      }
+    }
+    QString errorMsg = checkTextMessages(__LINE__, lines, expectedMessages);
+    if (!errorMsg.isEmpty())
+    {
       printErrorMessage(errorMsg);
       return false;
-      }
-    process.waitForFinished(1000);
     }
+    process.waitForFinished(1000);
+  }
   return true;
 }
 }
@@ -90,54 +102,57 @@ int ctkErrorLogModelTerminalOutputTest1(int argc, char * argv [])
   QString qtMessage0("This is a qDebug message");
   QString qtMessage1("This is a qWarning message");
   QString qtMessage2("This is a qCritical message");
+  // e with acute (U+00E9) is 1 UTF-16 unit but 2 UTF-8 bytes; size() != toUtf8().size() for this string.
+  // This guards against regressions where output() used QString::size() as the write byte count.
+  QString qtMessageUtf8 = QString::fromUtf8("caf\xc3\xa9 r\xc3\xa9sum\xc3\xa9"); // "café résumé"
   QString stdMessage0("This is a std::cerr message");
   QString stdMessage1("This is a std::cout message");
 
   QStringList expectedMessages;
   expectedMessages << fdMessage0 << fdMessage1
-                   << qtMessage0 << qtMessage1 << qtMessage2
+                   << qtMessage0 << qtMessage1 << qtMessage2 << qtMessageUtf8
                    << stdMessage0 << stdMessage1;
 
-  // Since the order of the messages outputed on the terminal is not deterministic,
+  // Since the order of the messages outputted on the terminal is not deterministic,
   // let's just make sure that all messages have been displayed on the terminal
   // independently of their order.
   if (!checkTerminalOutput(expectedMessages))
-    {
+  {
     return EXIT_FAILURE;
-    }
+  }
 
   QString errorMsg;
 
   ctkErrorLogModel model;
-  ctkErrorLogTerminalOutput::TerminalOutputs currentTerminalOutputEnabled = model.terminalOutputs();
-  errorMsg = checkBoolean(__LINE__, "TerminalOutputEnabled",
-                          currentTerminalOutputEnabled, ctkErrorLogTerminalOutput::None);
+  ctkErrorLogTerminalOutput::TerminalOutputs currentTerminalOutput = model.terminalOutputs();
+  errorMsg = checkInteger(__LINE__, "TerminalOutput",
+                          currentTerminalOutput, ctkErrorLogTerminalOutput::None);
   if (!errorMsg.isEmpty())
-    {
+  {
     model.disableAllMsgHandler();
     printErrorMessage(errorMsg);
     printTextMessages(model);
     return EXIT_FAILURE;
-    }
+  }
 
   model.setTerminalOutputs(ctkErrorLogTerminalOutput::All);
 
-  currentTerminalOutputEnabled = model.terminalOutputs();
-  errorMsg = checkBoolean(__LINE__, "TerminalOutputEnabled",
-                          currentTerminalOutputEnabled, ctkErrorLogTerminalOutput::All);
+  currentTerminalOutput = model.terminalOutputs();
+  errorMsg = checkInteger(__LINE__, "TerminalOutput",
+                          currentTerminalOutput, ctkErrorLogTerminalOutput::All);
   if (!errorMsg.isEmpty())
-    {
+  {
     model.disableAllMsgHandler();
     printErrorMessage(errorMsg);
     printTextMessages(model);
     return EXIT_FAILURE;
-    }
+  }
 
   ctkModelTester modelTester;
   modelTester.setVerbose(false);
 
   try
-    {
+  {
     modelTester.setModel(&model);
 
     // Monitor Qt messages
@@ -155,47 +170,49 @@ int ctkErrorLogModelTerminalOutputTest1(int argc, char * argv [])
     fprintf(stdout, "%s\n", qPrintable(fdMessage0));
     fflush(stdout);
 
-    qDebug().nospace() << qPrintable(qtMessage0);
+    qDebug().nospace() << qUtf8Printable(qtMessage0);
 
     std::cerr << qPrintable(stdMessage0) << std::endl;
 
-    qWarning().nospace() << qPrintable(qtMessage1);
+    qWarning().nospace() << qUtf8Printable(qtMessage1);
 
     fprintf(stderr, "%s\n", qPrintable(fdMessage1));
     fflush(stderr);
 
     std::cout << qPrintable(stdMessage1) << std::endl;
 
-    qCritical().nospace() << qPrintable(qtMessage2);
+    qCritical().nospace() << qUtf8Printable(qtMessage2);
+
+    qDebug().nospace() << qUtf8Printable(qtMessageUtf8);
 
     // Give enough time to the ErrorLogModel to consider the queued messages.
     processEvents(1000);
 
     errorMsg = checkRowCount(__LINE__, model.rowCount(), /* expected = */ expectedMessages.count());
     if (!errorMsg.isEmpty())
-      {
+    {
       model.disableAllMsgHandler();
       printErrorMessage(errorMsg);
       printTextMessages(model);
       return EXIT_FAILURE;
-      }
+    }
 
     errorMsg = checkTextMessages(__LINE__, model, expectedMessages);
     if (!errorMsg.isEmpty())
-      {
+    {
       model.disableAllMsgHandler();
       printErrorMessage(errorMsg);
       printTextMessages(model);
       return EXIT_FAILURE;
-      }
-
     }
+
+  }
   catch (const char* error)
-    {
+  {
     model.disableAllMsgHandler();
     std::cerr << error << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   return EXIT_SUCCESS;
 }

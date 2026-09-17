@@ -13,6 +13,10 @@ ExternalProject_Include_Dependencies(${proj}
   USE_SYSTEM_VAR ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj}
   )
 
+# Let the user to chose whether to use libs installed in the system
+option(${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj} "Use installed ${proj} library in the system" OFF)
+mark_as_advanced(${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
+
 if(${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   unset(VTK_DIR CACHE)
   find_package(VTK REQUIRED NO_MODULE)
@@ -25,10 +29,19 @@ endif()
 
 if(NOT DEFINED VTK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
 
-  set(revision_tag f3f70ec0912cf836a3d5954a95cb04f0237fbdc4)
+  if(NOT DEFINED CTK_VTK_VERSION_MAJOR)
+      set(CTK_VTK_VERSION_MAJOR "9")
+  endif()
+  if(NOT CTK_VTK_VERSION_MAJOR MATCHES "^(9)$")
+    message(FATAL_ERROR "Expected value for CTK_VTK_VERSION_MAJOR is '9'")
+  endif()
+  ExternalProject_Message(${proj} "VTK[CTK_VTK_VERSION_MAJOR:${CTK_VTK_VERSION_MAJOR}]")
+
+  set(revision_tag v9.5.2)
   if(${proj}_REVISION_TAG)
     set(revision_tag ${${proj}_REVISION_TAG})
   endif()
+  ExternalProject_Message(${proj} "${proj}[revision_tag:${revision_tag}]")
 
   set(location_args )
   if(${proj}_URL)
@@ -37,41 +50,95 @@ if(NOT DEFINED VTK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
     set(location_args GIT_REPOSITORY ${${proj}_GIT_REPOSITORY}
                       GIT_TAG ${revision_tag})
   else()
-    set(location_args GIT_REPOSITORY "${git_protocol}://vtk.org/VTK.git"
+    set(location_args GIT_REPOSITORY "${EP_GIT_PROTOCOL}://github.com/kitware/VTK.git"
                       GIT_TAG ${revision_tag})
   endif()
 
   set(additional_vtk_cmakevars )
+  set(additional_vtk9_cmakevars )
   if(MINGW)
     list(APPEND additional_vtk_cmakevars -DCMAKE_USE_PTHREADS:BOOL=OFF)
   endif()
 
   if(CTK_LIB_Scripting/Python/Core_PYTHONQT_USE_VTK)
+
+    set(Python3_EXECUTABLE ${PYTHON_EXECUTABLE})
+    set(Python3_INCLUDE_DIR ${PYTHON_INCLUDE_DIR})
+    set(Python3_LIBRARY ${PYTHON_LIBRARY})
+    set(Python3_LIBRARY_DEBUG ${PYTHON_LIBRARY})
+    set(Python3_LIBRARY_RELEASE ${PYTHON_LIBRARY})
+    find_package(Python3 COMPONENTS Interpreter Development)
+
+    ctkFunctionExtractOptimizedLibrary(PYTHON_LIBRARIES PYTHON_LIBRARY)
     list(APPEND additional_vtk_cmakevars
+      # FindPythonInterp, FindPythonLibs
       -DPYTHON_EXECUTABLE:PATH=${PYTHON_EXECUTABLE}
-      -DPYTHON_LIBRARIES:FILEPATH=${PYTHON_LIBRARIES}
+      -DPYTHON_INCLUDE_DIR:PATH=${PYTHON_INCLUDE_DIR}
+      -DPYTHON_LIBRARY:FILEPATH=${PYTHON_LIBRARY}
       -DPYTHON_DEBUG_LIBRARIES:FILEPATH=${PYTHON_DEBUG_LIBRARIES}
+      )
+    # VTK9
+    list(APPEND additional_vtk9_cmakevars
+      # FindPython3
+      -DPython3_INCLUDE_DIR:PATH=${Python3_INCLUDE_DIR}
+      -DPython3_LIBRARY:FILEPATH=${Python3_LIBRARY}
+      -DPython3_LIBRARY_DEBUG:FILEPATH=${Python3_LIBRARY}
+      -DPython3_LIBRARY_RELEASE:FILEPATH=${Python3_LIBRARY}
+      -DPython3_EXECUTABLE:FILEPATH=${Python3_EXECUTABLE}
       )
   endif()
 
-  if(CTK_QT_VERSION VERSION_LESS "5")
+  if(CTK_QT_VERSION VERSION_EQUAL "5")
+    # Qt5
     list(APPEND additional_vtk_cmakevars
-      -DVTK_QT_VERSION:STRING=4
-      -DDESIRED_QT_VERSION:STRING=4
-      -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE}
-      )
-  else()
-    list(APPEND additional_vtk_cmakevars
-      -DVTK_QT_VERSION:STRING=5
-      -DDESIRED_QT_VERSION:STRING=5
       -DQt5_DIR:PATH=${Qt5_DIR}
       )
-    # XXX Backward compatible way
-    if(DEFINED CMAKE_PREFIX_PATH)
-      list(APPEND additional_vtk_cmakevars
-        -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
+  elseif(CTK_QT_VERSION VERSION_EQUAL "6")
+    # Qt6
+    list(APPEND additional_vtk_cmakevars
+      -DQt6_DIR:PATH=${Qt6_DIR}
+      )
+  else()
+    message(FATAL_ERROR "Support for Qt${CTK_QT_VERSION} is not implemented")
+  endif()
+
+  # VTK 9
+  list(APPEND additional_vtk9_cmakevars
+    -DVTK_MODULE_ENABLE_VTK_ChartsCore:STRING=YES
+    -DVTK_MODULE_ENABLE_VTK_ViewsContext2D:STRING=YES
+    -DVTK_MODULE_ENABLE_VTK_RenderingContext2D:STRING=YES
+    -DVTK_MODULE_ENABLE_VTK_RenderingContextOpenGL2:STRING=YES
+    -DVTK_MODULE_ENABLE_VTK_GUISupportQt:STRING=YES
+    -DVTK_GROUP_ENABLE_Qt:STRING=YES
+    -DVTK_MODULE_ENABLE_VTK_GUISupportQtOpenGL:STRING=YES # OpenGL2 rendering backend
+    )
+  # XXX Backward compatible way
+  if(DEFINED CMAKE_PREFIX_PATH)
+    list(APPEND additional_vtk9_cmakevars
+      -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
+      )
+  endif()
+
+  if(UNIX AND NOT APPLE)
+    find_package(FontConfig QUIET)
+    if(FONTCONFIG_FOUND)
+      # VTK9
+      list(APPEND additional_vtk9_cmakevars
+        -DVTK_MODULE_ENABLE_VTK_RenderingFreeTypeFontConfig:BOOL=ON
         )
     endif()
+
+    # OpenGL_GL_PREFERENCE
+    if(NOT DEFINED OpenGL_GL_PREFERENCE)
+      set(OpenGL_GL_PREFERENCE "LEGACY")
+    endif()
+    if(NOT "${OpenGL_GL_PREFERENCE}" MATCHES "^(LEGACY|GLVND)$")
+      message(FATAL_ERROR "OpenGL_GL_PREFERENCE variable is expected to be set to LEGACY or GLVND")
+    endif()
+    ExternalProject_Message(${proj} "VTK[OpenGL_GL_PREFERENCE:${OpenGL_GL_PREFERENCE}]")
+    list(APPEND additional_vtk_cmakevars
+      -DOpenGL_GL_PREFERENCE:STRING=${OpenGL_GL_PREFERENCE}
+      )
   endif()
 
   ExternalProject_Add(${proj}
@@ -84,20 +151,36 @@ if(NOT DEFINED VTK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
     CMAKE_CACHE_ARGS
       ${ep_common_cache_args}
       ${additional_vtk_cmakevars}
+      ${additional_vtk${CTK_VTK_VERSION_MAJOR}_cmakevars}
       -DVTK_WRAP_TCL:BOOL=OFF
       -DVTK_USE_TK:BOOL=OFF
       -DVTK_WRAP_PYTHON:BOOL=${CTK_LIB_Scripting/Python/Core_PYTHONQT_USE_VTK}
       -DVTK_WRAP_JAVA:BOOL=OFF
       -DBUILD_SHARED_LIBS:BOOL=ON
-      -DVTK_USE_GUISUPPORT:BOOL=ON
-      -DVTK_USE_QVTK_QTOPENGL:BOOL=ON
-      -DVTK_USE_QT:BOOL=ON # VTK 5
-      -DVTK_Group_Qt:BOOL=ON # VTK 6
       -DVTK_LEGACY_REMOVE:BOOL=ON
     DEPENDS
       ${${proj}_DEPENDENCIES}
     )
   set(VTK_DIR ${CMAKE_BINARY_DIR}/${proj}-build)
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to build tree
+
+  # library paths
+  set(_library_output_subdir bin)
+  if(UNIX)
+    set(_library_output_subdir lib)
+  endif()
+  set(${proj}_LIBRARY_PATHS_LAUNCHER_BUILD ${VTK_DIR}/${_library_output_subdir}/<CMAKE_CFG_INTDIR>)
+  mark_as_superbuild(
+    VARS ${proj}_LIBRARY_PATHS_LAUNCHER_BUILD
+    LABELS "LIBRARY_PATHS_LAUNCHER_BUILD"
+    )
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to install tree
+
+  # NA
 
 else()
   ExternalProject_Add_Empty(${proj} DEPENDS ${${proj}_DEPENDENCIES})
@@ -106,4 +189,15 @@ endif()
 mark_as_superbuild(
   VARS VTK_DIR:PATH
   LABELS "FIND_PACKAGE"
+  )
+
+# Propagate variables expected when VTK searches for python
+mark_as_superbuild(
+  VARS
+    Python3_INCLUDE_DIR:PATH
+    Python3_ROOT_DIR:PATH
+    Python3_LIBRARY:FILEPATH
+    Python3_LIBRARY_DEBUG:FILEPATH
+    Python3_LIBRARY_RELEASE:FILEPATH
+    Python3_EXECUTABLE:FILEPATH
   )

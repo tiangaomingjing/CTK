@@ -5,7 +5,6 @@ ctkMacroBuildLib(
   NAME "CTKDummyPlugin"
   EXPORT_DIRECTIVE "CTK_DUMMY_EXPORT"
   SRCS ctkDummyPlugin.h ctkDummyPlugin.cpp
-  MOC_SRCS "ctkDummyPlugin.h"
   TARGET_LIBRARIES ${CTK_BASE_LIBRARIES}
   LIBRARY_TYPE "SHARED"
   )
@@ -26,6 +25,7 @@ set(KITTests_SRCS
   ctkBooleanMapperTest.cpp
   ctkCallbackTest1.cpp
   ctkCommandLineParserTest1.cpp
+  ctkCoreSettingsTest.cpp
   ctkCoreTestingMacrosTest.cpp
   ctkCoreTestingUtilitiesTest.cpp
   ctkExceptionTest.cpp
@@ -35,7 +35,9 @@ set(KITTests_SRCS
   ctkLoggerTest1.cpp
   ctkModelTesterTest1.cpp
   ctkModelTesterTest2.cpp
+  ctkUtf8Test1.cpp
   ctkUtilsCopyDirRecursivelyTest1.cpp
+  ctkUtilsIsDirEmptyTest1.cpp
   ctkUtilsQtHandleToStringTest1.cpp
   ctkUtilsTest.cpp
   ctkUtilsTest1.cpp
@@ -51,12 +53,6 @@ set(KITTests_SRCS
   ctkWorkflowTest2.cpp
   ctkWorkflowTest3.cpp
   )
-
-if(HAVE_BFD)
-  list(APPEND KITTests_SRCS
-    ctkBinaryFileDescriptorTest1.cpp
-    )
-endif()
 
 include_directories(
   ${CMAKE_SOURCE_DIR}/Libs/Testing
@@ -86,30 +82,6 @@ set(Tests_Helpers_SRCS
   ctkSingletonTestHelper.h
   )
 
-set(Tests_Helpers_MOC_SRCS
-  ctkExampleWorkflowStepUsingSignalsAndSlots.h
-  )
-
-set(Tests_Helpers_MOC_CPPS
-  ctkBooleanMapperTest.cpp
-  ctkFileLoggerTest.cpp
-  ctkLinearValueProxyTest.cpp
-  ctkUtilsTest.cpp
-  )
-
-set(Tests_Helpers_MOC_CPP)
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  qt5_wrap_cpp(Tests_Helpers_MOC_CPP ${Tests_Helpers_MOC_SRCS})
-  qt5_generate_mocs(${Tests_Helpers_MOC_CPPS})
-else()
-  QT4_WRAP_CPP(Tests_Helpers_MOC_CPP ${Tests_Helpers_MOC_SRCS})
-  QT4_GENERATE_MOCS(${Tests_Helpers_MOC_CPPS})
-endif()
-
-if(HAVE_BFD)
-  add_executable(ctkBinaryFileDescriptorTestHelper ctkBinaryFileDescriptorTestHelper.cpp)
-endif()
-
 if(MSVC)
   add_definitions( /D _CRT_SECURE_NO_WARNINGS)
 endif()
@@ -117,12 +89,22 @@ endif()
 #
 # Test executable
 #
-add_executable(${KIT}CppTests ${Tests} ${Tests_Helpers_SRCS} ${Tests_Helpers_MOC_CPP})
+ctk_add_executable_utf8(${KIT}CppTests ${Tests} ${Tests_Helpers_SRCS} ${Tests_Helpers_MOC_CPP})
 target_link_libraries(${KIT}CppTests ${LIBRARY_NAME} ${CTK_BASE_LIBRARIES} CTKDummyPlugin)
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  qt5_use_modules(${KIT}CppTests Test Widgets)
-endif()
+find_package(Qt${CTK_QT_VERSION} COMPONENTS Test Widgets REQUIRED)
+target_link_libraries(${KIT}CppTests
+  Qt${CTK_QT_VERSION}::Test
+  Qt${CTK_QT_VERSION}::Widgets
+  )
+
+# Configure CMake Qt automatic code generation
+# ENABLE_EXPORTS adds -rdynamic on Linux so that dladdr() can resolve
+# symbols in the executable (needed by ctkBackTraceTest).
+set_target_properties(${KIT}CppTests PROPERTIES
+  AUTOMOC ON
+  ENABLE_EXPORTS ON
+  )
 
 if(UNIX AND NOT APPLE)
   target_link_libraries(${KIT}CppTests rt)
@@ -140,12 +122,10 @@ SIMPLE_TEST( ctkAbstractQObjectFactoryTest1 )
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
   SIMPLE_TEST( ctkBackTraceTest )
 endif()
-if(HAVE_BFD)
-  SIMPLE_TEST( ctkBinaryFileDescriptorTest1 $<TARGET_FILE:ctkBinaryFileDescriptorTestHelper> )
-endif()
 SIMPLE_TEST( ctkBooleanMapperTest )
 SIMPLE_TEST( ctkCallbackTest1 )
 SIMPLE_TEST( ctkCommandLineParserTest1 )
+SIMPLE_TEST( ctkCoreSettingsTest )
 SIMPLE_TEST( ctkCoreTestingMacrosTest )
 SIMPLE_TEST( ctkCoreTestingUtilitiesTest )
 SIMPLE_TEST( ctkDependencyGraphTest1 )
@@ -155,13 +135,13 @@ SIMPLE_TEST( ctkFileLoggerTest )
 SIMPLE_TEST( ctkHighPrecisionTimerTest )
 SIMPLE_TEST( ctkLinearValueProxyTest )
 SIMPLE_TEST( ctkLoggerTest1 )
-set_property(TEST ctkLoggerTest1 PROPERTY PASS_REGULAR_EXPRESSION "logger.debug\nlogger.info\nlogger.trace\nlogger.warn\nlogger.error\nlogger.fatal")
 SIMPLE_TEST( ctkModelTesterTest1 )
 SIMPLE_TEST( ctkModelTesterTest2 )
 SIMPLE_TEST( ctkPimplTest1 )
 SIMPLE_TEST( ctkScopedCurrentDirTest1 )
 SIMPLE_TEST( ctkSingletonTest1 )
 SIMPLE_TEST( ctkUtilsCopyDirRecursivelyTest1 )
+SIMPLE_TEST( ctkUtilsIsDirEmptyTest1 )
 SIMPLE_TEST( ctkUtilsQtHandleToStringTest1 )
 SIMPLE_TEST( ctkUtilsTest )
 SIMPLE_TEST( ctkUtilsTest1 )

@@ -36,6 +36,8 @@
 class ctkVTKPropertyWidgetTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkVTKPropertyWidgetTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
   void testGUIEvents();
   void testVTKProperty();
@@ -104,8 +106,8 @@ void ctkVTKPropertyWidgetTester::testProperties()
   QCOMPARE(propertyWidget.representation(), 0);
   propertyWidget.setPointSize(3.5);
   QCOMPARE(propertyWidget.pointSize(), 3.5);
-  propertyWidget.setLineWidth(10.11);
-  QCOMPARE(propertyWidget.lineWidth(), 10.11);
+  propertyWidget.setLineWidth(10.5);
+  QCOMPARE(propertyWidget.lineWidth(), 10.5);
   propertyWidget.setFrontfaceCulling(true);
   QCOMPARE(propertyWidget.frontfaceCulling(), true);
   propertyWidget.setBackfaceCulling(true);
@@ -128,4 +130,4 @@ void ctkVTKPropertyWidgetTester::testProperties()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkVTKPropertyWidgetTest)
-#include "moc_ctkVTKPropertyWidgetTest.cpp"
+#include "ctkVTKPropertyWidgetTest.moc"

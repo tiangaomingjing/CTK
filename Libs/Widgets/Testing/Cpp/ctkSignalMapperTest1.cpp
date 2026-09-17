@@ -54,15 +54,19 @@ int ctkSignalMapperTest1(int argc, char* argv[])
 
   QObject::connect(&actionGroup, SIGNAL(triggered(QAction*)),
                    &signalMapper, SLOT(map(QAction*)));
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  QSignalSpy signalSpy(&signalMapper, SIGNAL(mappedInt(int)));
+#else
   QSignalSpy signalSpy(&signalMapper, SIGNAL(mapped(int)));
+#endif
 
   action2.trigger();
 
   if (signalSpy.count() != 1 ||
       signalSpy.at(0).at(0).toInt() != 2)
-    {
+  {
     std::cerr << "ctkSignalMapper::map(QAction*) failed." << std::endl;
     return EXIT_FAILURE;
-    }
+  }
   return EXIT_SUCCESS;
 }

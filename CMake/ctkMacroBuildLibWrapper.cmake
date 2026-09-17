@@ -31,6 +31,27 @@
 #! static library providing a initialization function that will allow to load
 #! both (1) and (2).
 
+# Function copied from https://github.com/scikit-build/scikit-build/pull/299
+# XXX Update this CMake module to use function from scikit-build to build the wrapper
+function(_ctk_set_python_extension_symbol_visibility _target)
+  set(_modinit_prefix "PyInit_")
+  if("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
+    set_target_properties(${_target} PROPERTIES LINK_FLAGS
+        "/EXPORT:${_modinit_prefix}${_target}"
+    )
+  elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+    set(_script_path
+      ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${_target}-version-script.map
+    )
+    file(WRITE ${_script_path}
+               "{global: ${_modinit_prefix}${_target}; local: *; };"
+    )
+    set_property(TARGET ${_target} APPEND_STRING PROPERTY LINK_FLAGS
+        " -Wl,--version-script=${_script_path}"
+    )
+  endif()
+endfunction()
+
 #! \ingroup CMakeAPI
 macro(ctkMacroBuildLibWrapper)
   ctkMacroParseArguments(MY
@@ -74,6 +95,7 @@ macro(ctkMacroBuildLibWrapper)
   # Since the PythonQt decorator depends on PythonQt, Python and VTK, let's link against
   # these ones to avoid complaints of MSVC
   # Note: "LINK_DIRECTORIES" has to be invoked before "ADD_LIBRARY"
+  ctkFunctionExtractOptimizedLibrary(PYTHON_LIBRARIES PYTHON_LIBRARY)
   set(my_EXTRA_PYTHON_LIBRARIES ${PYTHON_LIBRARY} ${PYTHONQT_LIBRARIES})
 
   # Does a header having the expected filename exists ?
@@ -98,11 +120,6 @@ macro(ctkMacroBuildLibWrapper)
     KIT_PYTHONQT_SRCS "${MY_SRCS}" FALSE ${HAS_DECORATOR})
   if(HAS_DECORATOR)
     list(APPEND KIT_PYTHONQT_SRCS ${DECORATOR_HEADER})
-    if (CTK_QT_VERSION VERSION_GREATER "4")
-      qt5_wrap_cpp(KIT_PYTHONQT_SRCS ${DECORATOR_HEADER} OPTIONS -f${DECORATOR_HEADER})
-    else()
-      QT4_WRAP_CPP(KIT_PYTHONQT_SRCS ${DECORATOR_HEADER} OPTIONS -f${DECORATOR_HEADER})
-    endif()
   endif()
   add_library(${lib_name}PythonQt ${MY_WRAPPER_LIBRARY_TYPE} ${KIT_PYTHONQT_SRCS})
   target_link_libraries(${lib_name}PythonQt ${lib_name} ${my_EXTRA_PYTHON_LIBRARIES})
@@ -122,10 +139,16 @@ macro(ctkMacroBuildLibWrapper)
       set_target_properties(${lib_name}PythonQt PROPERTIES SUFFIX ".pyd")
     endif()
   endif()
+  _ctk_set_python_extension_symbol_visibility(${lib_name}PythonQt)
   set_target_properties(${lib_name}PythonQt PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${MY_RUNTIME_OUTPUT_DIRECTORY}"
     LIBRARY_OUTPUT_DIRECTORY "${MY_LIBRARY_OUTPUT_DIRECTORY}"
     ARCHIVE_OUTPUT_DIRECTORY "${MY_ARCHIVE_OUTPUT_DIRECTORY}"
+    )
+
+  # Configure CMake Qt automatic code generation
+  set_target_properties(${lib_name}PythonQt PROPERTIES
+    AUTOMOC ON
     )
 
   # Set labels associated with the target.
@@ -145,5 +168,3 @@ macro(ctkMacroBuildLibWrapper)
   endif()
 
 endmacro()
-
-

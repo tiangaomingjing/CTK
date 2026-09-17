@@ -29,6 +29,8 @@
 class ctkLinearValueProxyTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkLinearValueProxyTester(QObject* parent = nullptr) : QObject(parent) {}
 private Q_SLOTS:
   void testSimpleSetValue();
   void testSimpleSetValue_data();
@@ -113,10 +115,10 @@ void ctkLinearValueProxyTester::testCoefficient()
   ctkTest::COMPARE(valueSpy.count(), 0);
   ctkTest::COMPARE(proxyValueSpy.count(), proxy.proxyValue() != 13.2 ? 1 : 0);
   if (proxyValueSpy.count())
-    {
+  {
     double proxyValueFromSpy = proxyValueSpy.takeFirst().at(0).toDouble();
     ctkTest::COMPARE(proxyValueFromSpy, expectedProxyValue);
-    }
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -166,10 +168,10 @@ void ctkLinearValueProxyTester::testOffset()
   ctkTest::COMPARE(valueSpy.count(), 0);
   ctkTest::COMPARE(proxyValueSpy.count(), proxy.proxyValue() != 13.2 ? 1 : 0);
   if (proxyValueSpy.count())
-    {
+  {
     double proxyValueFromSpy = proxyValueSpy.takeFirst().at(0).toDouble();
     ctkTest::COMPARE(proxyValueFromSpy, expectedProxyValue);
-    }
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -216,17 +218,17 @@ void ctkLinearValueProxyTester::testSetValue()
 
   ctkTest::COMPARE(valueSpy.count(), proxy.value() != 13.2 ? 1 : 0);
   if (valueSpy.count())
-    {
+  {
     double valueFromSpy = valueSpy.takeFirst().at(0).toDouble();
     ctkTest::COMPARE(valueFromSpy, value);
-    }
+  }
 
   ctkTest::COMPARE(proxyValueSpy.count(), proxy.proxyValue() != 0.0 ? 1 : 0);
   if (proxyValueSpy.count())
-    {
+  {
     double proxyValueFromSpy = proxyValueSpy.takeFirst().at(0).toDouble();
     ctkTest::COMPARE(proxyValueFromSpy, expectedProxyValue);
-    }
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -291,18 +293,18 @@ void ctkLinearValueProxyTester::testSetValueNullCoeff()
 
   ctkTest::COMPARE(valueSpy.count(), proxy.value() != 13.2 ? 1 : 0);
   if (valueSpy.count())
-    {
+  {
     double valueFromSpy = valueSpy.takeFirst().at(0).toDouble();
     ctkTest::COMPARE(valueFromSpy, value);
-    }
+  }
 
   QFETCH(bool, shouldExpectProxyValue);
   ctkTest::COMPARE(proxyValueSpy.count(), shouldExpectProxyValue ? 1 : 0);
   if (proxyValueSpy.count())
-    {
+  {
     double proxyValueFromSpy = proxyValueSpy.takeFirst().at(0).toDouble();
     ctkTest::COMPARE(proxyValueFromSpy, expectedProxyValue);
-    }
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -349,17 +351,17 @@ void ctkLinearValueProxyTester::testSetProxyValue()
 
   ctkTest::COMPARE(valueSpy.count(), proxy.value() != oldValue ? 1 : 0);
   if (valueSpy.count())
-    {
+  {
     double valueFromSpy = valueSpy.takeFirst().at(0).toDouble();
     ctkTest::COMPARE(valueFromSpy, expectedValue);
-    }
+  }
 
   ctkTest::COMPARE(proxyValueSpy.count(), proxy.proxyValue() != 13.2 ? 1 : 0);
   if (proxyValueSpy.count())
-    {
+  {
     double proxyValueFromSpy = proxyValueSpy.takeFirst().at(0).toDouble();
     ctkTest::COMPARE(proxyValueFromSpy, proxyValue);
-    }
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -424,17 +426,17 @@ void ctkLinearValueProxyTester::testSetProxyValueNullCoeff()
 
   ctkTest::COMPARE(valueSpy.count(), proxy.value() != 13.2 ? 1 : 0);
   if (valueSpy.count())
-    {
+  {
     double valueFromSpy = valueSpy.takeFirst().at(0).toDouble();
     ctkTest::COMPARE(valueFromSpy, expectedValue);
-    }
+  }
 
   ctkTest::COMPARE(proxyValueSpy.count(), proxy.proxyValue() != 0.0 ? 1 : 0);
   if (proxyValueSpy.count())
-    {
+  {
     double proxyValueFromSpy = proxyValueSpy.takeFirst().at(0).toDouble();
     ctkTest::COMPARE(proxyValueFromSpy, proxyValue);
-    }
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -477,13 +479,13 @@ void ctkLinearValueProxyTester::testProxyModified()
   QFETCH(bool, changeCoefficient);
   QFETCH(double, coefficientOrOffset);
   if (changeCoefficient)
-    {
+  {
     proxy.setCoefficient(coefficientOrOffset);
-    }
+  }
   else
-    {
+  {
     proxy.setOffset(coefficientOrOffset);
-    }
+  }
   QFETCH(int, expectedSignalCount);
   ctkTest::COMPARE(proxyAboutToBeModifiedSpy.count(), expectedSignalCount);
   ctkTest::COMPARE(proxyModifiedSpy.count(), expectedSignalCount);
@@ -506,4 +508,4 @@ void ctkLinearValueProxyTester::testProxyModified_data()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkLinearValueProxyTest)
-#include "moc_ctkLinearValueProxyTest.cpp"
+#include "ctkLinearValueProxyTest.moc"

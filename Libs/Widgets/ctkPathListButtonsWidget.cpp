@@ -65,14 +65,14 @@ void ctkPathListButtonsWidgetPrivate::setupUi(QWidget * widget)
 {
   this->Ui_ctkPathListButtonsWidget::setupUi(widget);
 
-  connect(this->AddFilesButton, SIGNAL(clicked()), SLOT(on_AddFilesButton_clicked()));
-  connect(this->AddDirectoryButton, SIGNAL(clicked()), SLOT(on_AddDirButton_clicked()));
-  connect(this->RemoveButton, SIGNAL(clicked()), SLOT(on_RemoveButton_clicked()));
-  connect(this->EditButton, SIGNAL(clicked()), SLOT(on_EditButton_clicked()));
+  connect(this->AddFilesButton, SIGNAL(clicked()), SLOT(addFilesButtonClicked()));
+  connect(this->AddDirectoryButton, SIGNAL(clicked()), SLOT(addDirButtonClicked()));
+  connect(this->RemoveButton, SIGNAL(clicked()), SLOT(removeButtonClicked()));
+  connect(this->EditButton, SIGNAL(clicked()), SLOT(editButtonClicked()));
 }
 
 //-----------------------------------------------------------------------------
-void ctkPathListButtonsWidgetPrivate::on_AddFilesButton_clicked()
+void ctkPathListButtonsWidgetPrivate::addFilesButtonClicked()
 {
   if (!this->PathListWidget) return;
 
@@ -81,7 +81,7 @@ void ctkPathListButtonsWidgetPrivate::on_AddFilesButton_clicked()
 }
 
 //-----------------------------------------------------------------------------
-void ctkPathListButtonsWidgetPrivate::on_AddDirButton_clicked()
+void ctkPathListButtonsWidgetPrivate::addDirButtonClicked()
 {
   if (!this->PathListWidget) return;
 
@@ -90,7 +90,7 @@ void ctkPathListButtonsWidgetPrivate::on_AddDirButton_clicked()
 }
 
 //-----------------------------------------------------------------------------
-void ctkPathListButtonsWidgetPrivate::on_RemoveButton_clicked()
+void ctkPathListButtonsWidgetPrivate::removeButtonClicked()
 {
   if (!this->PathListWidget) return;
 
@@ -98,7 +98,7 @@ void ctkPathListButtonsWidgetPrivate::on_RemoveButton_clicked()
 }
 
 //-----------------------------------------------------------------------------
-void ctkPathListButtonsWidgetPrivate::on_EditButton_clicked()
+void ctkPathListButtonsWidgetPrivate::editButtonClicked()
 {
   Q_Q(ctkPathListButtonsWidget);
 
@@ -122,13 +122,13 @@ void ctkPathListButtonsWidgetPrivate::on_EditButton_clicked()
     {
       QMessageBox::information(q, tr("Editing the path failed"),
                                QString(tr("Failed to change path:\n\n%1\n\nto path\n\n%2\n\nPlease check your permissions."))
-                               .arg(currentPath).arg(paths.front()));
+                               .arg(currentPath, paths.front()));
     }
   }
 }
 
 //-----------------------------------------------------------------------------
-void ctkPathListButtonsWidgetPrivate::on_PathListWidget_selectionChanged(const QItemSelection &selected,
+void ctkPathListButtonsWidgetPrivate::pathListWidgetSelectionChanged(const QItemSelection &selected,
                                                                          const QItemSelection &deselected)
 {
   Q_UNUSED(selected)
@@ -139,49 +139,16 @@ void ctkPathListButtonsWidgetPrivate::on_PathListWidget_selectionChanged(const Q
   this->RemoveButton->setEnabled(hasSelection);
 }
 
-//-----------------------------------------------------------------------------
-QStringList ctkPathListButtonsWidgetPrivate::openAddFilesDialog(bool multiple)
-{
-  Q_Q(ctkPathListButtonsWidget);
-
-  if (!this->PathListWidget) return QStringList();
-
-  QString caption;
-  if (multiple)
-  {
-    caption = tr("Select one or more files");
-  }
-  else
-  {
-    caption = tr("Select a file");
-  }
-
-  QFileDialog fileDialog(q, caption);
-  fileDialog.setReadOnly(true);
-
-  if (multiple)
-  {
-    fileDialog.setFileMode(QFileDialog::ExistingFiles);
-  }
-  else
-  {
-    fileDialog.setFileMode(QFileDialog::ExistingFile);
-  }
-
-  QString currentPath = this->PathListWidget->currentPath(true);
-  currentPath = currentPath.left(currentPath.lastIndexOf('/') + 1);
-  if (!currentPath.isEmpty())
-  {
-    fileDialog.setDirectory(currentPath);
-  }
-
+namespace {
   // We use a proxy model as a workaround for the broken QFileDialog::setFilter() method.
   // See for example https://bugreports.qt-project.org/browse/QTBUG-10244
   class FileFilterProxyModel : public QSortFilterProxyModel
   {
+    Q_OBJECT
   public:
-    FileFilterProxyModel(ctkPathListWidget::PathOptions fileOptions)
-      : FileOptions(fileOptions)
+    FileFilterProxyModel(ctkPathListWidget::PathOptions fileOptions,
+                         QObject* parent = nullptr)
+      : QSortFilterProxyModel(parent), FileOptions(fileOptions)
     {}
 
   protected:
@@ -221,6 +188,44 @@ QStringList ctkPathListButtonsWidgetPrivate::openAddFilesDialog(bool multiple)
   private:
     ctkPathListWidget::PathOptions FileOptions;
   };
+}
+
+//-----------------------------------------------------------------------------
+QStringList ctkPathListButtonsWidgetPrivate::openAddFilesDialog(bool multiple)
+{
+  Q_Q(ctkPathListButtonsWidget);
+
+  if (!this->PathListWidget) return QStringList();
+
+  QString caption;
+  if (multiple)
+  {
+    caption = tr("Select one or more files");
+  }
+  else
+  {
+    caption = tr("Select a file");
+  }
+
+  QFileDialog fileDialog(q, caption);
+  fileDialog.setOption(QFileDialog::ReadOnly);
+
+  if (multiple)
+  {
+    fileDialog.setFileMode(QFileDialog::ExistingFiles);
+  }
+  else
+  {
+    fileDialog.setFileMode(QFileDialog::ExistingFile);
+  }
+
+  QString currentPath = this->PathListWidget->currentPath(true);
+  currentPath = currentPath.left(currentPath.lastIndexOf('/') + 1);
+  if (!currentPath.isEmpty())
+  {
+    fileDialog.setDirectory(currentPath);
+  }
+
 
   fileDialog.setProxyModel(new FileFilterProxyModel(this->PathListWidget->fileOptions()));
 
@@ -230,7 +235,45 @@ QStringList ctkPathListButtonsWidgetPrivate::openAddFilesDialog(bool multiple)
   }
   return QStringList();
 }
+namespace {
+  // We use a proxy model as a workaround for the broken QFileDialog::setFilter() method.
+  // See for example https://bugreports.qt-project.org/browse/QTBUG-10244
+  class DirFilterProxyModel : public QSortFilterProxyModel
+  {
+    Q_OBJECT
+  public:
+    DirFilterProxyModel(ctkPathListWidget::PathOptions dirOptions,
+                        QObject* parent = nullptr)
+      : QSortFilterProxyModel(parent), DirOptions(dirOptions)
+    {}
 
+  protected:
+    virtual bool filterAcceptsRow(int sourceRow, const QModelIndex & sourceParent) const
+    {
+      QModelIndex sourceIndex = sourceModel()->index(sourceRow, 0, sourceParent);
+      QFileSystemModel* fileModel = qobject_cast<QFileSystemModel*>(sourceModel());
+
+      QFileInfo fileInfo = fileModel->fileInfo(sourceIndex);
+
+      if (DirOptions.testFlag(ctkPathListWidget::Readable) &&
+          !fileInfo.isReadable())
+      {
+        return false;
+      }
+      // Do not check for the Writable flag, since it makes navigation from
+      // non-writable folders to writable sub-folders hard.
+      //      if (DirOptions.testFlag(ctkPathListWidget::Writable) &&
+      //          !fileInfo.isWritable())
+      //      {
+      //        return false;
+      //      }
+      return true;
+    }
+
+  private:
+    ctkPathListWidget::PathOptions DirOptions;
+  };
+}
 //-----------------------------------------------------------------------------
 QStringList ctkPathListButtonsWidgetPrivate::openAddDirDialog()
 {
@@ -249,42 +292,6 @@ QStringList ctkPathListButtonsWidgetPrivate::openAddDirDialog()
   {
     fileDialog.setDirectory(currentPath);
   }
-
-  // We use a proxy model as a workaround for the broken QFileDialog::setFilter() method.
-  // See for example https://bugreports.qt-project.org/browse/QTBUG-10244
-  class DirFilterProxyModel : public QSortFilterProxyModel
-  {
-  public:
-    DirFilterProxyModel(ctkPathListWidget::PathOptions dirOptions)
-      : DirOptions(dirOptions)
-    {}
-
-  protected:
-    virtual bool filterAcceptsRow(int sourceRow, const QModelIndex & sourceParent) const
-    {
-      QModelIndex sourceIndex = sourceModel()->index(sourceRow, 0, sourceParent);
-      QFileSystemModel* fileModel = qobject_cast<QFileSystemModel*>(sourceModel());
-
-      QFileInfo fileInfo = fileModel->fileInfo(sourceIndex);
-
-      if (DirOptions.testFlag(ctkPathListWidget::Readable) &&
-          !fileInfo.isReadable())
-      {
-        return false;
-      }
-      // Do not check for the Writable flag, since it makes navigation from
-      // non-writable folders to writable sub-folders hard.
-//      if (DirOptions.testFlag(ctkPathListWidget::Writable) &&
-//          !fileInfo.isWritable())
-//      {
-//        return false;
-//      }
-      return true;
-    }
-
-  private:
-    ctkPathListWidget::PathOptions DirOptions;
-  };
 
   fileDialog.setProxyModel(new DirFilterProxyModel(this->PathListWidget->directoryOptions()));
 
@@ -353,8 +360,8 @@ void ctkPathListButtonsWidget::init(ctkPathListWidget *pathListWidget)
   }
 
   connect(d->PathListWidget->selectionModel(), SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
-          d, SLOT(on_PathListWidget_selectionChanged(QItemSelection,QItemSelection)));
-  connect(d->PathListWidget, SIGNAL(pathActivated(QString)), d, SLOT(on_EditButton_clicked()));
+          d, SLOT(pathListWidgetSelectionChanged(QItemSelection,QItemSelection)));
+  connect(d->PathListWidget, SIGNAL(pathActivated(QString)), d, SLOT(editButtonClicked()));
 }
 
 //-----------------------------------------------------------------------------
@@ -714,3 +721,4 @@ QToolButton *ctkPathListButtonsWidget::buttonRemove() const
   Q_D(const ctkPathListButtonsWidget);
   return d->RemoveButton;
 }
+#include "ctkPathListButtonsWidget.moc"

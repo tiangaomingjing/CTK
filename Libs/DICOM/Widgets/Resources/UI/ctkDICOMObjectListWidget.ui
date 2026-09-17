@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>883</width>
-    <height>516</height>
+    <width>442</width>
+    <height>514</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>DICOM metadata</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
@@ -106,20 +106,46 @@
       </layout>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2"/>
-     </item>
-     <item>
-      <widget class="QTreeView" name="dcmObjectTreeView">
-       <property name="toolTip">
-        <string>Double-click to show DICOM tag definition.</string>
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <property name="topMargin">
+        <number>0</number>
        </property>
-      </widget>
+       <item>
+        <widget class="QTreeView" name="dcmObjectTreeView">
+         <property name="toolTip">
+          <string>Double-click to show DICOM tag definition.</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="thumbnailLabel">
+         <property name="text">
+          <string>Thumbnail</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="ctkExpandButton" name="showThumbnailButton">
+         <property name="toolTip">
+          <string>Show image thumbnail</string>
+         </property>
+         <property name="mirrorOnExpand">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
     </layout>
    </item>
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>ctkExpandButton</class>
+   <extends>QToolButton</extends>
+   <header>ctkExpandButton.h</header>
+  </customwidget>
   <customwidget>
    <class>ctkSearchBox</class>
    <extends>QLineEdit</extends>

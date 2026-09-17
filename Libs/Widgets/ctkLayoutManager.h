@@ -24,6 +24,7 @@
 // Qt includes
 #include <QObject>
 #include <QDomDocument>
+#include <QStringList>
 class QLayoutItem;
 class QWidgetItem;
 
@@ -33,7 +34,7 @@ class ctkLayoutManagerPrivate;
 class ctkLayoutViewFactory;
 
 /// \ingroup Widgets
-/// ctkLayoutManager is a layout manager that populates a widget (viewport)
+/// ctkLayoutManager is a layout manager that populates widgets (viewports)
 /// with widgets described into an XML document.
 /// To be used, ctkLayoutManager class must be derived and a subset of virtual
 /// methods must be reimplemented to support custom views.
@@ -41,35 +42,49 @@ class ctkLayoutViewFactory;
 /// \code
 /// <layout type=\"tab\">
 ///  <item>
-///   <layout type=\"horizontal\">
-///    <item><view/></item>
-///    <item>
+///   <layout type=\"horizontal\" split=\"true\">
+///    <item splitSize=\"500\"><view/></item>
+///    <item splitSize=\"250\">
 ///     <layout type=\"vertical\">
-///      <item><view/></item>
-///      <item><view/></item>
+///      <item><view verticalStretch=\"1\"/></item>
+///      <item><view verticalStretch=\"2\"/></item>
 ///      <item>
 ///       <layout type=\"grid\">
-///        <item row=\"0\" column=\"1\"><view/></item>
-///        <item row=\"1\" column=\"0\"><view/></item>
+///        <item row=\"0\" column=\"1\"><view verticalStretch=\"1\"/></item>
+///        <item row=\"1\" column=\"0\"><view verticalStretch=\"1\"/></item>
 ///       </layout>
 ///      </item>
 ///     </layout>
 ///    </item>
-///    <item><view/></item>
+///    <item splitSize=\"250\"><view/></item>
 ///   </layout>
 ///  </item>
 ///  <item><view name=\"tab2\"/></item>
 ///  <item><view name=\"tab3\"/></item>
 /// </layout>
 /// \endcode
-/// The layout elements describe widget containers that embed one or mulitple
-/// items.
+/// The layout elements describe widget containers that embed one or multiple
+/// items. Arrangement of items are specified by type attribute of the layout element;
+/// supported values: vertical, horizontal, grid, tab.
 /// The item elements describe widgets or layouts that are children of
 /// layouts.
 /// The view elements can be any type of QWidget. viewFromXML() must be
 /// reimplemented to return the type(s) of QWidget(s) to use wherever the view
 /// element is listed in the layout. The XML element can contain any XML
 /// attribute to be parsed by viewFromXML() method.
+///
+/// For horizontal and vertical layouts, setting split attribute to "true" makes the
+/// views resizeable. Default size can be set using splitSize attribute of child items.
+///
+/// Relative size of views can be adjusted by specifying stretch factors in
+/// horizontalStretch and verticalStretch attributes. The stretch factor must be an
+/// integer in the range of [0,255].
+///
+/// For layouts with multiple viewports, specify a top-level "viewports" element and add
+/// the layout for each viewport as a nested "layout" element. Set a unique name to each
+/// viewport using the "name" property. If name is not specified then the empty string
+/// will be used as name. The empty string is a valid name, that is the default viewport.
+///
 /// \sa ctkSimpleLayoutManager, ctkLayoutViewFactory
 class CTK_WIDGETS_EXPORT ctkLayoutManager: public QObject
 {
@@ -77,6 +92,12 @@ class CTK_WIDGETS_EXPORT ctkLayoutManager: public QObject
   /// Spacing between the widgets in all the layouts.
   /// \sa spacing(), setSpacing()
   Q_PROPERTY(int spacing READ spacing WRITE setSpacing)
+  /// Viewport names that this widget has encountered so far.
+  /// If a viewport appears or disappears from the layout
+  /// then the onViewportUsageChanged() method is called.
+  /// \sa viewport(), setViewport(), onViewportUsageChanged()
+  Q_PROPERTY(QStringList viewportNames READ viewportNames)
+
 public:
   /// Constructor
   ctkLayoutManager(QObject* parent = 0);
@@ -85,8 +106,22 @@ public:
   /// Destructor
   virtual ~ctkLayoutManager();
 
-  void setViewport(QWidget* widget);
+  /// Set the default viewport widget, i.e., the viewport that uses the empty string as name.
+  /// If a only a single viewport is used in the layout document then it is sufficient to set this viewport.
+  Q_INVOKABLE void setViewport(QWidget* widget);
+  /// Get the default viewport widget.
   Q_INVOKABLE QWidget* viewport()const;
+
+  /// Set a viewport (where the layout can be displayed in) corresponding to a viewport name.
+  /// Multiple viewports can be specified by adding a "viewports" XML element and adding multiple
+  /// child "layout" elements. Viewport name is specified in the "name" attribute of each "layout" element.
+  Q_INVOKABLE void setViewport(QWidget* widget, const QString& viewportName);
+  /// Get viewport widget by name.
+  Q_INVOKABLE QWidget* viewport(const QString& viewportName)const;
+  /// Get all viewport names.
+  QStringList viewportNames()const;
+  /// Returns true if the viewport is visible in the current layout.
+  Q_INVOKABLE bool isViewportUsedInLayout(const QString& viewportName)const;
 
   /// Return the spacing property value.
   /// \sa spacing
@@ -106,9 +141,18 @@ protected:
   QScopedPointer<ctkLayoutManagerPrivate> d_ptr;
   ctkLayoutManager(ctkLayoutManagerPrivate* ptr, QWidget* viewport, QObject* parent);
 
+  /// This method is called when a layout uses a viewport that has not been set in the layout manager yet.
+  /// Derived classes must implement this method if a layout can contain viewport names that are not already set
+  /// by setViewport() calls.
+  virtual QWidget* createViewport(const QDomElement& layoutElement, const QString& viewportName);
+  /// Called when a viewport widget is set.
   virtual void onViewportChanged();
+  /// Called when a viewport is just has been added to or removed from the displayed layout.
+  virtual void onViewportUsageChanged(const QString& viewportName);
+
   void clearLayout();
   virtual void setupLayout();
+  virtual void setupViewport(const QDomElement& layoutElement, const QString& viewportName);
 
   virtual void setLayout(const QDomDocument& newLayout);
   const QDomDocument layout()const;
@@ -155,7 +199,7 @@ protected:
   /// The returned widgets will automatically be layout into their parent
   /// layout (e.g. boxlayout).
   /// This method can be reimplemented. Returns viewFromXML() by default.
-  /// \sa viewFromXML(), 
+  /// \sa viewFromXML(),
   virtual QList<QWidget*> viewsFromXML(QDomElement layoutElement);
 
 private:

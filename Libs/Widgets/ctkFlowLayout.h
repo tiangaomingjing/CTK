@@ -36,9 +36,9 @@ class ctkFlowLayoutPrivate;
 class CTK_WIDGETS_EXPORT ctkFlowLayout : public QLayout
 {
   Q_OBJECT
-  /// If orientation is Qt::Horizontal, items are layed out from left to right
+  /// If orientation is Qt::Horizontal, items are laid out from left to right
   /// then top to bottom if there is no more horizontal space.
-  /// If orientation is Qt::Vertical, items are layed out from top to bottom
+  /// If orientation is Qt::Vertical, items are laid out from top to bottom
   /// then left to right if there is no more vertical space.
   /// Qt::Horizontal by default
   /// \sa preferredExpandingDirections
@@ -97,7 +97,7 @@ public:
   /// Replace the existing BoxLayout of the widget with a
   /// flow layout.
   /// When using the Designer, it is not possible to use a flow layout.
-  /// Instead, you can use a H/VBoxLayout and replace it programatically
+  /// Instead, you can use a H/VBoxLayout and replace it programmatically
   /// in the setupUi() function with a flow layout. replaceLayout() makes
   /// the operation easier.
   /// \todo replaceLayout should take an existing layout instead of a widget,
@@ -122,7 +122,7 @@ public:
   virtual void setGeometry(const QRect &rect);
   virtual QSize sizeHint() const;
   virtual QLayoutItem *takeAt(int index);
-  
+
 protected:
   QScopedPointer<ctkFlowLayoutPrivate> d_ptr;
 

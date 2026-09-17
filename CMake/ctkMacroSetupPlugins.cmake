@@ -45,11 +45,11 @@ endmacro()
 #!        plug-in. Defaults to "BUILD_".
 #! \param APPS (optional) A list of directories with build option names containing
 #!        CTK-style applications. This can be used to automatically enable plug-ins
-#!        required by the application. The application directoy must contain a CMakeLists.txt
+#!        required by the application. The application directory must contain a CMakeLists.txt
 #!        file containing a "project(...)" command and a target_libraries.cmake file
 #!        containing a list of required plug-in targets, e.g. "set(target_libraries org_myproject_example)".
 #!        An item of the list may look like "Apps/MyExampleApp^^BUILD_APP_MyExampleApp" where
-#!        Apps/MyExampleApp is the directory containing the applicatios CMakeLists.txt file
+#!        Apps/MyExampleApp is the directory containing the applications CMakeLists.txt file
 #!        and BUILD_APP_MyExampleApp is the build option used to conditionally build the app.
 #! \param BUILD_ALL (optional) If the build_all_flag is true, all entries in the plugins list
 #!        will be enabled (but their build option will not be forced to change). Default is OFF
@@ -88,7 +88,7 @@ macro(ctkMacroSetupPlugins )
   if(NOT MY_BUILD_ALL)
     set(MY_BUILD_ALL 0)
   endif()
-  
+
   # Check if this is the first invocation of this macro
   get_property(_repeated GLOBAL PROPERTY ctkMacroSetupExternalPlugins_called SET)
   if(NOT _repeated)
@@ -96,36 +96,23 @@ macro(ctkMacroSetupPlugins )
     # This variable will be set in ctkMacroBuildPlugin
     set(${CMAKE_PROJECT_NAME}_PLUGIN_LIBRARIES CACHE INTERNAL "CTK plug-in targets" FORCE)
     set_property(GLOBAL PROPERTY ctkMacroSetupExternalPlugins_called 1)
-    
+
     # Add the project specific variable name containing plug-in targets to the list
     set_property(GLOBAL APPEND PROPERTY CTK_PLUGIN_LIBRARIES_VARS ${CMAKE_PROJECT_NAME}_PLUGIN_LIBRARIES)
   endif()
-  
-  # Set up Qt, if not already done
-  #if(NOT QT4_FOUND)
-  #  set(minimum_required_qt_version "4.6")
-  #  find_package(Qt4 REQUIRED)
 
-  #  if("${QT_VERSION_MAJOR}.${QT_VERSION_MINOR}" VERSION_LESS "${minimum_required_qt_version}")
-  #    message(FATAL_ERROR "error: CTK requires Qt >= ${minimum_required_qt_version} -- you cannot use Qt ${QT_VERSION_MAJOR}.${QT_VERSION_MINOR}.${QT_VERSION_PATCH}.")
-  #  endif()
-  #endif()
-  
   # Set the variable QT_INSTALLED_LIBRARY_DIR that contains all
   # Qt shared libraries
-  if (CTK_QT_VERSION VERSION_GREATER "4")
+  if(CTK_QT_VERSION MATCHES "^(5|6)$")
     if(WIN32)
-      get_target_property(_qt5_moc_executable Qt5::moc LOCATION)
-      get_filename_component(QT_INSTALLED_LIBRARY_DIR ${_qt5_moc_executable} PATH)
+      get_target_property(_qt_moc_executable Qt${CTK_QT_VERSION}::moc LOCATION)
+      get_filename_component(QT_INSTALLED_LIBRARY_DIR ${_qt_moc_executable} PATH)
     else()
-      get_target_property(_qt5_core_lib Qt5::Core LOCATION)
-      get_filename_component(QT_INSTALLED_LIBRARY_DIR ${_qt5_core_lib} PATH)
+      get_target_property(_qt_core_lib Qt${CTK_QT_VERSION}::Core LOCATION)
+      get_filename_component(QT_INSTALLED_LIBRARY_DIR ${_qt_core_lib} PATH)
     endif()
   else()
-    set(QT_INSTALLED_LIBRARY_DIR ${QT_LIBRARY_DIR})
-    if(WIN32)
-      get_filename_component(QT_INSTALLED_LIBRARY_DIR ${QT_QMAKE_EXECUTABLE} PATH)
-    endif()
+    message(FATAL_ERROR "Support for Qt${CTK_QT_VERSION} is not implemented")
   endif()
 
   set(plugin_symbolic_names )
@@ -135,10 +122,10 @@ macro(ctkMacroSetupPlugins )
     string(REPLACE "/" ";" _tokens ${plugin_dir})
     list(GET _tokens -1 plugin_symbolic_name)
     list(APPEND plugin_symbolic_names ${plugin_symbolic_name})
-    
+
     string(REPLACE "." "_" plugin_target ${plugin_symbolic_name})
     list(APPEND plugin_targets ${plugin_target})
-    
+
     set(${plugin_symbolic_name}_plugin_dir ${plugin_dir})
     set(${plugin_symbolic_name}_plugin_value ${plugin_value})
   endforeach()
@@ -153,7 +140,7 @@ macro(ctkMacroSetupPlugins )
     endforeach()
     message(FATAL_ERROR "The following plug-ins are using invalid symbolic names: ${invalid_plugins}")
   endif()
-  
+
   set(plugin_dirswithoption )
   set(plugin_subdirs )
   foreach(plugin_symbolic_name ${plugin_symbolic_names})
@@ -180,13 +167,13 @@ macro(ctkMacroSetupPlugins )
       list(APPEND plugin_dirswithoption "${CMAKE_CURRENT_SOURCE_DIR}/${${plugin_symbolic_name}_plugin_dir}^^${option_name}")
     endif()
   endforeach()
-  
+
   # Get plugin info from possible previous invocations of this macro for
   # validation purposes below
   get_property(previous_plugin_dirswithoption GLOBAL PROPERTY ctkMacroSetupExternalPlugins_dirswithoption)
-  
+
   # Fill the CTK_EXTERNAL_PLUGIN_LIBRARIES variable with external plug-in target names.
-  # It will be used in ctkMacroValidateBuildOptions to be able to validate agains plug-ins
+  # It will be used in ctkMacroValidateBuildOptions to be able to validate against plug-ins
   # from external projects.
   ctkFunctionGetAllPluginTargets(CTK_EXTERNAL_PLUGIN_LIBRARIES)
 
@@ -207,7 +194,7 @@ macro(ctkMacroSetupPlugins )
     if(${${plugin}_option_name})
       if(IS_ABSOLUTE ${plugin})
         # get last directory component
-        get_filename_component(_dirname ${plugin} NAME) 
+        get_filename_component(_dirname ${plugin} NAME)
         add_subdirectory(${plugin} private_plugins/${_dirname})
       else()
         add_subdirectory(${plugin})

@@ -42,27 +42,27 @@ ctkButtonGroup::ctkButtonGroup(QObject* _parent)
   // we need to connect to button{Clicked,Pressed}(int) instead of
   // button{Clicked,Pressed}(QAbstractButton*) in order to be first to catch the
   // signals
-  connect(this, SIGNAL(buttonClicked(int)), this, SLOT(onButtonClicked(int)));
-  connect(this, SIGNAL(buttonPressed(int)), this, SLOT(onButtonPressed(int)));
+  connect(this, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(onButtonClicked(QAbstractButton*)));
+  connect(this, SIGNAL(buttonPressed(QAbstractButton*)), this, SLOT(onButtonPressed(QAbstractButton*)));
 }
 
 //------------------------------------------------------------------------------
 void ctkButtonGroup::setChecked(QAbstractButton* button, bool checked)
 {
   if (!button)
-    {
+  {
     return;
-    }
+  }
   bool wasExclusive = this->exclusive();
   if (!checked)
-    {
+  {
     this->setExclusive(false);
-    }
+  }
   button->setChecked(checked);
   if (!checked)
-    {
+  {
     this->setExclusive(wasExclusive);
-    }
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -71,15 +71,13 @@ ctkButtonGroup::~ctkButtonGroup()
 }
 
 //------------------------------------------------------------------------------
-void ctkButtonGroup::onButtonClicked(int buttonId)
+void ctkButtonGroup::onButtonClicked(QAbstractButton* clickedButton)
 {
   Q_D(ctkButtonGroup);
-  QAbstractButton* clickedButton = this->button(buttonId);
-  Q_ASSERT(clickedButton);
   if (!this->exclusive() || !d->IsLastButtonPressedChecked)
-    {
+  {
     return;
-    }
+  }
   // here the button is clicked and we click it again... so we want to
   // uncheck, a behavior not supported by QButtonGroup.
   // The only way to uncheck the button is to remove it from the group, and put it back
@@ -88,17 +86,21 @@ void ctkButtonGroup::onButtonClicked(int buttonId)
   clickedButton->setChecked(false);
   this->addButton(clickedButton, oldId);
   d->IsLastButtonPressedChecked = false;
-#if QT_VERSION >= 0x050200
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
+  // NA
+#elif (QT_VERSION >= QT_VERSION_CHECK(5,15,0))
+  emit idToggled(oldId, false);
+#elif (QT_VERSION >= QT_VERSION_CHECK(5,2,0))
   emit buttonToggled(oldId, false);
+#endif
+#if (QT_VERSION >= QT_VERSION_CHECK(5,2,0))
   emit buttonToggled(clickedButton, false);
 #endif
 }
 
 //------------------------------------------------------------------------------
-void ctkButtonGroup::onButtonPressed(int buttonId)
+void ctkButtonGroup::onButtonPressed(QAbstractButton* pressedButton)
 {
   Q_D(ctkButtonGroup);
-  QAbstractButton* pressedButton = this->button(buttonId);
-  Q_ASSERT(pressedButton);
   d->IsLastButtonPressedChecked = pressedButton->isChecked();
 }

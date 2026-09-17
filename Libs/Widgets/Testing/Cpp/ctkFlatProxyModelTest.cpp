@@ -32,14 +32,12 @@
 #include "ctkModelTester.h"
 #include "ctkTest.h"
 
-#if QT_VERSION < 0x040700
-Q_DECLARE_METATYPE(QVariant)
-#endif
-
 // ----------------------------------------------------------------------------
 class ctkFlatProxyModelTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkFlatProxyModelTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
   void testModel();
   void testModel_data();
@@ -213,18 +211,18 @@ QStandardItem* ctkFlatProxyModelTester
 {
   QStandardItem* item = new QStandardItem(name);
   if (children.canConvert<QString>())
-    {
+  {
     QStandardItem* leaf = new QStandardItem(children.toString());
     item->appendRow(leaf);
     return item;
-    }
+  }
   QMap<QString, QVariant> hash = children.toMap();
   QMap<QString, QVariant>::iterator i = hash.begin();
   for ( ; i != hash.end(); ++i)
-    {
+  {
     QStandardItem* childItem = this->createItem(i.key(), i.value());
     item->appendRow(childItem);
-    }
+  }
   return item;
 }
 
@@ -242,10 +240,10 @@ void ctkFlatProxyModelTester::testModel()
   QMap<QString, QVariant> hash = hashModel.toMap();
   QMap<QString, QVariant>::iterator i = hash.begin();
   for ( ; i != hash.end(); ++i)
-    {
+  {
     QStandardItem* childItem = this->createItem(i.key(), i.value());
     model.appendRow(childItem);
-    }
+  }
 
   ctkFlatProxyModel flattenModel;
   flattenModel.setEndFlattenLevel(endFlattenLevel);
@@ -272,4 +270,4 @@ void ctkFlatProxyModelTester::testModel()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkFlatProxyModelTest)
-#include "moc_ctkFlatProxyModelTest.cpp"
+#include "ctkFlatProxyModelTest.moc"

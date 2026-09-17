@@ -7,9 +7,6 @@ project(CTKCore)
 # CMake modules
 set(CMAKE_MODULE_PATH ${CTKCore_SOURCE_DIR}/CMake ${CMAKE_MODULE_PATH})
 
-# CMake Macros
-include(CMake/ctkMacroBFDCheck.cmake) # HAVE_BFD will be set to True if it applies
-
 #
 # See CTK/CMake/ctkMacroBuildLib.cmake for details
 #
@@ -22,6 +19,8 @@ set(KIT_SRCS
   ctkAbstractFactory.tpp
   ctkAbstractFileBasedFactory.h
   ctkAbstractFileBasedFactory.tpp
+  ctkAbstractJob.cpp
+  ctkAbstractJob.h
   ctkAbstractObjectFactory.h
   ctkAbstractObjectFactory.tpp
   ctkAbstractPluginFactory.h
@@ -30,6 +29,8 @@ set(KIT_SRCS
   ctkAbstractQObjectFactory.tpp
   ctkAbstractLibraryFactory.h
   ctkAbstractLibraryFactory.tpp
+  ctkAbstractWorker.cpp
+  ctkAbstractWorker.h
   ctkBackTrace.cpp
   ctkBooleanMapper.cpp
   ctkBooleanMapper.h
@@ -37,6 +38,8 @@ set(KIT_SRCS
   ctkCallback.h
   ctkCommandLineParser.cpp
   ctkCommandLineParser.h
+  ctkCoreSettings.cpp
+  ctkCoreSettings.h
   ctkCoreTestingUtilities.cpp
   ctkCoreTestingUtilities.tpp
   ctkCoreTestingUtilities.h
@@ -44,6 +47,8 @@ set(KIT_SRCS
   ctkDependencyGraph.h
   ctkErrorLogAbstractMessageHandler.cpp
   ctkErrorLogAbstractMessageHandler.h
+  ctkErrorLogAbstractModel.cpp
+  ctkErrorLogAbstractModel.h
   ctkErrorLogContext.h
   ctkErrorLogFDMessageHandler.cpp
   ctkErrorLogFDMessageHandler.h
@@ -61,6 +66,8 @@ set(KIT_SRCS
   ctkFileLogger.cpp
   ctkFileLogger.h
   ctkHighPrecisionTimer.cpp
+  ctkJobScheduler.cpp
+  ctkJobScheduler.h
   ctkLinearValueProxy.cpp
   ctkLinearValueProxy.h
   ctkLogger.cpp
@@ -73,6 +80,7 @@ set(KIT_SRCS
   ctkSingleton.h
   ctkUtils.cpp
   ctkUtils.h
+  ctkUtils.tpp
   ctkValueProxy.cpp
   ctkValueProxy.h
   ctkWorkflow.h
@@ -86,33 +94,12 @@ set(KIT_SRCS
   ctkSetName.h
   )
 
-if(HAVE_BFD)
-  list(APPEND KIT_SRCS
-    ctkBinaryFileDescriptor.cpp
-    ctkBinaryFileDescriptor.h
-    )
-endif()
-
-# Headers that should run through moc
-set(KIT_MOC_SRCS
-  ctkBooleanMapper.h
-  ctkCallback.h
-  ctkCommandLineParser.h
-  ctkErrorLogAbstractMessageHandler.h
-  ctkErrorLogFDMessageHandler_p.h
-  ctkErrorLogLevel.h
-  ctkErrorLogQtMessageHandler.h
-  ctkErrorLogTerminalOutput.h
-  ctkFileLogger.h
-  ctkLinearValueProxy.h
-  ctkLogger.h
-  ctkModelTester.h
-  ctkErrorLogQtMessageHandler.h
-  ctkValueProxy.h
-  ctkWorkflow.h
-  ctkWorkflow_p.h
-  ctkWorkflowStep_p.h
-  ctkWorkflowTransitions.h
+# Abstract class should not be wrapped !
+set_source_files_properties(
+  ctkAbstractJob.h
+  ctkAbstractWorker.h
+  ctkJobScheduler.h
+  WRAP_EXCLUDE
   )
 
 # UI files
@@ -129,15 +116,18 @@ set(KIT_target_libraries)
 
 ctkFunctionGetTargetLibraries(KIT_target_libraries)
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  list(APPEND KIT_target_libraries Qt5::Core)
+list(APPEND KIT_target_libraries Qt${CTK_QT_VERSION}::Core)
+if(CTK_QT_VERSION VERSION_GREATER "5")
+  list(APPEND KIT_target_libraries
+    Qt${CTK_QT_VERSION}::Core5Compat # For QRegExp
+    Qt${CTK_QT_VERSION}::StateMachine # For QAbstractTransition used in "ctkWorkflow" classes
+    )
 endif()
 
 ctkMacroBuildLib(
   NAME ${PROJECT_NAME}
   EXPORT_DIRECTIVE ${KIT_export_directive}
   SRCS ${KIT_SRCS}
-  MOC_SRCS ${KIT_MOC_SRCS}
   UI_FORMS ${KIT_UI_FORMS}
   TARGET_LIBRARIES ${KIT_target_libraries}
   RESOURCES ${KIT_resources}

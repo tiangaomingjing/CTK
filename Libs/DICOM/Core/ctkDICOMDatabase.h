@@ -22,6 +22,7 @@
 #define __ctkDICOMDatabase_h
 
 // Qt includes
+#include <QColor>
 #include <QObject>
 #include <QStringList>
 #include <QSqlDatabase>
@@ -33,6 +34,12 @@ class QDateTime;
 class ctkDICOMDatabasePrivate;
 class DcmDataset;
 class ctkDICOMAbstractThumbnailGenerator;
+class ctkDICOMDisplayedFieldGenerator;
+class ctkDICOMJobResponseSet;
+
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+Q_MOC_INCLUDE("ctkDICOMJobResponseSet.h") // Ensure moc sees ctkDICOMJobResponseSet for meta-type generation (needed for stricter Qt 6.4+)
+#endif
 
 /// \ingroup DICOM_Core
 ///
@@ -45,20 +52,36 @@ class ctkDICOMAbstractThumbnailGenerator;
 /// vanishes). If in "memory mode", the objects are not written to disk,
 /// otherwise they are stored in a subdirectory of the SQLITE database file
 /// directory called "dicom". Inside, a folder structure created which contains
-/// a directoy for each study, containing a directory for each series, containing
+/// a directory for each study, containing a directory for each series, containing
 /// a file for each object. The corresponding UIDs are used as filenames.
 /// Thumbnais for each image can be created; if so, they are stored in a directory
 /// parallel to "dicom" directory called "thumbs".
 class CTK_DICOM_CORE_EXPORT ctkDICOMDatabase : public QObject
 {
-
   Q_OBJECT
   Q_PROPERTY(bool isOpen READ isOpen)
+  Q_PROPERTY(bool isInMemory READ isInMemory)
   Q_PROPERTY(QString lastError READ lastError)
   Q_PROPERTY(QString databaseFilename READ databaseFilename)
+  Q_PROPERTY(QString databaseDirectory READ databaseDirectory)
   Q_PROPERTY(QStringList tagsToPrecache READ tagsToPrecache WRITE setTagsToPrecache)
+  Q_PROPERTY(QStringList tagsToExcludeFromStorage READ tagsToExcludeFromStorage WRITE setTagsToExcludeFromStorage)
+  Q_PROPERTY(QStringList patientFieldNames READ patientFieldNames)
+  Q_PROPERTY(QStringList studyFieldNames READ studyFieldNames)
+  Q_PROPERTY(QStringList seriesFieldNames READ seriesFieldNames)
+  Q_PROPERTY(QStringList loadedSeriesInstanceUIDs READ loadedSeriesInstanceUIDs WRITE setLoadedSeriesInstanceUIDs NOTIFY loadedSeriesInstanceUIDsChanged)
+  Q_PROPERTY(bool useShortStoragePath READ useShortStoragePath WRITE setUseShortStoragePath)
+  Q_PROPERTY(bool useSystemFileCopy READ useSystemFileCopy WRITE setUseSystemFileCopy)
 
 public:
+  struct IndexingResult
+  {
+    QString filePath;
+    QSharedPointer<ctkDICOMItem> dataset;
+    bool copyFile;
+    bool overwriteExistingDataset;
+  };
+
   explicit ctkDICOMDatabase(QObject *parent = 0);
   explicit ctkDICOMDatabase(QString databaseFile);
   virtual ~ctkDICOMDatabase();
@@ -67,33 +90,29 @@ public:
   const QString lastError() const;
   const QString databaseFilename() const;
 
-  ///
-  /// Returns the absolute path of the database directory
-  /// (where the database file resides in) in OS-prefered path format.
+  static const char* defaultSchemaFile() { return ":/dicom/dicom-schema.sql"; };
+
+  /// Return the absolute path of the database directory
+  /// (where the database file resides in) in OS-preferred path format.
   /// @return Absolute path to database directory
   const QString databaseDirectory() const;
 
-  ///
   /// Should be checked after trying to open the database
   /// @Returns true if database is open
   bool isOpen() const;
 
-  ///
-  /// Returns whether the database only resides in memory, i.e. the
+  /// Return whether the database only resides in memory, i.e. the
   /// SQLITE DB is not written to stored to disk and DICOM objects are not
   /// stored to the file system.
   /// @return True if in memory mode, false otherwise.
   bool isInMemory() const;
 
-  ///
-  /// set thumbnail generator object
-  void setThumbnailGenerator(ctkDICOMAbstractThumbnailGenerator* generator);
-  ///
-  /// get thumbnail genrator object
-  ctkDICOMAbstractThumbnailGenerator* thumbnailGenerator();
+  /// Set thumbnail generator object
+  Q_INVOKABLE void setThumbnailGenerator(ctkDICOMAbstractThumbnailGenerator* generator);
+  /// Get thumbnail generator object
+  Q_INVOKABLE ctkDICOMAbstractThumbnailGenerator* thumbnailGenerator();
 
-  ///
-  /// open the SQLite database in @param databaseFile . If the file does not
+  /// Open the SQLite database in @param databaseFile . If the file does not
   /// exist, a new database is created and initialized with the
   /// default schema
   ///
@@ -106,62 +125,123 @@ public:
   ///        must be avoided as it breaks previously created database object
   ///        that used the same connection name).
   /// @param update the schema if it is found to be out of date
-  Q_INVOKABLE virtual void openDatabase(const QString databaseFile,
+  Q_INVOKABLE virtual bool openDatabase(const QString& databaseFile,
                                         const QString& connectionName = "");
 
-  ///
-  /// close the database. It must not be used afterwards.
+  /// Close the database. It must not be used afterwards.
   Q_INVOKABLE void closeDatabase();
-  ///
-  /// delete all data and (re-)initialize the database.
-  Q_INVOKABLE bool initializeDatabase(const char* schemaFile = ":/dicom/dicom-schema.sql");
 
-  /// updates the database schema and reinserts all existing files
-  Q_INVOKABLE bool updateSchema(const char* schemaFile = ":/dicom/dicom-schema.sql");
+  /// Delete all data and (re-)initialize the database.
+  Q_INVOKABLE bool initializeDatabase(const char* schemaFile = ctkDICOMDatabase::defaultSchemaFile());
 
-  /// updates the database schema only if the versions don't match
-  /// Returns true if schema was updated
-  Q_INVOKABLE bool updateSchemaIfNeeded(const char* schemaFile = ":/dicom/dicom-schema.sql");
+  /// Update the database schema and reinserts all existing files
+  /// \param schemaFile SQL file containing schema definition
+  /// \param newDatabaseDir Path of new database directory for the updated database.
+  ///        Null by default, meaning directory will remain the same
+  ///        Note: Need to switch database folders "on the fly", so that copying the
+  ///        database can be done simply via createBackupFileList and the following insertions
+  /// \return true if schema was updated
+  Q_INVOKABLE bool updateSchema(
+    const char* schemaFile = ctkDICOMDatabase::defaultSchemaFile(),
+    const char* newDatabaseDir = nullptr);
 
-  /// returns the schema version needed by the current version of this code
+  /// Update the database schema only if the versions don't match
+  /// \param schemaFile SQL file containing schema definition
+  /// \param newDatabaseDir Path of new database directory for the updated database.
+  ///        Null by default, meaning directory will remain the same
+  ///        Note: Need to switch database folders "on the fly", so that copying the
+  ///        database can be done simply via createBackupFileList and the following insertions
+  /// \return true if schema was updated
+  Q_INVOKABLE bool updateSchemaIfNeeded(
+    const char* schemaFile = ctkDICOMDatabase::defaultSchemaFile(),
+    const char* newDatabaseDir = nullptr);
+
+  /// Return the schema version needed by the current version of this code
   Q_INVOKABLE QString schemaVersion();
 
-  /// returns the schema version for the currently open database
+  /// Return the schema version for the currently open database
   /// in order to support schema updating
   Q_INVOKABLE QString schemaVersionLoaded();
 
-  ///
+  /// Set schema version externally in case a non-standard schema is used
+  Q_INVOKABLE void setSchemaVersion(QString schemaVersion);
+
   /// \brief database accessors
-  Q_INVOKABLE QStringList patients ();
-  Q_INVOKABLE QStringList studiesForPatient (const QString patientUID);
-  Q_INVOKABLE QStringList seriesForStudy (const QString studyUID);
-  Q_INVOKABLE QStringList instancesForSeries(const QString seriesUID);
+  Q_INVOKABLE QStringList patients();
+  Q_INVOKABLE QStringList studiesForPatient(const QString patientUID);
+  Q_INVOKABLE QStringList seriesForStudy(const QString studyUID);
+  /// Since a series may consists of many hundreds of instances, this method may be slow.
+  /// If hits > 0 is specified then returned instances will be limited to that number.
+  /// This is useful for retrieving first file, for example for getting access to fields within that file
+  /// using instanceValue() method.
+  Q_INVOKABLE QStringList instancesForSeries(const QString seriesUID, int hits = -1);
   Q_INVOKABLE QString studyForSeries(QString seriesUID);
   Q_INVOKABLE QString patientForStudy(QString studyUID);
-  Q_INVOKABLE QStringList filesForSeries (const QString seriesUID);
+  /// Since a series may consists of many hundreds of files, this method may be slow.
+  /// If hits > 0 is specified then returned filenames will be limited to that number.
+  /// This is useful for retrieving first file, for example for getting access to fields within that file
+  /// using fileValue() method.
+  Q_INVOKABLE QStringList filesForSeries(const QString seriesUID, int hits=-1);
+  Q_INVOKABLE QStringList urlsForSeries(const QString seriesUID, int hits=-1);
+
   Q_INVOKABLE QHash<QString,QString> descriptionsForFile(QString fileName);
   Q_INVOKABLE QString descriptionForSeries(const QString seriesUID);
   Q_INVOKABLE QString descriptionForStudy(const QString studyUID);
   Q_INVOKABLE QString nameForPatient(const QString patientUID);
-  Q_INVOKABLE QString fileForInstance (const QString sopInstanceUID);
-  Q_INVOKABLE QString seriesForFile (QString fileName);
-  Q_INVOKABLE QString instanceForFile (const QString fileName);
-  Q_INVOKABLE QDateTime insertDateTimeForInstance (const QString fileName);
+  Q_INVOKABLE QString displayedNameForPatient(const QString patientUID);
+  Q_INVOKABLE QDateTime insertDateTimeForPatient(const QString patientUID);
+  Q_INVOKABLE QDateTime insertDateTimeForStudy(const QString studyInstanceUID);
+  Q_INVOKABLE QDateTime insertDateTimeForSeries(const QString seriesInstanceUID);
+  Q_INVOKABLE QString fieldForPatient(const QString field, const QString patientUID);
+  Q_INVOKABLE QString fieldForStudy(const QString field, const QString studyInstanceUID);
+  Q_INVOKABLE QString fieldForSeries(const QString field, const QString seriesInstanceUID);
 
-  Q_INVOKABLE QStringList allFiles ();
-  ///
-  /// \brief load the header from a file and allow access to elements
+  /// Provide lists of allow and deny servers associated with the patient.
+  Q_INVOKABLE QMap<QString, QStringList> connectionsInformationForPatient(const QString patientUID);
+  /// Set the allow and deny servers for the patient
+  Q_INVOKABLE bool updateConnectionsForPatient(const QString patientUID,
+                                               const QStringList allowList,
+                                               const QStringList denyList);
+
+  QStringList patientFieldNames() const;
+  QStringList studyFieldNames() const;
+  QStringList seriesFieldNames() const;
+
+  Q_INVOKABLE QString fileForInstance(const QString sopInstanceUID);
+  Q_INVOKABLE QString urlForInstance(const QString sopInstanceUID);
+  Q_INVOKABLE QString instanceForURL(const QString url);
+  Q_INVOKABLE QString seriesForFile(QString fileName);
+  Q_INVOKABLE QString instanceForFile(const QString fileName);
+  Q_INVOKABLE QDateTime insertDateTimeForInstance(const QString fileName);
+  Q_INVOKABLE QString thumbnailPathForInstance(const QString& studyInstanceUID,
+                                               const QString& seriesInstanceUID,
+                                               const QString& sopInstanceUID);
+  Q_INVOKABLE bool storeThumbnailFile(const QString& originalFilePath,
+                                      const QString& studyInstanceUID,
+                                      const QString& seriesInstanceUID,
+                                      const QString& sopInstanceUID,
+                                      const QString& modality = "");
+
+  Q_INVOKABLE int patientsCount();
+  Q_INVOKABLE int studiesCount();
+  Q_INVOKABLE int seriesCount();
+  Q_INVOKABLE int imagesCount();
+
+  Q_INVOKABLE QStringList allFiles();
+
+  bool allFilesModifiedTimes(QMap<QString, QDateTime>& modifiedTimeForFilepath);
+
+  /// \brief Load the header from a file and allow access to elements
   /// @param sopInstanceUID A string with the uid for a given instance
-  ///                       (corresponding file will be found via database)
+  ///                       (corresponding file will be found via the database)
   /// @param fileName Full path to a dicom file to load.
   /// @param key A group,element tag in zero-filled hex
-  Q_INVOKABLE void loadInstanceHeader (const QString sopInstanceUID);
-  Q_INVOKABLE void loadFileHeader (const QString fileName);
-  Q_INVOKABLE QStringList headerKeys ();
-  Q_INVOKABLE QString headerValue (const QString key);
+  Q_INVOKABLE void loadInstanceHeader(const QString sopInstanceUID);
+  Q_INVOKABLE void loadFileHeader(const QString fileName);
+  Q_INVOKABLE QStringList headerKeys();
+  Q_INVOKABLE QString headerValue(const QString key);
 
-  ///
-  /// \brief application-defined tags of interest
+  /// \brief Application-defined tags of interest
   /// This list of tags is added to the internal tag cache during import
   /// operations.  The list should be prepared by the application as
   /// a hint to the database that these tags are likely to be accessed
@@ -173,10 +253,18 @@ public:
   void setTagsToPrecache(const QStringList tags);
   const QStringList tagsToPrecache();
 
-  /// Insert into the database if not already exsting.
+  /// \brief Tags that must not be stored in the tag cache.
+  /// Tag may be excluded from storage if it is not suitable for storage in the database (e.g., binary data)
+  /// or if content of this field is usually very large.
+  /// Presence of non-empty tag can still be checked using instanceValueExists or fileValueExists.
+  /// By default, only PixelData tag is excluded from storage.
+  void setTagsToExcludeFromStorage(const QStringList tags);
+  const QStringList tagsToExcludeFromStorage();
+
+  /// Insert into the database if not already existing.
   /// @param dataset The dataset to store into the database. Usually, this is
   ///                is a complete DICOM object, like a complete image. However
-  ///                the database also inserts partial objects, like studyl
+  ///                the database also inserts partial objects, like study
   ///                information to the database, even if no image data is
   ///                contained. This can be helpful to store results from
   ///                querying the PACS for patient/study/series or image
@@ -188,48 +276,140 @@ public:
   ///                  does only make sense if a full object is received.
   /// @param @generateThumbnail If true, a thumbnail is generated.
   ///
-  Q_INVOKABLE void insert( const ctkDICOMItem& ctkDataset,
-                              bool storeFile, bool generateThumbnail);
-  void insert ( DcmItem *item,
-                              bool storeFile = true, bool generateThumbnail = true);
-  Q_INVOKABLE void insert ( const QString& filePath,
-                            bool storeFile = true, bool generateThumbnail = true,
-                            bool createHierarchy = true,
-                            const QString& destinationDirectoryName = QString() );
+  Q_INVOKABLE void insert(const ctkDICOMItem& ctkDataset,
+                          bool storeFile, bool generateThumbnail);
+  void insert (DcmItem *item, bool storeFile = true, bool generateThumbnail = true);
+  Q_INVOKABLE void insert (const QString& filePath,
+                           bool storeFile = true, bool generateThumbnail = true,
+                           bool createHierarchy = true,
+                           const QString& destinationDirectoryName = QString());
+  Q_INVOKABLE void insert(const QList<ctkDICOMDatabase::IndexingResult>& indexingResults);
+  /// Insert operation
+  enum InsertResult
+  {
+    Failed = -1,
+    NotInserted,
+    Inserted
+  };
+  Q_ENUM(InsertResult)
+  Q_INVOKABLE InsertResult insert(const QList<ctkDICOMJobResponseSet*>& jobResponseSets);
+
+  /// When a DICOM file is stored in the database (insert is called with storeFile=true) then
+  /// path is constructed from study, series, and SOP instance UID.
+  /// If useShortStoragePath is false then the full UIDs are used as subfolder and file name.
+  /// If useShortStoragePath is true (this is the default) then the path is shortened
+  /// to approximately 40 characters, by replacing UIDs with hashes generated from them.
+  /// UIDs can be 40-60 characters long each, therefore the the total path (including database folder base path)
+  /// can exceed maximum path length on some file systems. It is recommended to enable useShortStoragePath
+  /// for better compatibility, unless it can be guaranteed that the file system can store full UIDs.
+  void setUseShortStoragePath(bool useShort);
+  bool useShortStoragePath()const;
+
+  /// Set whether to use the operating system's file copy API (QFile::copy()) for file operations.
+  /// If useSystemFileCopy is false (default), direct read/write with buffering is used, which is
+  /// significantly faster in Qt6 (10-20x) but does not preserve file permissions, timestamps, or
+  /// extended attributes. If true, QFile::copy() is used, which preserves file metadata and may
+  /// perform better on network drives, but is slower for local operations.
+  void setUseSystemFileCopy(bool useSystemCopy);
+  bool useSystemFileCopy()const;
+
+  /// Update the fields in the database that are used for displaying information
+  /// from information stored in the tag-cache.
+  /// Displayed fields are useful if the raw DICOM tags are not human readable, or
+  /// when we want to show a derived piece of information (such as image size or
+  /// number of studies in a patient).
+  Q_INVOKABLE virtual void updateDisplayedFields();
+
+  /// Get if displayed fields are defined. It returns false for databases that were created with an old schema
+  /// that did not contain ColumnDisplayProperties table.
+  Q_INVOKABLE bool isDisplayedFieldsTableAvailable() const;
+  /// Get displayed field generator in order to be able to set new rules externally
+  ctkDICOMDisplayedFieldGenerator* displayedFieldGenerator() const;
+
+  /// Reset cached item IDs to make sure previous
+  /// inserts do not interfere with upcoming insert operations.
+  /// Typically, it should be call just before a batch of files
+  /// insertion is started.
+  ///
+  /// This has to be called before an insert() call if there is a chance
+  /// that items have been deleted from the database since the
+  /// the last insert() call. If there has been not been any insert() calls since
+  /// connected to the database, then it should be called before the first
+  /// insert().
+  Q_INVOKABLE void prepareInsert();
 
   /// Check if file is already in database and up-to-date
-  bool fileExistsAndUpToDate(const QString& filePath);
+  Q_INVOKABLE bool fileExistsAndUpToDate(const QString& filePath);
 
-  /// remove the series from the database, including images and
-  /// thumbnails
-  Q_INVOKABLE bool removeSeries(const QString& seriesInstanceUID);
-  Q_INVOKABLE bool removeStudy(const QString& studyInstanceUID);
-  Q_INVOKABLE bool removePatient(const QString& patientID);
-  bool cleanup();
+  /// Remove the series from the database, including images and thumbnails
+  /// If clearCachedTags is set to true then cached tags associated with the series are deleted,
+  /// if set to False the they are left in the database unchanged.
+  /// By default clearCachedTags is disabled because it significantly increases deletion time
+  /// on large databases.
+  Q_INVOKABLE bool removeSeries(const QString& seriesInstanceUID, bool clearCachedTags=false, bool cleanup=true);
+  Q_INVOKABLE bool removeStudy(const QString& studyInstanceUID, bool cleanup=true);
+  Q_INVOKABLE bool removePatient(const QString& patientUID, bool cleanup=true);
+  /// Remove all patients, studies, series, which do not have associated images.
+  /// If vacuum is set to true then the whole database content is attempted to
+  /// cleaned from remnants of all previously deleted data from the file.
+  /// Vacuuming may fail if there are multiple connections to the database.
+  Q_INVOKABLE bool cleanup(bool vacuum=false);
+  /// Remove a specific series from the database if it has no associated images.
+  /// If vacuum is set to true then the database is vacuumed after removal.
+  Q_INVOKABLE bool cleanupSeries(const QString& seriesInstanceUID, bool vacuum=false);
+  /// Remove a specific study from the database if it has no associated series.
+  /// If vacuum is set to true then the database is vacuumed after removal.
+  Q_INVOKABLE bool cleanupStudy(const QString& studyInstanceUID, bool vacuum=false);
+  /// Remove a specific patient from the database if it has no associated studies.
+  /// If vacuum is set to true then the database is vacuumed after removal.
+  Q_INVOKABLE bool cleanupPatient(const QString& patientUID, bool vacuum=false);
 
-  ///
-  /// \brief access element values for given instance
+  /// \brief Access element values for given instance
   /// @param sopInstanceUID A string with the uid for a given instance
-  ///                       (corresponding file will be found via database)
-  /// @param fileName Full path to a dicom file to load.
-  /// @param key A group,element tag in zero-filled hex
+  ///                       (corresponding file will be found via the database)
+  /// @param fileName Local file path or URL to a dicom file. Since schema version 0.8.0,
+  ///                 the database can store element values for instances that are not available locally,
+  ///                 but their location is specified via a URL.
+  ///                 If an instance is found using by fileName as local file path then the fileName argument is
+  ///                 considered to be a local file path, otherwise the fileName argument is considered to be a URL.
+  ///                 If the value is not found in the database and the fileName argument is a local file path
+  ///                 then the local file is parsed and the value is retrieved from it.
   /// @param group The group portion of the tag as an integer
   /// @param element The element portion of the tag as an integer
-  /// @Returns empty string if element is missing
+  /// @Returns empty string if element is missing or excluded from storage.
   Q_INVOKABLE QString instanceValue (const QString sopInstanceUID, const QString tag);
   Q_INVOKABLE QString instanceValue (const QString sopInstanceUID, const unsigned short group, const unsigned short element);
   Q_INVOKABLE QString fileValue (const QString fileName, const QString tag);
   Q_INVOKABLE QString fileValue (const QString fileName, const unsigned short group, const unsigned short element);
+
+  /// \brief Efficiently retrieve tag values for multiple instances in a single query
+  /// @param sopInstanceUIDs List of instance UIDs to query
+  /// @param tag The DICOM tag to retrieve (e.g., "0020,0013" for Instance Number)
+  /// @returns Map of sopInstanceUID -> tag value. Missing or empty values are not included.
+  Q_INVOKABLE QMap<QString, QString> instanceValues(const QStringList& sopInstanceUIDs, const QString& tag);
+
+  /// Convert between string and (unsigned short int, unsigned short int) representation of a DICOM tag.
   Q_INVOKABLE bool tagToGroupElement (const QString tag, unsigned short& group, unsigned short& element);
   Q_INVOKABLE QString groupElementToTag (const unsigned short& group, const unsigned short& element);
 
-  ///
-  /// \brief store values of previously requested instance elements
+  /// \brief Check if an element with the given attribute tag exists in the dataset and has a non-empty value.
+  /// @param sopInstanceUID A string with the uid for a given instance
+  ///                       (corresponding file will be found via the database)
+  /// @param fileName Full path to a dicom file to load.
+  /// @param group The group portion of the tag as an integer
+  /// @param element The element portion of the tag as an integer
+  /// @Returns true if tag exists and has non-empty value. Returns true even if the value is excluded from storage in the database.
+  Q_INVOKABLE bool instanceValueExists(const QString sopInstanceUID, const QString tag);
+  Q_INVOKABLE bool instanceValueExists(const QString sopInstanceUID, const unsigned short group, const unsigned short element);
+  Q_INVOKABLE bool fileValueExists(const QString fileName, const QString tag);
+  Q_INVOKABLE bool fileValueExists(const QString fileName, const unsigned short group, const unsigned short element);
+
+  /// \brief Store values of previously requested instance elements
   /// These are meant to be internal methods used by the instanceValue and fileValue
   /// methods, but they can be used by calling classes to populate or access
   /// instance tag values as needed.
   /// @param sopInstanceUID A string with the uid for a given instance
-  ///                       (corresponding file will be found via database)
+  ///                       (corresponding file will be found via the database)
   /// @param key A group,element tag in zero-filled hex
   /// @Returns empty string if element for uid is missing from cache
   ///
@@ -239,13 +419,50 @@ public:
   Q_INVOKABLE bool initializeTagCache ();
   /// Return the value of a cached tag
   Q_INVOKABLE QString cachedTag (const QString sopInstanceUID, const QString tag);
+  /// Return the list of all cached tags and values for the specified sopInstanceUID. Returns with empty string if the tag is not present in the cache.
+  Q_INVOKABLE void getCachedTags(const QString sopInstanceUID, QMap<QString, QString> &cachedTags);
   /// Insert an instance tag's value into to the cache
   Q_INVOKABLE bool cacheTag (const QString sopInstanceUID, const QString tag, const QString value);
   /// Insert lists of tags into the cache as a batch query operation
   Q_INVOKABLE bool cacheTags (const QStringList sopInstanceUIDs, const QStringList tags, const QStringList values);
+  /// Remove all tags corresponding to a SOP instance UID
+  Q_INVOKABLE void removeCachedTags(const QString sopInstanceUID);
 
+  /// Get displayed name of a given field
+  Q_INVOKABLE QString displayedNameForField(QString table, QString field) const;
+  /// Set displayed name of a given field
+  Q_INVOKABLE void setDisplayedNameForField(QString table, QString field, QString displayedName);
+  /// Get visibility of a given field
+  Q_INVOKABLE bool visibilityForField(QString table, QString field) const;
+  /// Set visibility of a given field
+  Q_INVOKABLE void setVisibilityForField(QString table, QString field, bool visibility);
+  /// Get weight of a given field.
+  /// Weight specifies the order of the field columns in the table. Smaller values are positioned towards the left ("heaviest sinks down")
+  Q_INVOKABLE int weightForField(QString table, QString field) const;
+  /// Set weight of a given field
+  /// Weight specifies the order of the field columns in the table. Smaller values are positioned towards the left ("heaviest sinks down")
+  Q_INVOKABLE void setWeightForField(QString table, QString field, int weight);
+  /// Get format of a given field
+  /// It contains a json document with the following fields:
+  /// - resizeMode: column resize mode. Accepted values are: "interactive" (default), "stretch", or "resizeToContents".
+  /// - sort: default sort order. Accepted values are: empty (default), "ascending" or "descending".
+  ///   Only one column (or none) should have non-empty sort order in each table.
+  Q_INVOKABLE QString formatForField(QString table, QString field) const;
+  /// Set format of a given field
+  Q_INVOKABLE void setFormatForField(QString table, QString field, QString format);
+
+  /// There is no patient UID in DICOM, so we need to use use this composite ID to uniquely identify a patient with a string.
+  /// Used when inserting a patient (InsertedPatientsCompositeIDCache) and in the display field update process.
+  /// Note: It is not a problem that is somewhat more strict than the criteria that is used to decide if a study should be
+  /// inserted under the same patient.
+  Q_INVOKABLE static QString compositePatientID(const QString& patientID, const QString& patientsName, const QString& patientsBirthDate);
+
+  /// Set a list of loaded seriesInstanceUIDs
+  void setLoadedSeriesInstanceUIDs(const QStringList& seriesInstanceUIDs);
+  QStringList loadedSeriesInstanceUIDs() const;
 
 Q_SIGNALS:
+
   /// Things inserted to database.
   /// patientAdded arguments:
   ///  - int: database index of patient (unique) within CTK database
@@ -253,6 +470,13 @@ Q_SIGNALS:
   ///  - QString: patient Name (not unique)
   ///  - QString: patient Birth Date (not unique)
   void patientAdded(int, QString, QString, QString);
+  /// connectionNameAdded arguments:
+  ///  - int: database index of patient (unique) within CTK database
+  ///  - QString: patient ID (not unique across institutions)
+  ///  - QString: patient Name (not unique)
+  ///  - QString: patient Birth Date (not unique)
+  ///  - QString: connection name
+  void connectionNameAdded(int, QString, QString, QString, QString);
   /// studyAdded arguments:
   ///  - studyUID (unique)
   void studyAdded(QString);
@@ -263,25 +487,75 @@ Q_SIGNALS:
   /// instanceAdded arguments:
   ///  - instanceUID (unique)
   void instanceAdded(QString);
-  /// Indicates that an in-memory database has been updated
+
+  /// \brief This signal is emitted after a patient is removed by calling removePatient().
+  ///
+  /// \param patientUID (interal Slicer id, unique within CTK database)
+  /// \param patientID (not unique across institutions)
+  ///
+  /// \sa removePatient()
+  void patientRemoved(QString, QString);
+
+  /// \brief This signal is emitted after a study is removed by calling removeStudy().
+  ///
+  /// \param studyInstanceUID (unique)
+  ///
+  /// \sa removeStudy()
+  void studyRemoved(QString);
+
+  /// \brief This signal is emitted after a series is removed by calling removeSeries().
+  ///
+  /// \param seriesInstanceUID (unique)
+  ///
+  /// \sa removeSeries()
+  void seriesRemoved(QString);
+
+  /// This signal is emitted when the database has been opened.
+  void opened();
+
+  /// This signal is emitted when the database has been closed.
+  void closed();
+
+  /// Indicate that an in-memory database has been updated
   void databaseChanged();
-  /// Indicates that the schema is about to be updated and how many files will be processed
+
+  /// Indicate that tagsToPrecache list changed
+  void tagsToPrecacheChanged();
+
+  /// Indicate that tagsToExcludeFromStorage list changed
+  void tagsToExcludeFromStorageChanged();
+
+  /// Indicate that the schema is about to be updated and how many files will be processed
   void schemaUpdateStarted(int);
-  /// Indicates progress in updating schema (int is file number, string is file name)
+  /// Indicate progress in updating schema (int is file number, string is file name)
   void schemaUpdateProgress(int);
   void schemaUpdateProgress(QString);
-  /// Indicates schema update finished
+  /// Indicate schema update finished
   void schemaUpdated();
+
+  /// Trigger showing progress dialog for displayed fields update
+  void displayedFieldsUpdateStarted();
+  /// Indicate progress in updating displayed fields (int is step number)
+  void displayedFieldsUpdateProgress(int);
+  /// Indicate displayed fields update finished
+  void displayedFieldsUpdated();
+
+  /// Indicate that the list of loaded seriesInstanceUIDs changed
+  void loadedSeriesInstanceUIDsChanged(const QStringList&);
 
 protected:
   QScopedPointer<ctkDICOMDatabasePrivate> d_ptr;
 
-
-
 private:
+  void vacuumDatabases();
+  bool cleanupEntityIfEmpty(
+    const QString& deleteQueryString,
+    const QString& countChildrenQueryString,
+    const QVariant& bindValue,
+    bool vacuum);
+
   Q_DECLARE_PRIVATE(ctkDICOMDatabase);
   Q_DISABLE_COPY(ctkDICOMDatabase);
 };
 
 #endif
-

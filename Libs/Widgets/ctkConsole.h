@@ -25,7 +25,7 @@
    All rights reserved.
 
    ParaView is a free software; you can redistribute it and/or modify it
-   under the terms of the ParaView license version 1.2. 
+   under the terms of the ParaView license version 1.2.
 
    See http://www.paraview.org/paraview/project/license.html for the full ParaView license.
    A copy of this license can be obtained by contacting
@@ -81,12 +81,15 @@ class CTK_WIDGETS_EXPORT ctkConsole : public QWidget
   Q_PROPERTY(int cursorLine READ cursorLine)
   Q_FLAGS(EditorHint EditorHints)
   Q_PROPERTY(EditorHints editorHints READ editorHints WRITE setEditorHints)
-  Q_ENUMS(Qt::ScrollBarPolicy)
+  Q_ENUM(Qt::ScrollBarPolicy)
   Q_PROPERTY(Qt::ScrollBarPolicy scrollBarPolicy READ scrollBarPolicy WRITE setScrollBarPolicy)
   Q_PROPERTY(QList<QKeySequence> completerShortcuts READ completerShortcuts WRITE setCompleterShortcuts)
   Q_FLAGS(RunFileOption RunFileOptions)
   Q_PROPERTY(RunFileOptions runFileOptions READ runFileOptions WRITE setRunFileOptions)
-  
+  Q_PROPERTY(int maxVisibleCompleterItems READ maxVisibleCompleterItems WRITE setMaxVisibleCompleterItems)
+  Q_PROPERTY(QString commandBuffer READ commandBuffer WRITE setCommandBuffer)
+  Q_PROPERTY(QStringList commandHistory READ commandHistory WRITE setCommandHistory)
+
 public:
 
   enum EditorHint
@@ -102,7 +105,7 @@ public:
   {
     NoRunFileUserInterface = 0x00,
     RunFileButton = 0x01,   /*!< Show a button at the bottom of the console to run a file */
-    RunFileShortcut = 0x02, /*!< Add the shortcut CTRL+r to run a file */
+    RunFileShortcut = 0x02, /*!< Add the shortcut CTRL+G to run a file */
   };
   Q_DECLARE_FLAGS(RunFileOptions, RunFileOption)
 
@@ -111,22 +114,22 @@ public:
   virtual ~ctkConsole();
 
   /// Returns the current formatting that will be used by printMessage()
-  QTextCharFormat getFormat() const;
-  
+  Q_INVOKABLE QTextCharFormat getFormat() const;
+
   /// Sets formatting that will be used by printMessage()
-  void setFormat(const QTextCharFormat& Format);
+  Q_INVOKABLE void setFormat(const QTextCharFormat& Format);
 
   /// Returns current font of python shell
-  QFont shellFont() const;
+  Q_INVOKABLE QFont shellFont() const;
 
   /// Sets font of python shell
-  void setShellFont(const QFont& font);
+  Q_INVOKABLE void setShellFont(const QFont& font);
 
   /// Return the completer of this console
-  ctkConsoleCompleter* completer() const;
+  Q_INVOKABLE ctkConsoleCompleter* completer() const;
 
   /// Set a completer for this console
-  void setCompleter(ctkConsoleCompleter* completer);
+  Q_INVOKABLE void setCompleter(ctkConsoleCompleter* completer);
 
   QColor promptColor()const;
 
@@ -172,9 +175,6 @@ public:
   /// \sa scrollBarPolicy()
   void setScrollBarPolicy(const Qt::ScrollBarPolicy& newScrollBarPolicy);
 
-  /// Prints text on the console
-  void printMessage(const QString& message, const QColor& color);
-
   /// Returns the string used as primary prompt
   virtual QString ps1() const;
 
@@ -199,6 +199,12 @@ public:
   /// \sa cursorPositionChanged(int)
   int cursorLine() const;
 
+  /// Get maximum number of items shown in the auto-complete popup.
+  int maxVisibleCompleterItems() const;
+
+  /// Set maximum number of items shown in the auto-complete popup.
+  void setMaxVisibleCompleterItems(int);
+
   static QString stdInRedirectCallBack(void * callData);
 
   /// Get the list of shortcuts that trigger the completion options.
@@ -222,6 +228,15 @@ public:
   /// \sa runFileOptions()
   void setRunFileOptions(const RunFileOptions& newOptions);
 
+  /// Get the current command buffer (text on current input line, not yet executed)
+  /// \sa setCommandBuffer()
+  virtual const QString& commandBuffer();
+
+  /// Get the command history list (previously executed commands)
+  /// \sa commandBuffer()
+  /// \sa setCommandBuffer()
+  virtual const QStringList& commandHistory();
+
 Q_SIGNALS:
 
   /// This signal emitted before and after a command is executed
@@ -240,21 +255,41 @@ public Q_SLOTS:
   /// Clears the contents of the console and display welcome message
   virtual void reset();
 
+  /// Set the the command buffer (pending command for user)
+  /// \sa commandBuffer()
+  virtual void setCommandBuffer(const QString&);
+
+  /// Set the command history (e.g. if restored from file)
+  /// \sa commandHistory()
+  virtual void setCommandHistory(const QStringList&);
+
   /// Exec the contents of the last console line
   /// \sa openFile(), runFile(QString)
   virtual void exec(const QString&);
 
-  /// Exec line by line the content of a file.
+  /// Execute the content of a file.
+  /// The code is printed on the console and executed at once.
   /// \sa openFile(), exec()
   virtual void runFile(const QString& filePath);
 
   /// Open a file dialog to select a file and run it.
-  /// Shortcut: CTRL+O
+  /// Shortcut: CTRL+G
   /// \sa runFile(QString), exec()
   virtual void runFile();
 
   /// Print the console help with shortcuts.
   virtual void printHelp();
+
+  /// Prints text on the console
+  void printMessage(const QString& message, const QColor& color);
+
+  /// Print a message
+  /// \sa ctkConsole::outputTextColor
+  void printOutputMessage(const QString& text);
+
+  /// Print a message
+  /// \sa ctkConsole::errorTextColor
+  void printErrorMessage(const QString& text);
 
 protected:
 
@@ -263,6 +298,12 @@ protected:
 
   /// Called whenever the user enters a command
   virtual void executeCommand(const QString& Command);
+
+  /// Execute code that may contain multiple commands, at once.
+  /// If the same command is split to lines and executed one by
+  /// one then parsing might fail, therefore whenever it is possible
+  /// this method is preferable for executing multiple commands.
+  virtual void executeString(const QString& commands);
 
 protected:
   ctkConsole(ctkConsolePrivate * pimpl, QWidget* parentObject);
@@ -277,9 +318,11 @@ private:
 Q_DECLARE_OPERATORS_FOR_FLAGS(ctkConsole::EditorHints);
 
 //-----------------------------------------------------------------------------
-class CTK_WIDGETS_EXPORT ctkConsoleCompleter : public QCompleter
-{
+class CTK_WIDGETS_EXPORT ctkConsoleCompleter : public QCompleter {
+  Q_OBJECT
 public:
+
+  explicit ctkConsoleCompleter(QObject* parent = nullptr) : QCompleter(parent) {}
 
   /// Update the completion model given a string.  The given string
   /// is the current console text between the cursor and the start of
@@ -302,6 +345,5 @@ protected:
 
   QStringList AutocompletePreferenceList;
 };
-
 
 #endif

@@ -32,6 +32,7 @@
 #include <QUrl>
 #include <QUuid>
 
+#include <ctkUtils.h>
 #include <ctkXnatDataModel.h>
 #include <ctkXnatException.h>
 #include <ctkXnatFile.h>
@@ -212,7 +213,7 @@ void ctkXnatSessionTestCase::testAuthenticationError()
   try
   {
     session.open();
-    QFAIL("Authenication error exception expected");
+    QFAIL("Authentication error exception expected");
   }
   catch (const ctkXnatAuthenticationException&)
   {}
@@ -365,7 +366,7 @@ void ctkXnatSessionTestCase::testUploadAndDownloadFile()
     if (uploadedFile.open(QFile::ReadWrite))
     {
       QTextStream stream( &uploadedFile );
-      stream << "Hi, I am a CTK test file! ;-)" << endl;
+      stream << "Hi, I am a CTK test file! ;-)" << ctk::endl;
 
       QFileInfo fileInfo;
       fileInfo.setFile(uploadFileName);
@@ -395,13 +396,8 @@ void ctkXnatSessionTestCase::testUploadAndDownloadFile()
         QCryptographicHash hashUploaded(QCryptographicHash::Md5);
         QCryptographicHash hashDownloaded(QCryptographicHash::Md5);
 
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
         hashUploaded.addData(&uploadedFile);
         hashDownloaded.addData(&downloadedFile);
-#else
-        hashUploaded.addData(uploadedFile.readAll());
-        hashDownloaded.addData(downloadedFile.readAll());
-#endif
 
         QString md5ChecksumUploaded(hashUploaded.result().toHex());
         QString md5ChecksumDownloaded(hashDownloaded.result().toHex());

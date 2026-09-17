@@ -48,7 +48,7 @@ public:
   ctkCollapsibleGroupBox(QWidget* parent = 0);
   ctkCollapsibleGroupBox(const QString& title, QWidget* parent = 0);
   virtual ~ctkCollapsibleGroupBox();
-  
+
   /// Utility function to collapse the groupbox
   /// Collapse(close) the group box if collapse is true, expand(open)
   /// it otherwise.
@@ -71,19 +71,13 @@ public:
   virtual void setVisible(bool show);
 protected Q_SLOTS:
   /// called when the arrow indicator is clicked
-  /// users can call it programatically by calling setChecked(bool)
+  /// users can call it programmatically by calling setChecked(bool)
   virtual void expand(bool expand);
 
 protected:
   QScopedPointer<ctkCollapsibleGroupBoxPrivate> d_ptr;
   /// reimplemented for internal reasons
   virtual void childEvent(QChildEvent*);
-
-#if QT_VERSION < 0x040600
-  virtual void paintEvent(QPaintEvent*);
-  virtual void mousePressEvent(QMouseEvent*);
-  virtual void mouseReleaseEvent(QMouseEvent*);
-#endif
 
 private:
   Q_DECLARE_PRIVATE(ctkCollapsibleGroupBox);

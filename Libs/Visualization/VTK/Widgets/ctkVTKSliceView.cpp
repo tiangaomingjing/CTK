@@ -51,6 +51,18 @@ ctkVTKSliceViewPrivate::ctkVTKSliceViewPrivate(ctkVTKSliceView& object)
 }
 
 // --------------------------------------------------------------------------
+ctkVTKSliceViewPrivate::~ctkVTKSliceViewPrivate() = default;
+
+// --------------------------------------------------------------------------
+void ctkVTKSliceViewPrivate::init()
+{
+  Q_Q(ctkVTKSliceView);
+  this->ctkVTKAbstractViewPrivate::init();
+
+  q->VTKWidget()->installEventFilter(q);
+}
+
+// --------------------------------------------------------------------------
 void ctkVTKSliceViewPrivate::setupCornerAnnotation()
 {
   this->ctkVTKAbstractViewPrivate::setupCornerAnnotation();
@@ -74,9 +86,9 @@ void ctkVTKSliceViewPrivate::setupRendering()
   // when they are near the edge of the window.
   vtkCamera* camera = this->OverlayRenderer->GetActiveCamera();
   if (camera)
-    {
+  {
     camera->ParallelProjectionOn();
-    }
+  }
 
   // Create cornerAnnotation and set its default property
   this->OverlayCornerAnnotation = vtkSmartPointer<vtkCornerAnnotation>::New();
@@ -100,7 +112,14 @@ ctkVTKSliceView::ctkVTKSliceView(QWidget* parentWidget)
 {
   Q_D(ctkVTKSliceView);
   d->init();
-  this->VTKWidget()->installEventFilter(this);
+}
+
+// --------------------------------------------------------------------------
+ctkVTKSliceView::ctkVTKSliceView(ctkVTKSliceViewPrivate* pimpl, QWidget* parentWidget)
+  : Superclass(pimpl, parentWidget)
+{
+  // derived classes must call init manually. Calling init() here may results in
+  // actions on a derived public class not yet finished to be created
 }
 
 // --------------------------------------------------------------------------
@@ -132,19 +151,11 @@ void ctkVTKSliceView::resetCamera()
 }
 
 //----------------------------------------------------------------------------
-#if (VTK_MAJOR_VERSION <= 5)
-void ctkVTKSliceView::setImageData(vtkImageData* newImageData)
-{
-  Q_D(ctkVTKSliceView);
-  d->LightBoxRendererManager->SetImageData(newImageData);
-}
-#else
 void ctkVTKSliceView::setImageDataConnection(vtkAlgorithmOutput* newImageDataPort)
 {
   Q_D(ctkVTKSliceView);
   d->LightBoxRendererManager->SetImageDataConnection(newImageDataPort);
 }
-#endif
 
 //----------------------------------------------------------------------------
 vtkCornerAnnotation * ctkVTKSliceView::overlayCornerAnnotation()const
@@ -242,20 +253,20 @@ void ctkVTKSliceView::setColorWindow(double newColorWindow)
 bool ctkVTKSliceView::eventFilter(QObject *object, QEvent *event)
 {
   if (object == this->VTKWidget())
-    {
+  {
     if (event->type() == QEvent::Resize)
-      {
+    {
       QResizeEvent * resizeEvent = dynamic_cast<QResizeEvent*>(event);
       object->event(event);
       emit this->resized(resizeEvent->size());
       return true;
-      }
+    }
     return false;
-    }
+  }
   else
-    {
+  {
     return this->Superclass::eventFilter(object, event);
-    }
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -271,4 +282,3 @@ void ctkVTKSliceView::setLightBoxRendererManagerColumnCount(int newColumnCount)
   Q_D(ctkVTKSliceView);
   d->LightBoxRendererManager->SetRenderWindowColumnCount(newColumnCount);
 }
-

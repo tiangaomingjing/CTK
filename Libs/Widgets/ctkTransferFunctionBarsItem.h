@@ -39,6 +39,7 @@ class CTK_WIDGETS_EXPORT ctkTransferFunctionBarsItem: public ctkTransferFunction
   Q_OBJECT
   Q_PROPERTY(qreal barWidth READ barWidth WRITE setBarWidth)
   Q_PROPERTY(QColor barColor READ barColor WRITE setBarColor)
+  Q_PROPERTY(LogMode logMode READ logMode WRITE setLogMode)
 public:
   ctkTransferFunctionBarsItem(QGraphicsItem* parent = 0);
   ctkTransferFunctionBarsItem(ctkTransferFunction* transferFunc,
@@ -50,13 +51,17 @@ public:
 
   void setBarColor(const QColor& newBarColor);
   QColor barColor()const;
-  
+
   enum LogMode
   {
     NoLog = 0,
     UseLog = 1,
     AutoLog =2
   };
+  Q_ENUM(LogMode)
+  LogMode logMode() const;
+  void setLogMode(const LogMode logMode);
+
   virtual void paint(QPainter * painter, const QStyleOptionGraphicsItem * option, QWidget * widget = 0);
 protected:
   QScopedPointer<ctkTransferFunctionBarsItemPrivate> d_ptr;

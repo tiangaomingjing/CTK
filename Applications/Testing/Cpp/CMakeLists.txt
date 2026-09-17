@@ -7,6 +7,11 @@ if(CTK_APP_ctkDICOMQuery AND CTK_APP_ctkDICOMRetrieve)
   set(DCMQRSCP_STORE_DIR ${CTK_BINARY_DIR}/Testing/Temporary)
   set(ctkDICOMRetrieve_STORE_DIR ${CTK_BINARY_DIR}/Testing/Temporary/ctkDICOMRetrieveStorage)
   set(DCMQRSCP_CONFIG ${CTK_BINARY_DIR}/Testing/Temporary/dcmqrscp.cfg)
+  if(UNIX)
+    set(DCMQRSCP_HOSTNAME "localhost")
+  else()
+    cmake_host_system_information(RESULT DCMQRSCP_HOSTNAME QUERY HOSTNAME)
+  endif()
   configure_file( dcmqrscp.cfg.in ${DCMQRSCP_CONFIG} )
 
   set(ctkDICOMQuery_DB_FILE ${CTK_BINARY_DIR}/Testing/Temporary/ctkDICOMApplicationTest1.db)
@@ -17,26 +22,36 @@ if(CTK_APP_ctkDICOMQuery AND CTK_APP_ctkDICOMRetrieve)
   find_program(DCMTK_DCMQRSCP_EXECUTABLE dcmqrscp
     PATHS
       ${DCMTK_DIR}/bin
+    PATH_SUFFIXES
+      ${CMAKE_CONFIGURATION_TYPES}
     NO_DEFAULT_PATH
     )
 
   find_program(DCMTK_STORESCU_EXECUTABLE storescu
     PATHS
       ${DCMTK_DIR}/bin
+    PATH_SUFFIXES
+      ${CMAKE_CONFIGURATION_TYPES}
     NO_DEFAULT_PATH
     )
 
   #
   # Add Tests
   #
-  add_executable(ctkDICOMApplicationTest1 ctkDICOMApplicationTest1.cpp)
-  if(CTK_QT_VERSION VERSION_LESS "5")
-    target_link_libraries(ctkDICOMApplicationTest1 ${QT_LIBRARIES})
-  else()
-    target_link_libraries(ctkDICOMApplicationTest1 Qt5::Core)
-  endif()
+  ctk_add_executable_utf8(ctkDICOMApplicationTest1 ctkDICOMApplicationTest1.cpp)
+  target_link_libraries(ctkDICOMApplicationTest1
+    CTKCore
+    Qt${CTK_QT_VERSION}::Core
+    )
 
-  ADD_TEST( NAME ctkDICOMApplicationTest1
+  include_directories(
+    ${CTKCore_SOURCE_DIR}
+    ${CTKCore_BINARY_DIR}
+    )
+
+  set(testname ctkDICOMApplicationTest1)
+
+  add_test( NAME ${testname}
             COMMAND
             $<TARGET_FILE:ctkDICOMApplicationTest1>
                ${DCMTK_DCMQRSCP_EXECUTABLE}
@@ -49,5 +64,9 @@ if(CTK_APP_ctkDICOMQuery AND CTK_APP_ctkDICOMRetrieve)
                $<TARGET_FILE:ctkDICOMRetrieve>
                ${ctkDICOMRetrieve_STORE_DIR}
                )
-endif()
 
+  set_property(TEST ${testname} PROPERTY ENVIRONMENT_MODIFICATION "${CTK_TEST_LAUNCH_BUILD_ENVIRONMENT_MODIFICATION}")
+
+  set_property(TEST ${testname} PROPERTY RESOURCE_LOCK "dcmqrscp")
+
+endif()

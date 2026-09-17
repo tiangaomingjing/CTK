@@ -55,7 +55,7 @@ macro(ctkMacroBuildPlugin)
     ${ARGN}
     )
 
-  # Keep parameter 'INCLUDE_DIRECTORIES' for backward compatiblity
+  # Keep parameter 'INCLUDE_DIRECTORIES' for backward compatibility
 
   # Sanity checks
   if(NOT DEFINED MY_EXPORT_DIRECTIVE)
@@ -72,7 +72,7 @@ macro(ctkMacroBuildPlugin)
   # Define library name
   set(lib_name ${PROJECT_NAME})
 
-  # Plug-in target names must contain at leas one _
+  # Plug-in target names must contain at least one _
   if(NOT lib_name MATCHES _)
     message(FATAL_ERROR "The plug-in project name ${lib_name} must contain at least one '_' character")
   endif()
@@ -140,18 +140,7 @@ macro(ctkMacroBuildPlugin)
   # and external dependencies
   ctkFunctionGetIncludeDirs(my_includes ${lib_name})
 
-  if(CMAKE_VERSION VERSION_LESS 2.8.12)
-    include_directories(
-      ${my_includes}
-      )
-  endif()
-
-  if(CTK_QT_VERSION VERSION_LESS "5")
-    # Add Qt include dirs and defines
-    include(${QT_USE_FILE})
-  else()
-    find_package(Qt5 COMPONENTS LinguistTools REQUIRED)
-  endif()
+  find_package(Qt${CTK_QT_VERSION} COMPONENTS LinguistTools REQUIRED)
 
   # Add the library directories from the external project
   ctkFunctionGetLibraryDirs(my_library_dirs ${lib_name})
@@ -172,43 +161,11 @@ macro(ctkMacroBuildPlugin)
     "${dynamicHeaders};${CMAKE_CURRENT_BINARY_DIR}/${MY_EXPORT_HEADER_PREFIX}Export.h")
 
   # Make sure variable are cleared
-  set(MY_MOC_CPP)
-  set(MY_UI_CPP)
-  set(MY_QRC_SRCS)
+  set(MY_RESOURCES)
 
-  # Wrap
-  if (CTK_QT_VERSION VERSION_GREATER "4")
-    set(target)
-    if(Qt5Core_VERSION VERSION_GREATER "5.2.0")
-      set(target TARGET ${lib_name})
-    endif()
-    if(MY_MOC_SRCS)
-      # this is a workaround for Visual Studio. The relative include paths in the generated
-      # moc files can get very long and can't be resolved by the MSVC compiler.
-      foreach(moc_src ${MY_MOC_SRCS})
-        QT5_WRAP_CPP(MY_MOC_CPP ${moc_src} OPTIONS -f${moc_src} -DHAVE_QT5 ${MY_MOC_OPTIONS} ${target})
-      endforeach()
-    endif()
-    QT5_WRAP_UI(MY_UI_CPP ${MY_UI_FORMS})
-    if(DEFINED MY_RESOURCES)
-      QT5_ADD_RESOURCES(MY_QRC_SRCS ${MY_RESOURCES})
-    endif()
-  else()
-    if(MY_MOC_SRCS)
-      # this is a workaround for Visual Studio. The relative include paths in the generated
-      # moc files can get very long and can't be resolved by the MSVC compiler.
-      foreach(moc_src ${MY_MOC_SRCS})
-        QT4_WRAP_CPP(MY_MOC_CPP ${moc_src} OPTIONS -f${moc_src} ${MY_MOC_OPTIONS} TARGET ${lib_name})
-      endforeach()
-    endif()
-    QT4_WRAP_UI(MY_UI_CPP ${MY_UI_FORMS})
-    if(DEFINED MY_RESOURCES)
-      QT4_ADD_RESOURCES(MY_QRC_SRCS ${MY_RESOURCES})
-    endif()
-  endif()
   # Add the generated manifest qrc file
-  set(manifest_qrc_src )
-  ctkFunctionGeneratePluginManifest(manifest_qrc_src
+  set(manifest_qrc_filepath )
+  ctkFunctionGeneratePluginManifest(manifest_qrc_filepath
     ACTIVATIONPOLICY ${Plugin-ActivationPolicy}
     CATEGORY ${Plugin-Category}
     CONTACT_ADDRESS ${Plugin-ContactAddress}
@@ -223,13 +180,11 @@ macro(ctkMacroBuildPlugin)
     VENDOR ${Plugin-Vendor}
     VERSION ${Plugin-Version}
     CUSTOM_HEADERS ${Custom-Headers}
+    SKIP_QT5_ADD_RESOURCES
     )
-
-  if(manifest_headers_dep)
-    set_property(SOURCE ${manifest_qrc_src} APPEND
-                   PROPERTY OBJECT_DEPENDS ${manifest_headers_dep})
-  endif()
-  list(APPEND MY_QRC_SRCS ${manifest_qrc_src})
+  list(APPEND MY_RESOURCES
+    ${manifest_qrc_filepath}
+    )
 
   # Create translation files (.ts and .qm)
   set(_plugin_qm_files )
@@ -238,11 +193,12 @@ macro(ctkMacroBuildPlugin)
   if(MY_TRANSLATIONS)
     set_source_files_properties(${MY_TRANSLATIONS}
                                 PROPERTIES OUTPUT_LOCATION ${_translations_dir})
-    if(CTK_QT_VERSION VERSION_GREATER "4")
-      qt5_create_translation(_plugin_qm_files ${MY_SRCS} ${MY_UI_FORMS} ${MY_TRANSLATIONS})
-    else()
-      QT4_CREATE_TRANSLATION(_plugin_qm_files ${MY_SRCS} ${MY_UI_FORMS} ${MY_TRANSLATIONS})
-    endif()
+  if(CTK_QT_VERSION MATCHES "^(5|6)$")
+      qt_create_translation(_plugin_qm_files ${MY_SRCS} ${MY_UI_FORMS} ${MY_TRANSLATIONS})
+  else()
+    message(FATAL_ERROR "Support for Qt${CTK_QT_VERSION} is not implemented")
+  endif()
+
   endif()
 
   if(_plugin_qm_files)
@@ -268,11 +224,17 @@ macro(ctkMacroBuildPlugin)
   # Add any other additional resource files
   if(_plugin_cached_resources_in_source_tree OR _plugin_cached_resources_in_binary_tree)
     string(REPLACE "." "_" _plugin_symbolicname ${Plugin-SymbolicName})
-    ctkMacroGeneratePluginResourcefile(MY_QRC_SRCS
+    set(plugin_qrc_filepath)
+    ctkMacroGeneratePluginResourcefile(plugin_qrc_filepath
       NAME ${_plugin_symbolicname}_cached.qrc
       PREFIX ${Plugin-SymbolicName}
       RESOURCES ${_plugin_cached_resources_in_source_tree}
-      BINARY_RESOURCES ${_plugin_cached_resources_in_binary_tree})
+      BINARY_RESOURCES ${_plugin_cached_resources_in_binary_tree}
+      SKIP_QT5_ADD_RESOURCES
+      )
+    list(APPEND MY_RESOURCES
+      ${plugin_qrc_filepath}
+      )
   endif()
 
   source_group("Resources" FILES
@@ -282,50 +244,45 @@ macro(ctkMacroBuildPlugin)
     )
 
   source_group("Generated" FILES
-    ${MY_QRC_SRCS}
-    ${MY_MOC_CPP}
-    ${MY_UI_CPP}
     ${_plugin_qm_files}
     )
 
   add_library(${lib_name} ${MY_LIBRARY_TYPE}
     ${MY_SRCS}
-    ${MY_MOC_CPP}
-    ${MY_UI_CPP}
-    ${MY_QRC_SRCS}
+    ${MY_RESOURCES}
     ${_plugin_qm_files}
     )
 
-  if(NOT CMAKE_VERSION VERSION_LESS 2.8.12)
-    target_include_directories(${lib_name}
-      PUBLIC "$<BUILD_INTERFACE:${my_includes}>"
-             "$<INSTALL_INTERFACE:${CTK_INSTALL_PLUGIN_INCLUDE_DIR}/${Plugin-SymbolicName}>"
-      )
-    if(CTK_QT_VERSION VERSION_LESS "5")
-      # Add Qt include dirs to the target
-      target_include_directories(${lib_name} PUBLIC ${QT_INCLUDE_DIR})
-      foreach(module QT3SUPPORT QTOPENGL QTASSISTANT QTDESIGNER QTMOTIF QTNSPLUGIN
-               QAXSERVER QAXCONTAINER QTDECLARATIVE QTSCRIPT QTSVG QTUITOOLS QTHELP
-               QTWEBKIT PHONON QTSCRIPTTOOLS QTMULTIMEDIA QTXMLPATTERNS QTGUI QTTEST
-               QTDBUS QTXML QTSQL QTNETWORK QTCORE)
-        if (QT_USE_${module} OR QT_USE_${module}_DEPENDS)
-          if (QT_${module}_FOUND)
-            target_include_directories(${lib_name} PUBLIC ${QT_${module}_INCLUDE_DIR})
-          endif ()
-        endif ()
-      endforeach()
-    endif()
-  else()
-    find_package(Qt5LinguistTools REQUIRED)
-  endif()
+  target_compile_definitions(${lib_name} PRIVATE
+    HAVE_QT${CTK_QT_VERSION}
+    )
 
-  if(MY_TEST_PLUGIN AND CTK_QT_VERSION VERSION_GREATER "4")
-    find_package(Qt5Test REQUIRED)
-    if(CMAKE_VERSION VERSION_LESS 2.8.12)
-      target_link_libraries(${lib_name} Qt5::Test)
-    else()
-      target_link_libraries(${lib_name} PRIVATE Qt5::Test)
+  target_include_directories(${lib_name}
+    PUBLIC "$<BUILD_INTERFACE:${my_includes}>"
+           "$<INSTALL_INTERFACE:${CTK_INSTALL_PLUGIN_INCLUDE_DIR}/${Plugin-SymbolicName}>"
+    )
+
+  # Configure CMake Qt automatic code generation
+  set(uic_search_paths)
+  foreach(ui_src IN LISTS MY_UI_FORMS)
+    if(NOT IS_ABSOLUTE ${ui_src})
+      set(ui_src "${CMAKE_CURRENT_SOURCE_DIR}/${ui_src}")
     endif()
+    get_filename_component(ui_path ${ui_src} PATH)
+    list(APPEND uic_search_paths ${ui_path})
+  endforeach()
+  list(REMOVE_DUPLICATES uic_search_paths)
+
+  set_target_properties(${lib_name} PROPERTIES
+    AUTOMOC ON
+    AUTORCC ON
+    AUTOUIC ON
+    AUTOUIC_SEARCH_PATHS "${uic_search_paths}"
+    )
+
+  if(MY_TEST_PLUGIN)
+    find_package(Qt${CTK_QT_VERSION} COMPONENTS Test REQUIRED)
+    target_link_libraries(${lib_name} PRIVATE Qt${CTK_QT_VERSION}::Test)
   endif()
 
   # Set the output directory for the plugin
@@ -387,11 +344,7 @@ macro(ctkMacroBuildPlugin)
     list(APPEND my_libs ssp) # add stack smash protection lib
   endif()
 
-  if(CMAKE_VERSION VERSION_LESS 2.8.12)
-    target_link_libraries(${lib_name} ${my_libs})
-  else()
-    target_link_libraries(${lib_name} PUBLIC ${my_libs})
-  endif()
+  target_link_libraries(${lib_name} PUBLIC ${my_libs})
 
   if(NOT MY_TEST_PLUGIN)
     set(${CMAKE_PROJECT_NAME}_PLUGIN_LIBRARIES ${${CMAKE_PROJECT_NAME}_PLUGIN_LIBRARIES} ${lib_name} CACHE INTERNAL "CTK plugins" FORCE)
@@ -408,4 +361,3 @@ macro(ctkMacroBuildPlugin)
   endif()
 
 endmacro()
-

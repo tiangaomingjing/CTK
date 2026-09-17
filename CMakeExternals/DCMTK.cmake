@@ -13,6 +13,10 @@ ExternalProject_Include_Dependencies(${proj}
   USE_SYSTEM_VAR ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj}
   )
 
+# Let the user to chose whether to use libs installed in the system
+option(${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj} "Use installed ${proj} library in the system" OFF)
+mark_as_advanced(${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
+
 if(${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   unset(DCMTK_DIR CACHE)
   find_package(DCMTK REQUIRED)
@@ -24,7 +28,7 @@ if(DEFINED DCMTK_DIR AND NOT EXISTS ${DCMTK_DIR})
 endif()
 
 if(NOT DEFINED DCMTK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
-  set(revision_tag "DCMTK-3.6.1_20161102")
+  set(revision_tag "f390821c469c0897c1b5437164c8826e080a2581") # patched-DCMTK-3.6.8_20241024
   if(${proj}_REVISION_TAG)
     set(revision_tag ${${proj}_REVISION_TAG})
   endif()
@@ -36,14 +40,23 @@ if(NOT DEFINED DCMTK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
     set(location_args GIT_REPOSITORY ${${proj}_GIT_REPOSITORY}
                       GIT_TAG ${revision_tag})
   else()
-    set(location_args GIT_REPOSITORY "${git_protocol}://git.dcmtk.org/dcmtk.git"
+    set(location_args GIT_REPOSITORY "${EP_GIT_PROTOCOL}://github.com/commontk/DCMTK.git"
                       GIT_TAG ${revision_tag})
   endif()
 
-  set(ep_project_include_arg)
-  if(CTEST_USE_LAUNCHERS)
-    set(ep_project_include_arg
-      "-DCMAKE_PROJECT_DCMTK_INCLUDE:FILEPATH=${CMAKE_ROOT}/Modules/CTestUseLaunchers.cmake")
+  # DCMTK uses its own container classes by default. With this option its
+  # OFList, OFMap and friends become aliases of the corresponding STL types,
+  # which changes the headers that CTK and its users compile against.
+  option(DCMTK_ENABLE_STL "Build DCMTK with STL containers" OFF)
+  mark_as_advanced(DCMTK_ENABLE_STL)
+
+  set(EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS)
+
+  if(UNIX)
+    list(APPEND EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS
+      -DDCMTK_FORCE_FPIC_ON_UNIX:BOOL=ON
+      -DDCMTK_WITH_WRAP:BOOL=OFF   # CTK does not build on Mac with this option turned ON due to library dependencies missing
+      )
   endif()
 
   ExternalProject_Add(${proj}
@@ -58,7 +71,6 @@ if(NOT DEFINED DCMTK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DDCMTK_INSTALL_LIBDIR:STRING=lib/${CMAKE_CFG_INTDIR}
     CMAKE_CACHE_ARGS
       ${ep_common_cache_args}
-      ${ep_project_include_arg}
       -DBUILD_SHARED_LIBS:BOOL=ON
       -DDCMTK_WITH_DOXYGEN:BOOL=OFF
       -DDCMTK_WITH_ZLIB:BOOL=OFF # see github issue #25
@@ -67,12 +79,44 @@ if(NOT DEFINED DCMTK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
       -DDCMTK_WITH_TIFF:BOOL=OFF  # see github issue #25
       -DDCMTK_WITH_XML:BOOL=OFF  # see github issue #25
       -DDCMTK_WITH_ICONV:BOOL=OFF  # see github issue #178
-      -DDCMTK_FORCE_FPIC_ON_UNIX:BOOL=ON
+      -DDCMTK_WITH_SNDFILE:BOOL=OFF # see DCMQI github issue #395
       -DDCMTK_OVERWRITE_WIN32_COMPILER_FLAGS:BOOL=OFF
+      -DDCMTK_DEFAULT_DICT:STRING=builtin
+      -DDCMTK_ENABLE_PRIVATE_TAGS:BOOL=ON
+      -DDCMTK_ENABLE_STL:BOOL=${DCMTK_ENABLE_STL}
+
+      ${EXTERNAL_PROJECT_OPTIONAL_CMAKE_CACHE_ARGS}
     DEPENDS
       ${${proj}_DEPENDENCIES}
     )
   set(DCMTK_DIR ${CMAKE_CURRENT_BINARY_DIR}/${proj}-build)
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to build tree
+
+  set(_lib_subdir lib)
+  if(WIN32)
+    set(_lib_subdir bin)
+  endif()
+
+  # library paths
+  set(${proj}_LIBRARY_PATHS_LAUNCHER_BUILD ${DCMTK_DIR}/${_lib_subdir}/<CMAKE_CFG_INTDIR>)
+  mark_as_superbuild(
+    VARS ${proj}_LIBRARY_PATHS_LAUNCHER_BUILD
+    LABELS "LIBRARY_PATHS_LAUNCHER_BUILD"
+    )
+
+  # paths
+  set(${proj}_PATHS_LAUNCHER_BUILD ${DCMTK_DIR}/bin/<CMAKE_CFG_INTDIR>)
+  mark_as_superbuild(
+    VARS ${proj}_PATHS_LAUNCHER_BUILD
+    LABELS "PATHS_LAUNCHER_BUILD"
+    )
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to install tree
+
+  # NA
 
 else()
   ExternalProject_Add_Empty(${proj} DEPENDS ${${proj}_DEPENDENCIES})

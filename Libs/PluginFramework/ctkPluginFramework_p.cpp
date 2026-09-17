@@ -146,7 +146,7 @@ void ctkPluginFrameworkPrivate::shutdown(bool restart)
       {
         const bool wa = wasActive;
         shuttingDown.fetchAndStoreOrdered(1);
-        QtConcurrent::run(this, &ctkPluginFrameworkPrivate::shutdown0, restart, wa);
+        QFuture<void> future = QtConcurrent::run([=]() { shutdown0(restart, wa); });
       }
       catch (const ctkException& e)
       {
@@ -229,7 +229,11 @@ void ctkPluginFrameworkPrivate::stopAllPlugins()
   // Stop all active plug-ins, in reverse plug-in ID order
   // The list will be empty when the start level service is in use.
   QList<QSharedPointer<ctkPlugin> > activePlugins = fwCtx->plugins->getActivePlugins();
+#if QT_VERSION >= QT_VERSION_CHECK(5,2,0)
+  std::sort(activePlugins.begin(), activePlugins.end(), pluginIdLessThan);
+#else
   qSort(activePlugins.begin(), activePlugins.end(), pluginIdLessThan);
+#endif
   QListIterator<QSharedPointer<ctkPlugin> > i(activePlugins);
   i.toBack();
   while(i.hasPrevious())

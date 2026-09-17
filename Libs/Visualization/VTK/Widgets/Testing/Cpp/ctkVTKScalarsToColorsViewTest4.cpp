@@ -60,36 +60,24 @@ int ctkVTKScalarsToColorsViewTest4(int argc, char * argv [] )
   float inc = 7.5 / (numPoints-1);
   table->SetNumberOfRows(numPoints);
   for (int i = 0; i < numPoints; ++i)
-    {
+  {
     table->SetValue(i, 0, i * inc);
     table->SetValue(i, 1, cos(i * inc) + 0.0);
     table->SetValue(i, 2, sin(i * inc) + 0.0);
     table->SetValue(i, 3, sin(i * inc) + 0.5);
-    }
+  }
 
   // Add multiple line plots, setting the colors etc
   vtkPlot *line = chart->AddPlot(vtkChart::LINE);
-#if (VTK_MAJOR_VERSION <= 5)
-  line->SetInput(table, 0, 1);
-#else
   line->SetInputData(table, 0, 1);
-#endif
   line->SetColor(0, 255, 0, 255);
   line->SetWidth(1.0);
   line = chart->AddPlot(vtkChart::LINE);
-#if (VTK_MAJOR_VERSION <= 5)
-  line->SetInput(table, 0, 2);
-#else
   line->SetInputData(table, 0, 2);
-#endif
   line->SetColor(255, 0, 0, 255);
   line->SetWidth(5.0);
   line = chart->AddPlot(vtkChart::LINE);
-#if (VTK_MAJOR_VERSION <= 5)
-  line->SetInput(table, 0, 3);
-#else
   line->SetInputData(table, 0, 3);
-#endif
   line->SetColor(0, 0, 255, 255);
   line->SetWidth(4.0);
 
@@ -97,9 +85,9 @@ int ctkVTKScalarsToColorsViewTest4(int argc, char * argv [] )
   view->GetRenderWindow()->SetMultiSamples(0);
   int retval = vtkRegressionTestImage(view->GetRenderWindow());
   if (retval == vtkRegressionTester::DO_INTERACTOR)
-    {
+  {
     view->GetRenderWindow()->GetInteractor()->Initialize();
     view->GetRenderWindow()->GetInteractor()->Start();
-    }
+  }
   return !retval;
 }

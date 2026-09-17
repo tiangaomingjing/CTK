@@ -92,9 +92,9 @@ void ctkEventDispatcherLocal::notifyEvent(ctkBusEvent &event_dictionary, ctkEven
                              argList->at(5), argList->at(6), argList->at(7), argList->at(8), argList->at(9));
                             break;
                         default:
-                            qWarning("%s", tr("Number of arguments not supported. Max 10 arguments").toLatin1().data());
+                            qWarning("%s", QString("Number of arguments not supported. Max 10 arguments").toUtf8().data());
                     } //switch
-                 } else { //use return value
+                } else { //use return value
                     switch (argList->count()) {
                         case 0:
                             this->metaObject()->invokeMethod(obj, signal_to_emit.toLatin1(), *returnArg);
@@ -144,9 +144,9 @@ void ctkEventDispatcherLocal::notifyEvent(ctkBusEvent &event_dictionary, ctkEven
                              argList->at(5), argList->at(6), argList->at(7), argList->at(8), argList->at(9));
                             break;
                         default:
-                            qWarning("%s", tr("Number of arguments not supported. Max 10 arguments").toLatin1().data());
+                            qWarning("%s", QString("Number of arguments not supported. Max 10 arguments").toUtf8().data());
                     } //switch
-                 }
+                }
             } else {
                 if (returnArg == NULL || returnArg->data() == NULL) { //don't use return value
                     this->metaObject()->invokeMethod(obj, signal_to_emit.toLatin1());
@@ -158,4 +158,3 @@ void ctkEventDispatcherLocal::notifyEvent(ctkBusEvent &event_dictionary, ctkEven
         }
     }
 }
-

@@ -34,10 +34,6 @@
 #include <vtkRenderer.h>
 #include <vtkSmartPointer.h>
 #include <vtkSphereSource.h>
-#if CTK_USE_QVTKOPENGLWIDGET
-#include <QVTKOpenGLWidget.h>
-#endif
-
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkSplineWidget2.h>
@@ -49,6 +45,7 @@
 #include "ctkVTKRenderView.h"
 #include "ctkVTKRenderViewEventPlayer.h"
 #include "ctkVTKRenderViewEventTranslator.h"
+#include "ctkVTKWidgetsUtils.h"
 #include "ctkEventTranslatorPlayerWidget.h"
 #include "ctkWidgetsUtils.h"
 
@@ -66,50 +63,55 @@
 namespace
 {
 QString xmlDirectory = CTK_SOURCE_DIR "/Libs/Visualization/VTK/Widgets/Testing/Cpp/";
+QString outputDirectory;
 ctkCallback* Callback1;
 ctkCallback* Callback2;
 
 bool save = false;
 //-----------------------------------------------------------------------------
 void checkFinalWidgetState(void* data)
-  {
+{
   ctkVTKRenderView* widget = reinterpret_cast<ctkVTKRenderView*>(data);
 
   QImage actualImage = ctk::grabWidget(widget, widget->rect());
-  actualImage.save(xmlDirectory + "ctkVTKRenderViewEventTranslatorPlayerTest1ScreenshotTest.png");
+  actualImage.save(outputDirectory + "ctkVTKRenderViewEventTranslatorPlayerTest1ScreenshotTest.png");
   CTKCOMPARE(actualImage,
              QImage(xmlDirectory + "ctkVTKRenderViewEventTranslatorPlayerTest1Screenshot.png"));
-  }
+}
 //-----------------------------------------------------------------------------
 void screenshot(void* data)
-  {
+{
   if (save)
-    {
+  {
     ctkVTKRenderView* widget = reinterpret_cast<ctkVTKRenderView*>(data);
     QImage expectedImage = ctk::grabWidget(widget, widget->rect());
-    expectedImage.save(xmlDirectory + "ctkVTKRenderViewEventTranslatorPlayerTest1Screenshot.png");
+    expectedImage.save(outputDirectory + "ctkVTKRenderViewEventTranslatorPlayerTest1Screenshot.png");
     save = false;
-    }
   }
+}
 void screenshotAvailable(void* data)
-  {
+{
   Q_UNUSED(data);
   save = true;
-  }
+}
 }
 
 //-----------------------------------------------------------------------------
 int ctkVTKRenderViewEventTranslatorPlayerTest1(int argc, char * argv [] )
 {
-#if CTK_USE_QVTKOPENGLWIDGET
-    QSurfaceFormat format = QVTKOpenGLWidget::defaultFormat();
-    format.setSamples(0);
-    QSurfaceFormat::setDefaultFormat(format);
-#endif
+  ctk::vtkSetSurfaceDefaultFormat();
 
   QApplication app(argc, argv);
 
-//  QString xmlDirectory = CTK_SOURCE_DIR "/Libs/Visualization/VTK/Widgets/Testing/Cpp/";
+  // First non-flag argument is the output directory for screenshots
+  for (int i = 1; i < argc; ++i)
+  {
+    if (QString(argv[i]) != "-I")
+    {
+      outputDirectory = QString(argv[i]) + "/";
+      break;
+    }
+  }
 
   // ------------------------
   ctkEventTranslatorPlayerWidget etpWidget;
@@ -165,11 +167,10 @@ int ctkVTKRenderViewEventTranslatorPlayerTest1(int argc, char * argv [] )
 
   // ------------------------
   if (!app.arguments().contains("-I"))
-    {
+  {
     QTimer::singleShot(0, &etpWidget, SLOT(play()));
-    }
+  }
 
   etpWidget.show();
   return app.exec();
 }
-

@@ -5,6 +5,9 @@
 # This file is configured by CTK and used by the UseCTK.cmake module
 # to load CTK's settings for an external project.
 
+if(CMAKE_VERSION VERSION_LESS 3.0.0)
+  message(FATAL_ERROR "CTK requires at least CMake version 3.0.0")
+endif()
 
 @PACKAGE_INIT@
 
@@ -37,6 +40,7 @@ set(CTK_LIBRARY_DIRS ${CTK_LIBRARY_DIR})
 
 # CTK specific variables
 set(CTK_CMAKE_DEBUG_POSTFIX "@CMAKE_DEBUG_POSTFIX@")
+set(CTK_COMPILE_PYTHON_SCRIPT_SKIP_SCRIPT_COPY "@CTK_COMPILE_PYTHON_SCRIPT_SKIP_SCRIPT_COPY@")
 
 # Import CTK targets
 if(NOT TARGET CTKCore)
@@ -52,6 +56,7 @@ include("${CTK_CMAKE_DIR}/ctkFunctionGetCompilerVisibilityFlags.cmake")
 include("${CTK_CMAKE_DIR}/ctkMacroParseArguments.cmake")
 include("${CTK_CMAKE_DIR}/ctkMacroSetPaths.cmake")
 include("${CTK_CMAKE_DIR}/ctkMacroListFilter.cmake")
+include("${CTK_CMAKE_DIR}/ctkFunctionExtractOptimizedLibrary.cmake")
 include("${CTK_CMAKE_DIR}/ctkMacroBuildLibWrapper.cmake")
 include("${CTK_CMAKE_DIR}/ctkMacroBuildPlugin.cmake")
 include("${CTK_CMAKE_DIR}/ctkMacroBuildQtPlugin.cmake")
@@ -59,23 +64,21 @@ include("${CTK_CMAKE_DIR}/ctkMacroTargetLibraries.cmake") # Import multiple macr
 include("${CTK_CMAKE_DIR}/ctkFunctionExtractOptionNameAndValue.cmake")
 include("${CTK_CMAKE_DIR}/ctkMacroValidateBuildOptions.cmake")
 include("${CTK_CMAKE_DIR}/ctkFunctionGenerateDGraphInput.cmake")
+include("${CTK_CMAKE_DIR}/ctkFunctionGetIncludeDirs.cmake")
+include("${CTK_CMAKE_DIR}/ctkFunctionGetLibraryDirs.cmake")
+include("${CTK_CMAKE_DIR}/ctkMacroGenerateMocs.cmake")
+
+# PluginFramework
 include("${CTK_CMAKE_DIR}/ctkFunctionGeneratePluginManifest.cmake")
 include("${CTK_CMAKE_DIR}/ctkFunctionGeneratePluginUseFile.cmake")
 include("${CTK_CMAKE_DIR}/ctkMacroGeneratePluginResourceFile.cmake")
-include("${CTK_CMAKE_DIR}/ctkFunctionGetIncludeDirs.cmake")
-include("${CTK_CMAKE_DIR}/ctkFunctionGetLibraryDirs.cmake")
 include("${CTK_CMAKE_DIR}/ctkFunctionExtractPluginTargets.cmake")
 include("${CTK_CMAKE_DIR}/ctkFunctionGetAllPluginTargets.cmake")
 include("${CTK_CMAKE_DIR}/ctkFunctionGetTargetDependencies.cmake")
 include("${CTK_CMAKE_DIR}/ctkFunctionGetPluginDependencies.cmake")
 include("${CTK_CMAKE_DIR}/ctkMacroSetupPlugins.cmake")
-include("${CTK_CMAKE_DIR}/ctkMacroGenerateMocs.cmake")
 
-if(CMAKE_VERSION VERSION_LESS 3)
-  include("${CTK_CMAKE_DIR}/CMakeFindDependencyMacro.cmake")
-else()
-  include(CMakeFindDependencyMacro)
-endif()
+include(CMakeFindDependencyMacro)
 
 # List all libraries
 SET(CTK_LIBRARIES @CTK_LIBRARIES@)
@@ -88,9 +91,9 @@ include(${CTK_PLUGIN_USE_FILE})
 
 # Qt configuration
 set(CTK_QT_VERSION "@CTK_QT_VERSION@")
-set(CTK_QT5_COMPONENTS @CTK_QT5_COMPONENTS@)
+set(CTK_QT_COMPONENTS @CTK_QT_COMPONENTS@)
 
-# Update CMake module path so that calling "find_package(DCMTK)" works as expected 
+# Update CMake module path so that calling "find_package(DCMTK)" works as expected
 # after calling "find_package(CTK)"
 # Ideally projects like DCMTK or PythonQt should provide both "Config" and "Use" files.
 set(CMAKE_MODULE_PATH

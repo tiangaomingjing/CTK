@@ -25,6 +25,7 @@
 
 // CTK includes
 #include "ctkVTKChartView.h"
+#include "ctkVTKWidgetsUtils.h"
 
 // VTK includes
 #include <vtkIntArray.h>
@@ -32,9 +33,6 @@
 #include <vtkPlotBar.h>
 #include <vtkTable.h>
 #include <vtkVersion.h>
-#if CTK_USE_QVTKOPENGLWIDGET
-#include <QVTKOpenGLWidget.h>
-#endif
 
 // STD includes
 #include <iostream>
@@ -48,11 +46,7 @@ static int data_2010[] = {9058, 10941, 9979, 10270, 8900, 11228, 14688, 12231, 1
 //-----------------------------------------------------------------------------
 int ctkVTKChartViewTest1(int argc, char * argv [] )
 {
-#if CTK_USE_QVTKOPENGLWIDGET
-    QSurfaceFormat format = QVTKOpenGLWidget::defaultFormat();
-    format.setSamples(0);
-    QSurfaceFormat::setDefaultFormat(format);
-#endif
+  ctk::vtkSetSurfaceDefaultFormat();
 
   QApplication app(argc, argv);
 
@@ -79,40 +73,28 @@ int ctkVTKChartViewTest1(int argc, char * argv [] )
 
   table->SetNumberOfRows(12);
   for (int i = 0; i < 12; i++)
-    {
+  {
     table->SetValue(i,0,i+1);
     table->SetValue(i,1,data_2008[i]);
     table->SetValue(i,2,data_2009[i]);
     table->SetValue(i,3,data_2010[i]);
-    }
+  }
 
   // Add multiple line plots, setting the colors etc
   vtkPlotBar* bar = vtkPlotBar::New();
-#if (VTK_MAJOR_VERSION <= 5)
-  bar->SetInput(table.GetPointer(), 0, 1);
-#else
   bar->SetInputData(table.GetPointer(), 0, 1);
-#endif
   bar->SetColor(0, 255, 0, 255);
   view.addPlot(bar);
   bar->Delete();
 
   bar = vtkPlotBar::New();
-#if (VTK_MAJOR_VERSION <= 5)
-  bar->SetInput(table.GetPointer(), 0, 2);
-#else
   bar->SetInputData(table.GetPointer(), 0, 2);
-#endif
   bar->SetColor(255, 0, 0, 255);
   view.addPlot(bar);
   bar->Delete();
 
   bar = vtkPlotBar::New();
-#if (VTK_MAJOR_VERSION <= 5)
-  bar->SetInput(table.GetPointer(), 0, 3);
-#else
   bar->SetInputData(table.GetPointer(), 0, 3);
-#endif
   bar->SetColor(0, 0, 255, 255);
   view.addPlot(bar);
   bar->Delete();
@@ -121,9 +103,9 @@ int ctkVTKChartViewTest1(int argc, char * argv [] )
 
   QTimer autoExit;
   if (argc < 2 || QString(argv[1]) != "-I")
-    {
+  {
     QObject::connect(&autoExit, SIGNAL(timeout()), &app, SLOT(quit()));
     autoExit.start(1000);
-    }
+  }
   return app.exec();
 }

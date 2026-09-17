@@ -21,7 +21,6 @@
 // Qt includes
 #include <QApplication>
 #include <QDebug>
-#include <QDesktopWidget>
 #include <QLayout>
 #include <QMouseEvent>
 #include <QMenu>
@@ -60,7 +59,7 @@ ctkMenuButtonPrivate::ctkMenuButtonPrivate(ctkMenuButton& object)
 QRect ctkMenuButtonPrivate::indicatorRect()const
 {
   Q_Q(const ctkMenuButton);
-  
+
   QStyleOptionButton option;
   q->initStyleOption(&option);
 
@@ -112,22 +111,22 @@ void ctkMenuButton::paintEvent(QPaintEvent * _event)
   QStylePainter painter(this);
   QStyleOptionButton option;
   initStyleOption(&option);
-  bool drawIndicatorBackground = 
-    option.state & QStyle::State_Sunken || 
+  bool drawIndicatorBackground =
+    option.state & QStyle::State_Sunken ||
     option.state & QStyle::State_On;
   // Draw button
   option.features &= ~QStyleOptionButton::HasMenu;
   if (this->menu() && (this->menu()->isVisible() || d->ShowMenu))
-    {
+  {
     option.state &= ~QStyle::State_Sunken;
     option.state |= QStyle::State_Raised;
-    }
+  }
   painter.drawControl(QStyle::CE_PushButtonBevel, option);
   // is PE_PanelButtonCommand better ?
   //painter.drawPrimitive(QStyle::PE_PanelButtonCommand, option);
   QRect downArrowRect = d->indicatorRect();
   if (drawIndicatorBackground)
-    {    
+  {
     // if the button is down, draw the part under the indicator up
     QPixmap cache = QPixmap(option.rect.size());
     cache.fill(Qt::transparent);
@@ -139,12 +138,12 @@ void ctkMenuButton::paintEvent(QPaintEvent * _event)
     //option.state &= ~QStyle::State_HasFocus;
     option.state &= ~QStyle::State_MouseOver;
     this->style()->drawControl(QStyle::CE_PushButtonBevel, &option, &cachePainter, this);
-    painter.drawItemPixmap(downArrowRect, Qt::AlignLeft | Qt::AlignTop, cache.copy(downArrowRect)); 
-    }
+    painter.drawItemPixmap(downArrowRect, Qt::AlignLeft | Qt::AlignTop, cache.copy(downArrowRect));
+  }
 
   // Separator
-  // Freely inspired by the painting of CC_ComboBox in qcleanlooksstyle.cpp 
-  
+  // Freely inspired by the painting of CC_ComboBox in qcleanlooksstyle.cpp
+
   QColor buttonColor = this->palette().button().color();
   QColor darkColor;
   darkColor.setHsv(buttonColor.hue(),
@@ -159,7 +158,7 @@ void ctkMenuButton::paintEvent(QPaintEvent * _event)
                    QPoint(downArrowRect.left(), downArrowRect.bottom() - borderSize));
   // Draw arrow
   QStyleOption indicatorOpt;
-  indicatorOpt.init(this);
+  indicatorOpt.initFrom(this);
   indicatorOpt.rect = downArrowRect.adjusted(borderSize, borderSize, -borderSize, -borderSize);
   painter.drawPrimitive(QStyle::PE_IndicatorArrowDown, indicatorOpt);
 
@@ -172,7 +171,7 @@ void ctkMenuButton::paintEvent(QPaintEvent * _event)
 bool ctkMenuButton::hitButton(const QPoint & _pos)const
 {
   Q_D(const ctkMenuButton);
-  return !d->indicatorRect().contains(_pos) 
+  return !d->indicatorRect().contains(_pos)
     && this->QPushButton::hitButton(_pos);
 }
 
@@ -187,18 +186,26 @@ void ctkMenuButton::mousePressEvent(QMouseEvent *e)
 {
   Q_D(ctkMenuButton);
   // we don't want to open the menu if the mouse is clicked anywhere on
-  // the button, only if it's clicked on the indecator
+  // the button, only if it's clicked on the indicator
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
   this->disconnect(this,SIGNAL(pressed()), this, SLOT(_q_popupPressed()));
   this->QPushButton::mousePressEvent(e);
+#else
+  // Use blockSignals to prevent internal Qt slots from being called
+  // (disconnecting internal implementation slots does not work in Qt6)
+  const bool wasBlocked = this->blockSignals(true);
+  this->QPushButton::mousePressEvent(e);
+  this->blockSignals(wasBlocked);
+#endif
   if (e->isAccepted())
-    {
+  {
     return;
-    }
+  }
   if (d->indicatorRect().contains(e->pos()))
-    {
+  {
     d->ShowMenu = true;
     this->showMenu();
     d->ShowMenu = false;
     e->accept();
-    }
+  }
 }

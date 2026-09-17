@@ -23,11 +23,7 @@
 
 // Qt includes
 #include <QtGlobal>
-#ifndef HAVE_QT5
-#include <QDesignerCustomWidgetCollectionInterface>
-#else
 #include <QtUiPlugin/QDesignerCustomWidgetCollectionInterface>
-#endif
 
 // CTK includes
 #include "ctkVisualizationVTKWidgetsPluginsExport.h"
@@ -53,14 +49,12 @@ class CTK_VISUALIZATION_VTK_WIDGETS_PLUGINS_EXPORT ctkVTKWidgetsPlugins
   , public QDesignerCustomWidgetCollectionInterface
 {
   Q_OBJECT
-#ifdef HAVE_QT5
   Q_PLUGIN_METADATA(IID "org.commontk.VTKWidgets")
-#endif
   Q_INTERFACES(QDesignerCustomWidgetCollectionInterface);
 
 public:
   QList<QDesignerCustomWidgetInterface*> customWidgets() const
-    {
+  {
     QList<QDesignerCustomWidgetInterface *> plugins;
     plugins << new ctkVTKDataSetArrayComboBoxPlugin;
     plugins << new ctkVTKMagnifyViewPlugin;
@@ -78,7 +72,7 @@ public:
     plugins << new ctkVTKTextPropertyWidgetPlugin;
     plugins << new ctkVTKThresholdWidgetPlugin;
     return plugins;
-    }
+  }
 };
 
 #endif

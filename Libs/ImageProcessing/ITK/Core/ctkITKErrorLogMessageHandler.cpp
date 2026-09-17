@@ -19,6 +19,7 @@
 =========================================================================*/
 
 // Qt includes
+#include <QRegularExpression>
 #include <QThread>
 
 // CTK includes
@@ -142,14 +143,16 @@ QString ctkITKOutputWindow::parseText(const QString& text, ctkErrorLogContext& c
 {
   context.Message = text;
 
-  QRegExp contextRegExp("[a-zA-Z\\s]+: In (.+), line ([\\d]+)\\n(.+\\(0x[a-fA-F0-9]+\\))\\:\\s(.*)");
-  if (contextRegExp.exactMatch(text))
-    {
-    context.File = contextRegExp.cap(1);
-    context.Category = contextRegExp.cap(3);
-    context.Line = contextRegExp.cap(2).toInt();
-    context.Message = contextRegExp.cap(4);
-    }
+  static const QRegularExpression contextRegExp(
+    "^[a-zA-Z\\s]+: In (.+), line ([\\d]+)\\n(.+\\(0x[a-fA-F0-9]+\\))\\:\\s(.*)");
+  QRegularExpressionMatch contextMatch = contextRegExp.match(text);
+  if (contextMatch.hasMatch())
+  {
+    context.File = contextMatch.captured(1);
+    context.Category = contextMatch.captured(3);
+    context.Line = contextMatch.captured(2).toInt();
+    context.Message = contextMatch.captured(4);
+  }
   return context.Message;
 }
 
@@ -200,8 +203,8 @@ ctkITKErrorLogMessageHandlerPrivate::~ctkITKErrorLogMessageHandlerPrivate()
 QString ctkITKErrorLogMessageHandler::HandlerName = QLatin1String("ITK");
 
 //----------------------------------------------------------------------------
-ctkITKErrorLogMessageHandler::ctkITKErrorLogMessageHandler() :
-  Superclass(), d_ptr(new ctkITKErrorLogMessageHandlerPrivate(*this))
+ctkITKErrorLogMessageHandler::ctkITKErrorLogMessageHandler(QObject* parent) :
+  Superclass(parent), d_ptr(new ctkITKErrorLogMessageHandlerPrivate(*this))
 {
 }
 
@@ -221,14 +224,14 @@ void ctkITKErrorLogMessageHandler::setEnabledInternal(bool value)
 {
   Q_D(ctkITKErrorLogMessageHandler);
   if (value)
-    {
+  {
     d->SavedITKOutputWindow = itk::OutputWindow::GetInstance();
     itk::OutputWindow::SetInstance(d->CTKITKOutputWindow);
-    }
+  }
   else
-    {
+  {
     Q_ASSERT(d->SavedITKOutputWindow.IsNotNull());
     itk::OutputWindow::SetInstance(d->SavedITKOutputWindow);
     d->SavedITKOutputWindow = 0;
-    }
+  }
 }

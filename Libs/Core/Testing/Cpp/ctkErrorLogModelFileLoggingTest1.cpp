@@ -22,6 +22,7 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
+#include <QRegularExpression>
 #include <QTemporaryFile>
 
 // CTK includes
@@ -45,16 +46,16 @@ int ctkErrorLogModelFileLoggingTest1(int argc, char * argv [])
 
   // fileLoggingEnabled
   if (!checkBoolean(__LINE__, "FileLoggingEnabled", model.fileLoggingEnabled(), false).isEmpty())
-    {
+  {
     return EXIT_FAILURE;
-    }
+  }
 
   model.setFileLoggingEnabled(true);
 
   if (!checkBoolean(__LINE__, "FileLoggingEnabled", model.fileLoggingEnabled(), true).isEmpty())
-    {
+  {
     return EXIT_FAILURE;
-    }
+  }
 
   // Create log file
   QTemporaryFile logFile(QDir::tempPath() + "/ctkErrorLogModelFileLoggingTest1.XXXXXX");
@@ -65,16 +66,16 @@ int ctkErrorLogModelFileLoggingTest1(int argc, char * argv [])
 
   // filePath
   if (!checkString(__LINE__, "FilePath", model.filePath(), "").isEmpty())
-    {
+  {
     return EXIT_FAILURE;
-    }
+  }
 
   model.setFilePath(logFilePath);
 
   if (!checkString(__LINE__, "FilePath", model.filePath(), logFilePath).isEmpty())
-    {
+  {
     return EXIT_FAILURE;
-    }
+  }
 
   // Monitor Qt messages
   model.registerMsgHandler(new ctkErrorLogQtMessageHandler);
@@ -90,13 +91,13 @@ int ctkErrorLogModelFileLoggingTest1(int argc, char * argv [])
 
   // Qt messages
   QString qtMessage0("This is a qDebug message");
-  qDebug().nospace() << qPrintable(qtMessage0);
+  qDebug().nospace() << qUtf8Printable(qtMessage0);
 
   QString qtMessage1("This is a qWarning message");
-  qWarning().nospace() << qPrintable(qtMessage1);
+  qWarning().nospace() << qUtf8Printable(qtMessage1);
 
   QString qtMessage2("This is a qCritical message");
-  qCritical().nospace() << qPrintable(qtMessage2);
+  qCritical().nospace() << qUtf8Printable(qtMessage2);
 
   // Stream messages
   QString streamMessage0("This is a Cout message");
@@ -150,17 +151,18 @@ int ctkErrorLogModelFileLoggingTest1(int argc, char * argv [])
 
   QString expectedLogEntryPatternTemplate("^\\[%1\\]\\[%2\\] [0-9\\.\\s\\:]+ \\[\\] \\(unknown\\:0\\) \\- %3$");
   for(int entryIndex = 0; entryIndex < expectedLogEntries.size(); ++entryIndex)
-    {
+  {
     QStringList entry = expectedLogEntries.at(entryIndex);
-    QRegExp regexp(expectedLogEntryPatternTemplate.arg(entry.at(0)).arg(entry.at(1)).arg(entry.at(2)));
-    if (!regexp.exactMatch(currentLogEntries.at(entryIndex)))
-      {
+    QRegularExpression regexp(QRegularExpression::anchoredPattern(
+      expectedLogEntryPatternTemplate.arg(entry.at(0)).arg(entry.at(1)).arg(entry.at(2))));
+    if (!regexp.match(currentLogEntries.at(entryIndex)).hasMatch())
+    {
       printErrorMessage(
-            QString("Line %1 - Log entry %2 does NOT math expected regular expression.\n\tLogEntry: %3\n\tRegExp: %4").
+            QString("Line %1 - Log entry %2 does NOT match expected regular expression.\n\tLogEntry: %3\n\tRegExp: %4").
                 arg(__LINE__).arg(entryIndex).arg(currentLogEntries.at(entryIndex)).arg(regexp.pattern()));
       return EXIT_FAILURE;
-      }
     }
+  }
 
   return EXIT_SUCCESS;
 }

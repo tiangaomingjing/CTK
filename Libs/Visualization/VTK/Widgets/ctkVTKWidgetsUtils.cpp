@@ -20,23 +20,22 @@
 
 // Qt includes
 #include <QApplication>
+#include <QDebug>
 #include <QImage>
 #include <QPainter>
 #include <QStyle>
 #include <QWidget>
 
 // ctkWidgets includes
+#include "ctkVTKOpenGLNativeWidget.h"
 #include "ctkVTKWidgetsUtils.h"
 #include "ctkWidgetsUtils.h"
 
 // VTK includes
-#if CTK_USE_QVTKOPENGLWIDGET
-#include <QVTKOpenGLWidget.h>
-#else
-#include <QVTKWidget.h>
-#endif
+#include <vtkDataArray.h>
 #include <vtkImageData.h>
 #include <vtkPiecewiseFunction.h>
+#include <vtkPointData.h>
 #include <vtkScalarsToColors.h>
 #include <vtkVersion.h>
 
@@ -44,31 +43,35 @@
 QImage ctk::grabVTKWidget(QWidget* widget, QRect rectangle)
 {
   if (!widget)
-    {
+  {
     return QImage();
-    }
+  }
   if (!rectangle.isValid())
-    {
+  {
     rectangle = QRect(0,0,widget->width(),widget->height());
-    }
+  }
   QImage widgetImage = ctk::grabWidget(widget, rectangle);
   QPainter painter;
   painter.begin(&widgetImage);
 #if CTK_USE_QVTKOPENGLWIDGET
+# if CTK_HAS_QVTKOPENGLNATIVEWIDGET_H
+  foreach(QVTKOpenGLNativeWidget* vtkWidget, widget->findChildren<QVTKOpenGLNativeWidget*>())
+# else
   foreach(QVTKOpenGLWidget* vtkWidget, widget->findChildren<QVTKOpenGLWidget*>())
+# endif
 #else
   foreach(QVTKWidget* vtkWidget, widget->findChildren<QVTKWidget*>())
 #endif
-    {
+  {
     if (!vtkWidget->isVisible())
-      {
+    {
       continue;
-      }
+    }
     QRect subWidgetRect = QRect(vtkWidget->mapTo(widget, QPoint(0,0)), vtkWidget->size());
     if (!rectangle.intersects(subWidgetRect))
-      {
+    {
       continue;
-      }
+    }
 #if CTK_USE_QVTKOPENGLWIDGET
     QImage subImage = vtkWidget->grabFramebuffer();
 #else
@@ -77,7 +80,7 @@ QImage ctk::grabVTKWidget(QWidget* widget, QRect rectangle)
     QImage subImage = ctk::vtkImageDataToQImage(imageData);
 #endif
     painter.drawImage(subWidgetRect, subImage);
-    }
+  }
   painter.end();
   return widgetImage;
 }
@@ -85,33 +88,107 @@ QImage ctk::grabVTKWidget(QWidget* widget, QRect rectangle)
 //----------------------------------------------------------------------------
 QImage ctk::vtkImageDataToQImage(vtkImageData* imageData)
 {
-  if (!imageData)
-    {
+  if (!imageData
+    || !imageData->GetPointData()
+    || !imageData->GetPointData()->GetScalars()
+    || imageData->GetScalarType() != VTK_UNSIGNED_CHAR)
+  {
     return QImage();
-    }
-#if VTK_MAJOR_VERSION <= 5
-  imageData->Update();
-#endif
+  }
   /// \todo retrieve just the UpdateExtent
   int width = imageData->GetDimensions()[0];
   int height = imageData->GetDimensions()[1];
-  QImage image(width, height, QImage::Format_RGB32);
-  QRgb* rgbPtr = reinterpret_cast<QRgb*>(image.bits()) +
-    width * (height-1);
-  unsigned char* colorsPtr = reinterpret_cast<unsigned char*>(
-    imageData->GetScalarPointer());
-  // mirror vertically
-  for(int row = 0; row < height; ++row)
-    {
-    for (int col = 0; col < width; ++col)
-      {
-      // Swap rgb
-      *(rgbPtr++) = QColor(colorsPtr[0], colorsPtr[1], colorsPtr[2]).rgb();
-      colorsPtr +=  3;
-      }
-    rgbPtr -= width * 2;
-    }
-  return image;
+  vtkIdType numberOfScalarComponents = imageData->GetNumberOfScalarComponents();
+
+  QImage::Format pixelFormat;
+  if (numberOfScalarComponents == 3)
+  {
+    pixelFormat = QImage::Format_RGB888;
+  }
+#if QT_VERSION >= QT_VERSION_CHECK(5,2,0)
+  else if (numberOfScalarComponents == 4)
+  {
+    pixelFormat = QImage::Format_RGBA8888;
+  }
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(5,5,0)
+  else if (numberOfScalarComponents == 1)
+  {
+    pixelFormat = QImage::Format_Grayscale8;
+  }
+#endif
+  else
+  {
+    // unsupported pixel format
+    return QImage();
+  }
+
+  int bytesPerLine = imageData->GetIncrements()[1]; // line increment
+
+  // Create an image from a buffer. The QImage object does not take ownership of the voxel buffer.
+  QImage image(reinterpret_cast<uchar*>(imageData->GetPointData()->GetScalars()->GetVoidPointer(0)),
+    width, height, bytesPerLine, pixelFormat);
+
+  // Qt image is upside-down compared to VTK, so return mirrored image.
+  // Mirroring also takes care of the pixel buffer ownership, because mirroring deep-copies the pixel buffer
+  // (therefore the returned QImage() owns its own pixel buffer).
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+  return image.flipped();
+#else
+  return image.mirrored();
+#endif
+}
+
+//----------------------------------------------------------------------------
+bool ctk::qImageToVTKImageData(const QImage& inputQImage, vtkImageData* outputVTKImageData, bool forceAlphaChannel/*=true*/)
+{
+  if (!outputVTKImageData)
+  {
+    qWarning() << Q_FUNC_INFO << " failed: outputVTKImageData is invalid";
+    return false;
+  }
+
+  QSize size = inputQImage.size();
+  vtkIdType width = size.width();
+  vtkIdType height = size.height();
+  if (width < 1 || height < 1)
+  {
+    qWarning() << Q_FUNC_INFO << " failed: input image is invalid";
+    return false;
+  }
+
+  QImage normalizedQtImage;
+  vtkIdType numberOfScalarComponents = 0;
+  if (inputQImage.hasAlphaChannel() || forceAlphaChannel)
+  {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    normalizedQtImage = inputQImage.convertToFormat(QImage::Format_RGBA8888).flipped();
+#elif QT_VERSION >= QT_VERSION_CHECK(5,2,0)
+    normalizedQtImage = inputQImage.convertToFormat(QImage::Format_RGBA8888).mirrored();
+#else
+    qWarning() << Q_FUNC_INFO << " failed: conversion of 4-component image is not available with Qt < 5.2";
+    return false;
+#endif
+    numberOfScalarComponents = 4;
+  }
+  else
+  {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    normalizedQtImage = inputQImage.convertToFormat(QImage::Format_RGB888).flipped();
+#else
+    normalizedQtImage = inputQImage.convertToFormat(QImage::Format_RGB888).mirrored();
+#endif
+    numberOfScalarComponents = 3;
+  }
+
+  const unsigned char* normalizedQtImageBuffer = normalizedQtImage.bits();
+  outputVTKImageData->SetExtent(0, width-1, 0, height-1, 0, 0);
+  outputVTKImageData->AllocateScalars(VTK_UNSIGNED_CHAR, numberOfScalarComponents);
+  memcpy(outputVTKImageData->GetPointData()->GetScalars()->GetVoidPointer(0),
+    normalizedQtImageBuffer, numberOfScalarComponents * width * height);
+  outputVTKImageData->GetPointData()->GetScalars()->Modified();
+
+  return true;
 }
 
 //----------------------------------------------------------------------------
@@ -158,4 +235,14 @@ QImage ctk::scalarsToColorsImage(vtkScalarsToColors* scalarsToColors,
   }
 
   return transferFunctionImage;
+}
+
+//----------------------------------------------------------------------------
+void ctk::vtkSetSurfaceDefaultFormat(void)
+{
+#if CTK_USE_QVTKOPENGLWIDGET
+  QSurfaceFormat format = ctkVTKOpenGLNativeWidget::defaultFormat();
+  format.setSamples(0);
+  QSurfaceFormat::setDefaultFormat(format);
+#endif
 }

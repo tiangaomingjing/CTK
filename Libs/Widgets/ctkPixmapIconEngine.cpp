@@ -33,11 +33,7 @@ ctkPixmapIconEngine::ctkPixmapIconEngine()
 }
 
 ctkPixmapIconEngine::ctkPixmapIconEngine(const ctkPixmapIconEngine &other)
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
   : QIconEngine(other)
-#else
-  : QIconEngineV2(other)
-#endif
   , pixmaps(other.pixmaps)
 {
 }
@@ -184,9 +180,9 @@ QPixmap ctkPixmapIconEngine::pixmap(const QSize &size, QIcon::Mode mode, QIcon::
 
 
     if (mode == QIcon::Active) {
-        if (QPixmapCache::find(key + QString::number(static_cast<int>(mode)), pm))
+        if (QPixmapCache::find(key + QString::number(static_cast<int>(mode)), &pm))
             return pm; // horray
-        if (QPixmapCache::find(key + QString::number(static_cast<int>(QIcon::Normal)), pm)) {
+        if (QPixmapCache::find(key + QString::number(static_cast<int>(QIcon::Normal)), &pm)) {
             QStyleOption opt(0);
             opt.palette = QApplication::palette();
             QPixmap active = QApplication::style()->generatedIconPixmap(QIcon::Active, pm, &opt);
@@ -195,7 +191,7 @@ QPixmap ctkPixmapIconEngine::pixmap(const QSize &size, QIcon::Mode mode, QIcon::
         }
     }
 
-    if (!QPixmapCache::find(key + QString::number(static_cast<int>(mode)), pm)) {
+    if (!QPixmapCache::find(key + QString::number(static_cast<int>(mode)), &pm)) {
         if (pm.size() != actualSize)
             pm = pm.scaled(actualSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
         if (pe->mode != mode && mode != QIcon::Normal) {
@@ -276,11 +272,7 @@ QString ctkPixmapIconEngine::key() const
     return QLatin1String("ctkPixmapIconEngine");
 }
 
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
 QIconEngine *ctkPixmapIconEngine::clone() const
-#else
-QIconEngineV2 *ctkPixmapIconEngine::clone() const
-#endif
 {
     return new ctkPixmapIconEngine(*this);
 }
@@ -336,15 +328,10 @@ bool ctkPixmapIconEngine::write(QDataStream &out) const
 void ctkPixmapIconEngine::virtual_hook(int id, void *data)
 {
   switch (id) {
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     case QIconEngine::AvailableSizesHook: {
         QIconEngine::AvailableSizesArgument &arg =
             *reinterpret_cast<QIconEngine::AvailableSizesArgument*>(data);
-#else
-    case QIconEngineV2::AvailableSizesHook: {
-        QIconEngineV2::AvailableSizesArgument &arg =
-            *reinterpret_cast<QIconEngineV2::AvailableSizesArgument*>(data);
-#endif
         arg.sizes.clear();
         for (int i = 0; i < pixmaps.size(); ++i) {
             ctkPixmapIconEngineEntry &pe = pixmaps[i];
@@ -357,11 +344,8 @@ void ctkPixmapIconEngine::virtual_hook(int id, void *data)
         }
         break;
     }
-    default:
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
-      QIconEngine::virtual_hook(id, data);
-#else
-      QIconEngineV2::virtual_hook(id, data);
 #endif
-    }
+    default:
+      QIconEngine::virtual_hook(id, data);
+  }
 }

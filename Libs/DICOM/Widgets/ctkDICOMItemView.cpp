@@ -27,6 +27,7 @@
 // CTK includes
 #include "ctkLogger.h"
 #include "ctkQImageView.h"
+#include "ctkUtils.h"
 
 // ctkDICOMCore includes
 #include "ctkDICOMFilterProxyModel.h"
@@ -49,7 +50,7 @@
 static ctkLogger logger("org.commontk.DICOM.Widgets.ctkDICOMItemView");
 
 //--------------------------------------------------------------------------
-class ctkDICOMItemViewPrivate 
+class ctkDICOMItemViewPrivate
 {
 
   Q_DECLARE_PUBLIC( ctkDICOMItemView );
@@ -148,12 +149,12 @@ void ctkDICOMItemViewPrivate::onPatientModelSelected(const QModelIndex &index){
     if(model){
         QModelIndex patientIndex = index;
         model->fetchMore(patientIndex);
-        QModelIndex studyIndex = patientIndex.child(0,0);
+        QModelIndex studyIndex = ctk::modelChildIndex(model, patientIndex, 0, 0);
         model->fetchMore(studyIndex);
-        QModelIndex seriesIndex = studyIndex.child(0,0);
+        QModelIndex seriesIndex = ctk::modelChildIndex(model, studyIndex, 0, 0);
         model->fetchMore(seriesIndex);
         int imageCount = model->rowCount(seriesIndex);
-        QModelIndex imageIndex = seriesIndex.child(imageCount/2,0);
+        QModelIndex imageIndex = ctk::modelChildIndex(model, seriesIndex, imageCount/2, 0);
 
         this->setImage(imageIndex);
     }else{
@@ -170,10 +171,10 @@ void ctkDICOMItemViewPrivate::onStudyModelSelected(const QModelIndex &index){
     if(model){
         QModelIndex studyIndex = index;
         model->fetchMore(studyIndex);
-        QModelIndex seriesIndex = studyIndex.child(0,0);
+        QModelIndex seriesIndex = ctk::modelChildIndex(model, studyIndex, 0, 0);
         model->fetchMore(seriesIndex);
         int imageCount = model->rowCount(seriesIndex);
-        QModelIndex imageIndex = seriesIndex.child(imageCount/2,0);
+        QModelIndex imageIndex = ctk::modelChildIndex(model, seriesIndex, imageCount/2, 0);
 
         this->setImage(imageIndex);
     }else{
@@ -191,7 +192,7 @@ void ctkDICOMItemViewPrivate::onSeriesModelSelected(const QModelIndex &index){
         QModelIndex seriesIndex = index;
         model->fetchMore(seriesIndex);
         int imageCount = model->rowCount(seriesIndex);
-        QModelIndex imageIndex = seriesIndex.child(imageCount/2,0);
+        QModelIndex imageIndex = ctk::modelChildIndex(model, seriesIndex, imageCount/2, 0);
 
         this->setImage(imageIndex);
     }else{
@@ -290,8 +291,8 @@ void ctkDICOMItemView::addImage( DicomImage & dcmImage, bool defaultIntensity )
             dcmImage.getWindow(d->DicomIntensityLevel, d->DicomIntensityWindow);
           }
       }
-    } 
-    else 
+    }
+    else
     {
       dcmImage.setWindow(d->DicomIntensityLevel, d->DicomIntensityWindow);
     }
@@ -319,16 +320,16 @@ void ctkDICOMItemView::addImage( DicomImage & dcmImage, bool defaultIntensity )
     /* create output buffer for DicomImage class */
     QByteArray buffer;
     /* copy header to output buffer and resize it for pixel data */
-    buffer.append(header);
+    buffer.append(header.toUtf8());
     buffer.resize(length);
 
     /* render pixel data to buffer */
     if (dcmImage.getOutputData(static_cast<void *>(buffer.data() + offset), length - offset, 8, 0))
-    {  
+    {
       if (!image.loadFromData( buffer ))
-        {
+      {
             logger.error("QImage couldn't created");
-        }
+      }
     }
     this->addImage(image);
 }
@@ -362,7 +363,7 @@ void ctkDICOMItemView::mouseMoveEvent(QMouseEvent* event){
             emit requestPreviousImage();
             d->OldMousePos = event->pos();
         }
-    }else if(event->buttons() == Qt::MidButton){
+    }else if(event->buttons() == Qt::MiddleButton){
         event->accept();
         QPoint nowPos = event->pos();
 
@@ -411,26 +412,25 @@ void ctkDICOMItemView::displayImage(int imageIndex){
   Q_D(ctkDICOMItemView);
 
   if(d->CurrentImageIndex.isValid())
-    {
+  {
       QModelIndex seriesIndex = d->CurrentImageIndex.parent();
       ctkDICOMModel* model = const_cast<ctkDICOMModel*>(qobject_cast<const ctkDICOMModel*>(seriesIndex.model()));
 
       if(model)
-        {
+      {
           if(imageIndex >= 0 && imageIndex < model->rowCount(seriesIndex))
-            {
+          {
             this->onModelSelected(model->index(imageIndex, 0, seriesIndex));
-            }
+          }
           else
-            {
+          {
             logger.debug("out of index");
-            }
-        }
-    }
+          }
+      }
+  }
 }
 
 // -------------------------------------------------------------------------
 void ctkDICOMItemView::emitImageDisplayedSignal(int imageID, int count){
   emit imageDisplayed(imageID, count);
 }
-

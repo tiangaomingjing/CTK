@@ -50,7 +50,9 @@ ctkFDHandler::ctkFDHandler(ctkErrorLogFDMessageHandler* messageHandler,
   this->MessageHandler = messageHandler;
   this->LogLevel = logLevel;
   this->TerminalOutput = terminalOutput;
-  this->SavedFDNumber = 0;
+  this->SavedFDNumber = -1;
+  this->Pipe[0] = -1;
+  this->Pipe[1] = -1;
   this->Enabled = false;
 }
 
@@ -68,10 +70,10 @@ void ctkFDHandler::setupPipe()
   int status = pipe(this->Pipe);
 #endif
   if (status != 0)
-    {
+  {
     qCritical().nospace() << "ctkFDHandler - Failed to create pipe !";
     return;
-    }
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -81,15 +83,16 @@ FILE* ctkFDHandler::terminalOutputFile()
 }
 
 // --------------------------------------------------------------------------
-void ctkFDHandler::setEnabled(bool value)
+void ctkFDHandler::setEnabled(bool enable)
 {
-  if (this->Enabled == value)
-    {
+  if (this->Enabled == enable)
+  {
     return;
-    }
+  }
 
-  if (value)
-    {
+  int terminalOutputFileDescriptor = -1;
+  if (enable)
+  {
     this->setupPipe();
 
     // Flush (stdout|stderr) so that any buffered messages are delivered
@@ -106,13 +109,14 @@ void ctkFDHandler::setEnabled(bool value)
     dup2(this->Pipe[1], fileno(this->terminalOutputFile()));
     close(this->Pipe[1]);
 #endif
+    terminalOutputFileDescriptor = this->SavedFDNumber;
 
     // Start polling thread
     this->Enabled = true;
     this->start();
-    }
+  }
   else
-    {
+  {
     // Print one character to "unblock" the read function associated with the polling thread
 #ifdef Q_OS_WIN32
     int unused = _write(_fileno(this->terminalOutputFile()), "\n", 1);
@@ -130,11 +134,10 @@ void ctkFDHandler::setEnabled(bool value)
       this->Enabled = false;
     }
 
-    QString newline("\n");
 #ifdef Q_OS_WIN32
-    unused = _write(_fileno(this->terminalOutputFile()), qPrintable(newline), newline.size());
+    unused = _write(_fileno(this->terminalOutputFile()), "\n", 1);
 #else
-    unused = write(fileno(this->terminalOutputFile()), qPrintable(newline), newline.size());
+    unused = write(fileno(this->terminalOutputFile()), "\n", 1);
 #endif
     Q_UNUSED(unused);
 
@@ -152,22 +155,26 @@ void ctkFDHandler::setEnabled(bool value)
     clearerr(this->terminalOutputFile());
     fsetpos(this->terminalOutputFile(), &this->SavedFDPos);
 
-
 #ifdef Q_OS_WIN32
     _close(this->Pipe[0]);
 #else
     close(this->Pipe[0]);
 #endif
 
-    this->SavedFDNumber = 0;
-    }
+    this->SavedFDNumber = -1;
+#ifdef Q_OS_WIN32
+    terminalOutputFileDescriptor = _fileno(this->terminalOutputFile());
+#else
+    terminalOutputFileDescriptor = fileno(this->terminalOutputFile());
+#endif
+  }
 
   ctkErrorLogTerminalOutput * terminalOutput =
       this->MessageHandler->terminalOutput(this->TerminalOutput);
-  if(terminalOutput)
-    {
-    terminalOutput->setFileDescriptor(this->SavedFDNumber);
-    }
+  if (terminalOutput)
+  {
+    terminalOutput->setFileDescriptor(terminalOutputFileDescriptor);
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -181,30 +188,30 @@ bool ctkFDHandler::enabled()const
 void ctkFDHandler::run()
 {
   while(true)
-    {
+  {
     char c = '\0';
     QString line;
     while(c != '\n')
-      {
+    {
 #ifdef Q_OS_WIN32
       int res = _read(this->Pipe[0], &c, 1); // When used with pipe, read() is blocking
 #else
       ssize_t res = read(this->Pipe[0], &c, 1); // When used with pipe, read() is blocking
 #endif
       if (res == -1)
-        {
+      {
         break;
-        }
-      if (c != '\n')
-        {
-        line += c;
-        }
       }
+      if (c != '\n')
+      {
+        line += c;
+      }
+    }
 
     if (!this->enabled())
-      {
+    {
       break;
-      }
+    }
 
     Q_ASSERT(this->MessageHandler);
     this->MessageHandler->handleMessage(
@@ -213,7 +220,7 @@ void ctkFDHandler::run()
       this->MessageHandler->handlerPrettyName(),
       ctkErrorLogContext(line),
       line);
-    }
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -252,8 +259,8 @@ ctkErrorLogFDMessageHandlerPrivate::~ctkErrorLogFDMessageHandlerPrivate()
 QString ctkErrorLogFDMessageHandler::HandlerName = QLatin1String("FD");
 
 // --------------------------------------------------------------------------
-ctkErrorLogFDMessageHandler::ctkErrorLogFDMessageHandler() :
-  Superclass(), d_ptr(new ctkErrorLogFDMessageHandlerPrivate())
+ctkErrorLogFDMessageHandler::ctkErrorLogFDMessageHandler(QObject* parent) :
+  Superclass(parent), d_ptr(new ctkErrorLogFDMessageHandlerPrivate())
 {
   Q_D(ctkErrorLogFDMessageHandler);
   d->StdOutFDHandler = new ctkFDHandler(this, ctkErrorLogLevel::Info, ctkErrorLogTerminalOutput::StandardOutput);

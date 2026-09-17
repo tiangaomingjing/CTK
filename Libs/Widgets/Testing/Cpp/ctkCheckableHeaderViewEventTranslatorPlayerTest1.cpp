@@ -48,21 +48,21 @@ namespace
 QSignalSpy* Spy1;
 //-----------------------------------------------------------------------------
 void checkFinalWidgetState(void* data)
-  {
+{
   QWidget* parentWidget = reinterpret_cast<QWidget*>(data);
   QList<ctkCheckableHeaderView*> widget = parentWidget->findChildren<ctkCheckableHeaderView*>();
 
   if( widget.count() > 0)
-    {
+  {
     CTKCOMPARE(widget[0]->checkState(0), Qt::PartiallyChecked);
     CTKCOMPARE(widget[0]->checkState(1), Qt::Unchecked);
     CTKCOMPARE(Spy1->count(), 8);
-    }
-  else
-    {
-    QApplication::exit(EXIT_FAILURE);
-    }
   }
+  else
+  {
+    QApplication::exit(EXIT_FAILURE);
+  }
+}
 }
 
 //-----------------------------------------------------------------------------
@@ -103,23 +103,14 @@ int ctkCheckableHeaderViewEventTranslatorPlayerTest1(int argc, char * argv [] )
   table.setModel(&model);
 
   // Header is checked by default
-  model.setHeaderData(0, Qt::Horizontal, Qt::Checked, Qt::CheckStateRole);
+  model.setHeaderData(0, Qt::Horizontal, static_cast<int>(Qt::Checked), Qt::CheckStateRole);
 
   QHeaderView* previousHeaderView = table.horizontalHeader();
-#if QT_VERSION < QT_VERSION_CHECK(5,0,0)
-  bool oldClickable = previousHeaderView->isClickable();
-#else
   bool oldClickable = previousHeaderView->sectionsClickable();
-#endif
   ctkCheckableHeaderView* headerView =
     new ctkCheckableHeaderView(Qt::Horizontal, &table);
-#if QT_VERSION < QT_VERSION_CHECK(5,0,0)
-  headerView->setClickable(oldClickable);
-  headerView->setMovable(previousHeaderView->isMovable());
-#else
   headerView->setSectionsClickable(oldClickable);
   headerView->setSectionsMovable(previousHeaderView->sectionsMovable());
-#endif
   headerView->setHighlightSections(previousHeaderView->highlightSections());
   // propagatetoitems is true by default
   //headerView->setPropagateToItems(true);
@@ -128,7 +119,7 @@ int ctkCheckableHeaderViewEventTranslatorPlayerTest1(int argc, char * argv [] )
   table.setHorizontalHeader(headerView);
 
   // Header is checked by default
-  model.setHeaderData(1, Qt::Horizontal, Qt::Checked, Qt::CheckStateRole);
+  model.setHeaderData(1, Qt::Horizontal, static_cast<int>(Qt::Checked), Qt::CheckStateRole);
 
   QSignalSpy spy1(headerView, SIGNAL(sectionPressed(int)));
 
@@ -140,11 +131,10 @@ int ctkCheckableHeaderViewEventTranslatorPlayerTest1(int argc, char * argv [] )
 
   // ------------------------
   if (argc < 2 || QString(argv[1]) != "-I")
-    {
+  {
     QTimer::singleShot(0, &etpWidget, SLOT(play()));
-    }
+  }
 
   etpWidget.show();
   return app.exec();
 }
-

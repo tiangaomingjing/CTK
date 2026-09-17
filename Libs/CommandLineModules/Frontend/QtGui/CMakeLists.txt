@@ -23,12 +23,6 @@ set(KIT_SRCS
   ctkCmdLineModuleObjectTreeWalker.cpp
 )
 
-# Headers that should run through moc
-set(KIT_MOC_SRCS
-  ctkCmdLineModuleQtComboBox_p.h
-  ctkCmdLineModuleQtUiLoader.h
-)
-
 # UI files
 set(KIT_UI_FORMS
 )
@@ -42,19 +36,15 @@ set(KIT_resources
 # The following macro will read the target libraries from the file 'target_libraries.cmake'
 ctkFunctionGetTargetLibraries(KIT_target_libraries)
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  list(APPEND KIT_target_libraries Qt5::UiTools Qt5::Widgets)
-else()
-  set(QT_USE_QTUITOOLS 1)
-  include(${QT_USE_FILE})
-endif()
+list(APPEND KIT_target_libraries
+  Qt${CTK_QT_VERSION}::UiTools
+  Qt${CTK_QT_VERSION}::Widgets
+  )
 
 ctkMacroBuildLib(
   NAME ${PROJECT_NAME}
   EXPORT_DIRECTIVE ${KIT_export_directive}
   SRCS ${KIT_SRCS}
-  MOC_SRCS ${KIT_MOC_SRCS}
-  GENERATE_MOC_SRCS ${KIT_GENERATE_MOC_SRCS}
   UI_FORMS ${KIT_UI_FORMS}
   TARGET_LIBRARIES ${KIT_target_libraries}
   RESOURCES ${KIT_resources}

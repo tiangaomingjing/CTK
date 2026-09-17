@@ -1,6 +1,45 @@
 project(CTKVisualizationVTKWidgets)
 
-include(${VTK_USE_FILE})
+#
+# 3rd party dependencies
+#
+
+# VTK >= 8.90 defines VTK_MAJOR_VERSION
+set(VTK_VERSION_MAJOR ${VTK_MAJOR_VERSION})
+
+set(_test_components)
+if(BUILD_TESTING)
+  list(APPEND _test_components
+    TestingRendering
+    ImagingGeneral
+    )
+endif()
+
+find_package(VTK COMPONENTS
+  ChartsCore
+  CommonCore
+  CommonDataModel
+  #Context2D
+  FiltersCore
+  FiltersGeneral
+  FiltersModeling
+  FiltersSources
+  GUISupportQt
+  ImagingGeneral
+  ImagingStatistics
+  IOLegacy
+  IOXML
+  InfovisCore
+  InfovisLayout
+  InteractionStyle
+  RenderingContextOpenGL2
+  RenderingCore
+  RenderingFreeType
+  RenderingOpenGL2
+  ViewsCore
+  ViewsInfovis
+  ${_test_components}
+)
 
 #
 # See CTK/CMake/ctkMacroBuildLib.cmake for details
@@ -13,6 +52,12 @@ set(KIT_export_directive "CTK_VISUALIZATION_VTK_WIDGETS_EXPORT")
 #
 if(CTK_USE_QTTESTING)
   find_package(QtTesting REQUIRED)
+  # Target name changed from "QtTesting" (old) to "qttesting" (new upstream)
+  if(TARGET qttesting)
+    set(QtTesting_LINK_TARGET qttesting)
+  else()
+    set(QtTesting_LINK_TARGET QtTesting)
+  endif()
   include_directories(
     ${QtTesting_INCLUDE_DIRS}
     ${CMAKE_BINARY_DIR} # For ctkConfig.h
@@ -44,6 +89,7 @@ set(KIT_SRCS
   ctkVTKMagnifyView_p.h
   ctkVTKMatrixWidget.cpp
   ctkVTKMatrixWidget.h
+  ctkVTKOpenGLNativeWidget.h
   ctkVTKPiecewiseFunction.cpp
   ctkVTKPiecewiseFunction.h
   ctkVTKPropertyWidget.cpp
@@ -70,34 +116,6 @@ set(KIT_SRCS
   ctkVTKWidgetsUtils.h
   )
 
-# Headers that should run through moc
-set(KIT_MOC_SRCS
-  ctkVTKAbstractMatrixWidget_p.h
-  ctkVTKAbstractView.h
-  ctkVTKAbstractView_p.h
-  ctkVTKColorTransferFunction.h
-  ctkVTKCompositeFunction.h
-  ctkVTKDataSetArrayComboBox.h
-  ctkVTKDataSetModel.h
-  ctkVTKHistogram.h
-  ctkVTKLookupTable.h
-  ctkVTKMagnifyView.h
-  ctkVTKMagnifyView_p.h
-  ctkVTKMatrixWidget.h
-  ctkVTKPiecewiseFunction.h
-  ctkVTKPropertyWidget.h
-  ctkVTKRenderView.h
-  ctkVTKRenderView_p.h
-  ctkVTKScalarBarWidget.h
-  ctkVTKScalarsToColorsComboBox.h
-  ctkVTKSliceView.h
-  ctkVTKSliceView_p.h
-  ctkVTKSurfaceMaterialPropertyWidget.h
-  ctkVTKTextPropertyWidget.h
-  ctkVTKThresholdWidget.h
-  ctkVTKThumbnailView.h
-  )
-
 # UI files
 set(KIT_UI_FORMS
   Resources/UI/ctkVTKDiscretizableColorTransferWidget.ui
@@ -113,38 +131,9 @@ set(KIT_resources
 )
 
 # Set VTK_LIBRARIES variable
-if(${VTK_VERSION_MAJOR} GREATER 5)
-  set(VTK_LIBRARIES
-    vtkChartsCore
-    vtkCommonMath
-    vtkFiltersSources
-    vtkImagingGeneral
-    vtkImagingStatistics
-    vtkInteractionWidgets
-    vtkRenderingContext2D
-    vtkViewsContext2D
-    vtkGUISupportQt
-    )
-  if(TARGET vtkRenderingContext${VTK_RENDERING_BACKEND})
-    list(APPEND VTK_LIBRARIES vtkRenderingContext${VTK_RENDERING_BACKEND})
-  endif()
-  if(TARGET vtkRenderingGL2PS${VTK_RENDERING_BACKEND})
-    list(APPEND VTK_LIBRARIES vtkRenderingGL2PS${VTK_RENDERING_BACKEND})
-  endif()
-    if(CTK_LIB_Scripting/Python/Core AND CTK_LIB_Scripting/Python/Core_PYTHONQT_USE_VTK)
-      set(VTK_LIBRARIES ${VTK_LIBRARIES} vtkWrappingPythonCore)
-    endif()
-else()
-  set(VTK_LIBRARIES
-    QVTK
-    )
-endif()
+# VTK_LIBRARIES is automatically set based on selected components
 
 if(CTK_LIB_Visualization/VTK/Widgets_USE_TRANSFER_FUNCTION_CHARTS)
-  set(CTK_USE_CHARTS 1)
-endif()
-
-if(${CTK_USE_CHARTS})
   set(KIT_SRCS
       ctkVTKChartView.cpp
       ctkVTKChartView.h
@@ -168,16 +157,7 @@ if(${CTK_USE_CHARTS})
       Resources/UI/ctkVTKVolumePropertyWidget.ui
       Resources/UI/ctkVTKScalarsToColorsWidget.ui
       ${KIT_UI_FORMS})
-  if(${VTK_VERSION_MAJOR} GREATER 5)
-    set(VTK_LIBRARIES
-      vtkChartsCore
-      ${VTK_LIBRARIES})
-  else()
-    set(VTK_LIBRARIES
-      vtkCharts
-      ${VTK_LIBRARIES})
-  endif()
-  add_definitions(-DCTK_USE_CHARTS)
+  # VTK_LIBRARIES is automatically set based on selected components
 endif()
 
 # Target libraries - See CMake/ctkFunctionGetTargetLibraries.cmake
@@ -196,29 +176,39 @@ if(CTK_USE_QTTESTING)
     ctkVTKRenderViewEventPlayer.h
     ctkVTKRenderViewEventTranslator.h
 )
-  list(APPEND KIT_target_libraries QtTesting)
+  list(APPEND KIT_target_libraries ${QtTesting_LINK_TARGET})
 endif()
 
 # Prefer QVTKOpenGLWidget to QVTKWidget when using Qt5
 set(_use_qvtkopenglwidget 1)
-if(CTK_QT_VERSION VERSION_LESS "5"
-  OR VTK_VERSION VERSION_LESS "8"
-  OR (NOT VTK_RENDERING_BACKEND STREQUAL "OpenGL2"))
-  set(_use_qvtkopenglwidget 0)
-endif()
+
 if(_use_qvtkopenglwidget)
   add_definitions(-DCTK_USE_QVTKOPENGLWIDGET)
 endif()
+
+# QVTKOpenGLNativeWidget.h is always available with VTK >= 9
+set(_has_QVTKOpenGLNativeWidget_h 1)
+
+
+if(_has_QVTKOpenGLNativeWidget_h)
+  add_definitions(-DCTK_HAS_QVTKOPENGLNATIVEWIDGET_H)
+endif()
+
+# Custom export content
+set(CTK_VTK_EXPORT_CUSTOM_CONTENT "#ifndef VTK_OVERRIDE
+#define VTK_OVERRIDE override;
+#endif
+")
 
 ctkMacroBuildLib(
   NAME ${PROJECT_NAME}
   EXPORT_DIRECTIVE ${KIT_export_directive}
   SRCS ${KIT_SRCS}
-  MOC_SRCS ${KIT_MOC_SRCS}
   UI_FORMS ${KIT_UI_FORMS}
   TARGET_LIBRARIES ${KIT_target_libraries}
   RESOURCES ${KIT_resources}
   LIBRARY_TYPE ${CTK_LIBRARY_MODE}
+  EXPORT_CUSTOM_CONTENT_FROM_VARIABLE "CTK_VTK_EXPORT_CUSTOM_CONTENT"
   )
 
 if(_use_qvtkopenglwidget)
@@ -229,6 +219,14 @@ if(_use_qvtkopenglwidget)
     )
 endif()
 
+if(_has_QVTKOpenGLNativeWidget_h)
+  target_compile_definitions(
+    ${PROJECT_NAME}
+    INTERFACE
+      CTK_HAS_QVTKOPENGLNATIVEWIDGET_H
+    )
+endif()
+
 if(CTK_WRAP_PYTHONQT_LIGHT)
   ctkMacroBuildLibWrapper(
     TARGET ${PROJECT_NAME}
@@ -236,6 +234,12 @@ if(CTK_WRAP_PYTHONQT_LIGHT)
     WRAPPER_LIBRARY_TYPE ${CTK_LIBRARY_MODE}
     )
 endif()
+
+vtk_module_autoinit(
+  TARGETS ${PROJECT_NAME}
+  MODULES ${VTK_LIBRARIES}
+  )
+
 
 # Plugins
 if(CTK_BUILD_QTDESIGNER_PLUGINS)

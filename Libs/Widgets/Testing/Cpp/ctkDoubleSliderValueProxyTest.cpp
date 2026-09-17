@@ -8,7 +8,7 @@
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
 
-      http://www.commontk.org/LICENSE
+      http://commontk.org/LICENSE
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -49,6 +49,8 @@ void getSpyReport(QSignalSpy& spy, double expectedValue)
 class ctkDoubleSliderValueProxyTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkDoubleSliderValueProxyTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
 
   void testSetValueProxy();
@@ -245,4 +247,4 @@ void ctkDoubleSliderValueProxyTester::testSetSliderPosition_data()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkDoubleSliderValueProxyTest)
-#include "moc_ctkDoubleSliderValueProxyTest.cpp"
+#include "ctkDoubleSliderValueProxyTest.moc"

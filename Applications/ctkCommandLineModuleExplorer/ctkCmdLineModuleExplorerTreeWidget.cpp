@@ -22,6 +22,7 @@
 #include "ctkCmdLineModuleExplorerTreeWidget.h"
 #include "ctkCmdLineModuleExplorerShowXmlAction.h"
 
+#include <ctkUtils.h>
 #include <ctkCmdLineModuleFrontend.h>
 #include <ctkCmdLineModuleBackend.h>
 #include <ctkCmdLineModuleFrontendFactory.h>
@@ -37,7 +38,7 @@
 #include <QApplication>
 #include <QMessageBox>
 
-QString ctkCmdLineModuleExplorerTreeWidget::CATEGORY_UNKNOWN = "Uncategorized";
+QString ctkCmdLineModuleExplorerTreeWidget::CATEGORY_UNKNOWN = ctkCmdLineModuleExplorerTreeWidget::tr("Uncategorized");
 
 class ctkCmdLineModuleTreeWidgetItem : public QStandardItem
 {
@@ -63,7 +64,9 @@ public:
     if (!ModuleRef.xmlValidationErrorString().isEmpty())
     {
       this->setIcon(QApplication::style()->standardIcon(QStyle::SP_MessageBoxWarning));
-      toolTip += "\n\nWarning:\n\n" + ModuleRef.xmlValidationErrorString();
+      toolTip += QString("\n\n%1\n\n%2")
+                .arg(ctkCmdLineModuleExplorerTreeWidget::tr("Warning:"))
+                .arg(ModuleRef.xmlValidationErrorString());
     }
     this->setToolTip(toolTip);
   }
@@ -84,7 +87,7 @@ ctkCmdLineModuleExplorerTreeWidget::ctkCmdLineModuleExplorerTreeWidget(QWidget *
   , DefaultFrontendFactory(NULL)
 {
   this->ContextMenu = new QMenu(this);
-  this->ShowFrontendMenu = this->ContextMenu->addMenu("Create Frontend");
+  this->ShowFrontendMenu = this->ContextMenu->addMenu(tr("Create Frontend"));
 
   this->ShowXmlAction = new ctkCmdLineModuleExplorerShowXmlAction(this);
   this->ContextMenu->addAction(ShowXmlAction);
@@ -134,7 +137,12 @@ void ctkCmdLineModuleExplorerTreeWidget::addModuleItem(const ctkCmdLineModuleRef
 
   QString currentCategories;
   QStandardItem* oldRootItem = NULL;
-  foreach (const QString& category, categories.split('.', QString::SkipEmptyParts))
+  #if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+  QStringList categoryList = categories.split('.', Qt::SkipEmptyParts);
+  #else
+  QStringList categoryList = categories.split('.', QString::SkipEmptyParts);
+  #endif
+  foreach (const QString& category, categoryList)
   {
     currentCategories += (currentCategories.isEmpty() ? QString() : QString(".")) + category;
     QStandardItem* rootItem = TreeWidgetCategories[currentCategories];
@@ -179,7 +187,11 @@ void ctkCmdLineModuleExplorerTreeWidget::removeModuleItem(const ctkCmdLineModule
     categories = CATEGORY_UNKNOWN;
   }
 
+  #if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+  QStringList categoryList = categories.split('.', Qt::SkipEmptyParts);
+  #else
   QStringList categoryList = categories.split('.', QString::SkipEmptyParts);
+  #endif
   while (!categoryList.isEmpty())
   {
     QStandardItem* rootItem = TreeWidgetCategories[categoryList.join(".")];
@@ -258,8 +270,13 @@ ctkCmdLineModuleFrontend* ctkCmdLineModuleExplorerTreeWidget::createFrontend(con
   }
   catch (const ctkException& e)
   {
-    QMessageBox::information(this, "Frontend creation failed", "Creating a " + frontendFactory->name()
-                             + " frontend failed:\n\n" + e.what());
+    //: %1 is the frontend factory name and %2 is the error description
+    QMessageBox::information(this,
+      tr("Frontend creation failed"),
+      tr("Creating a %1 frontend failed:\n\n%2")
+        .arg(frontendFactory->name())
+        .arg(e.what())
+    );
     return NULL;
   }
 }
@@ -268,8 +285,7 @@ ctkCmdLineModuleFrontend* ctkCmdLineModuleExplorerTreeWidget::createFrontend(con
 bool ModuleSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
 {
   QModelIndex index = sourceModel()->index(sourceRow, 0, sourceParent);
-
-  QModelIndex childIndex = index.child(0, 0);
+  QModelIndex childIndex = ctk::modelChildIndex(sourceModel(), index, 0, 0);
   if (childIndex.isValid())
   {
     int i = 0;
@@ -279,7 +295,7 @@ bool ModuleSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelInd
       accept = this->filterAcceptsRow(childIndex.row(), index);
       if (accept) return true;
 
-      childIndex = index.child(++i, 0);
+      childIndex = ctk::modelChildIndex(sourceModel(), index, ++i, 0);
     }
     return false;
   }

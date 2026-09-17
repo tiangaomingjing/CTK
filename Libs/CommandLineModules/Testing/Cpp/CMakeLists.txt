@@ -5,11 +5,6 @@ set(_test_srcs)
 set(_test_mocs)
 
 if(CTK_LIB_CommandLineModules/Frontend/QtGui)
-  if(CTK_QT_VERSION VERSION_LESS "5")
-    set(QT_USE_QTUITOOLS 1)
-    include(${QT_USE_FILE})
-  endif()
-
   if(CTK_LIB_CommandLineModules/Backend/LocalProcess)
     set(_test_cpp_files
         ctkCmdLineModuleFutureTest.cpp
@@ -69,36 +64,20 @@ if(CTK_LIB_CommandLineModules/Frontend/QtGui)
   list(APPEND _additional_link_libraries CTKCommandLineModulesFrontendQtGui)
 endif()
 
-set(Tests_MOC_CPP)
-set(Tests_UI_CPP)
-set(Tests_RESOURCES_SRCS)
-if (CTK_QT_VERSION VERSION_GREATER "4")
-  QT5_WRAP_CPP(Tests_MOC_CPP ${Tests_MOC_SRCS})
-  if(_test_mocs)
-    QT5_GENERATE_MOCS(${_test_mocs})
-  endif()
-  if(TEST_UI_FORMS)
-    QT5_WRAP_UI(Tests_UI_CPP ${Tests_UI_FORMS})
-  endif()
-  QT5_ADD_RESOURCES(Tests_RESOURCES_SRCS ${Tests_RESOURCES})
-else()
-  QT4_WRAP_CPP(Tests_MOC_CPP ${Tests_MOC_SRCS})
-  if(_test_mocs)
-    QT4_GENERATE_MOCS(${_test_mocs})
-  endif()
-  if(TEST_UI_FORMS)
-    QT4_WRAP_UI(Tests_UI_CPP ${Tests_UI_FORMS})
-  endif()
-  QT4_ADD_RESOURCES(Tests_RESOURCES_SRCS ${Tests_RESOURCES})
-endif()
-
-add_executable(${KIT}CppTests ${Tests} ${Tests_SRCS} ${Tests_MOC_CPP} ${Tests_UI_CPP} ${Tests_RESOURCES_SRCS})
+ctk_add_executable_utf8(${KIT}CppTests ${Tests} ${Tests_SRCS} ${Tests_RESOURCES})
 target_link_libraries(${KIT}CppTests ${_additional_link_libraries})
 add_dependencies(${KIT}CppTests ctkCmdLineTestModules)
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  target_link_libraries(${KIT}CppTests Qt5::Gui Qt5::Test)
-endif()
+# Configure CMake Qt automatic code generation
+set_target_properties(${KIT}CppTests PROPERTIES
+  AUTOMOC ON
+  AUTORCC ON
+  )
+
+target_link_libraries(${KIT}CppTests
+  Qt${CTK_QT_VERSION}::Gui
+  Qt${CTK_QT_VERSION}::Test
+  )
 
 if(TARGET CTKCommandLineModulesCoreCppTests)
   add_dependencies(${KIT}CppTests CTKCommandLineModulesCoreCppTests)

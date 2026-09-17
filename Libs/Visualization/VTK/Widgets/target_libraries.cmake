@@ -1,6 +1,6 @@
 #
 # See CMake/ctkFunctionGetTargetLibraries.cmake
-# 
+#
 # This file should list the libraries required to build the current CTK libraries
 #
 
@@ -9,6 +9,11 @@ set(target_libraries
   CTKWidgets
   CTKVisualizationVTKCore
   )
-if (CTK_QT_VERSION VERSION_GREATER "4")
+if(CTK_QT_VERSION VERSION_EQUAL "5")
   list(APPEND target_libraries Qt5Network_LIBRARIES Qt5WebKit_LIBRARIES)
+elseif(CTK_QT_VERSION VERSION_EQUAL "6")
+  # Skip workaround originally introduced to support Qt5.
+  # See 47b34216 ("Add support for Qt5", 2013-09-20)
+else()
+  message(FATAL_ERROR "Support for this Qt is not implemented")
 endif()

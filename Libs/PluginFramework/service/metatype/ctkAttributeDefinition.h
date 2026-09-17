@@ -41,7 +41,11 @@
  */
 struct CTK_PLUGINFW_EXPORT ctkAttributeDefinition
 {
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+  typedef QMetaType::Type Type;
+#else
   typedef QVariant::Type Type;
+#endif
 
   static const int PASSWORD;
 
@@ -79,7 +83,7 @@ struct CTK_PLUGINFW_EXPORT ctkAttributeDefinition
    * is used to uniquely identify an attribute. If such an OID exists, (which
    * can be requested at several standard organisations and many companies
    * already have a node in the tree) it can be returned here. Otherwise, a
-   * unique id should be returned which can be a class name combined witha a reverse
+   * unique id should be returned which can be a class name combined with a reverse
    * domain name or generated with a GUID algorithm. Note that all LDAP
    * defined attributes already have an OID. It is strongly advised to define
    * the attributes from existing LDAP schemes which will give the OID. Many
@@ -121,9 +125,14 @@ struct CTK_PLUGINFW_EXPORT ctkAttributeDefinition
    * Return the type for this attribute.
    *
    * <p>
-   * The following types from QVariant::Type are supported:
+   * With Qt 5, the following types from QVariant::Type are supported:
    * QVariant::String, QVariant::LongLong, QVariant::Int, QVariant::Char,
    * QVariant::Double, QVariant::Bool, QVariant::UserType.
+   *
+   * <p>
+   * With Qt 6, the following types from QMetaType::Type are supported:
+   * QMetaType::QString, QMetaType::LongLong, QMetaType::Int, QMetaType::Char,
+   * QMetaType::Double, QMetaType::Bool, QMetaType::User.
    *
    * <p>
    * QVariant::UserType maps to ctkAttributeDefinition::Password only.

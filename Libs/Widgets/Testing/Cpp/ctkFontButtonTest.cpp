@@ -36,6 +36,8 @@
 class ctkFontButtonTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkFontButtonTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
 
   void testDefaults();
@@ -130,7 +132,11 @@ void ctkFontButtonTester::testSetFontTextFormat_data()
   QTest::newRow("ffffff") << QString("ffffff") << QString("HelveticaHelvetica");
   QTest::newRow("fff-ss-sss-ww-www-bb-bbb-ii-iii-uu-uuu-biu")
     << QString("fff-ss-sss-ww-www-bb-bbb-ii-iii-uu-uuu-biu")
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    << QString("Helvetica-8-8pt-400-Normal---i-italic----i-");
+#else
     << QString("Helvetica-8-8pt-50-Normal---i-italic----i-");
+#endif
   QTest::newRow("biuu") << QString("biuu") << QString("-i-u");
 }
 
@@ -165,4 +171,4 @@ void ctkFontButtonTester::testBrowseFont()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkFontButtonTest)
-#include "moc_ctkFontButtonTest.cpp"
+#include "ctkFontButtonTest.moc"

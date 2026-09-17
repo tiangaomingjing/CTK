@@ -19,10 +19,6 @@ set(KIT_SRCS
   ctkCmdLineModuleFrontendQtWebKit_p.h
 )
 
-# Headers that should run through moc
-set(KIT_MOC_SRCS
-)
-
 # UI files
 set(KIT_UI_FORMS
 )
@@ -36,22 +32,22 @@ set(KIT_resources
 # The following macro will read the target libraries from the file 'target_libraries.cmake'
 ctkFunctionGetTargetLibraries(KIT_target_libraries)
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
+if(CTK_QT_VERSION VERSION_EQUAL "5")
   if(TARGET Qt5::WebKitWidgets)
     list(APPEND KIT_target_libraries Qt5::WebKitWidgets)
   else()
     list(APPEND KIT_target_libraries Qt5::WebEngineWidgets)
   endif()
+elseif(CTK_QT_VERSION VERSION_EQUAL "6")
+  list(APPEND KIT_target_libraries Qt6::WebEngineWidgets)
 else()
-  set(QT_USE_QTWEBKIT 1)
-  include(${QT_USE_FILE})
+  message(FATAL_ERROR "Support for Qt${CTK_QT_VERSION} is not implemented")
 endif()
 
 ctkMacroBuildLib(
   NAME ${PROJECT_NAME}
   EXPORT_DIRECTIVE ${KIT_export_directive}
   SRCS ${KIT_SRCS}
-  MOC_SRCS ${KIT_MOC_SRCS}
   UI_FORMS ${KIT_UI_FORMS}
   TARGET_LIBRARIES ${KIT_target_libraries}
   RESOURCES ${KIT_resources}

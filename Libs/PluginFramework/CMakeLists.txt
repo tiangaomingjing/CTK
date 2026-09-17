@@ -135,16 +135,6 @@ set(KIT_SRCS
   service/metatype/ctkObjectClassDefinition.h
   )
 
-# Headers that should run through moc
-set(KIT_MOC_SRCS
-  ctkBasicLocation_p.h
-  ctkDefaultApplicationLauncher_p.h
-  ctkPluginFrameworkDebugOptions_p.h
-  ctkPluginFrameworkListeners_p.h
-  ctkTrackedPluginListener_p.h
-  ctkTrackedServiceListener_p.h
-)
-
 # UI files
 set(KIT_UI_FORMS
 )
@@ -157,12 +147,13 @@ set(KIT_resources
 # The following macro will read the target libraries from the file 'target_libraries.cmake'
 ctkFunctionGetTargetLibraries(KIT_target_libraries)
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  list(APPEND KIT_target_libraries Qt5::Sql Qt5::Concurrent)
-endif()
+list(APPEND KIT_target_libraries
+  Qt${CTK_QT_VERSION}::Concurrent
+  Qt${CTK_QT_VERSION}::Sql
+  )
 
 # Create a MANIFEST.MF resource for the PluginFramework library,
-# pretending that is is a plugin (the system plugin)
+# pretending that it is a plugin (the system plugin)
 ctkFunctionGeneratePluginManifest(KIT_SRCS
   SYMBOLIC_NAME "system.plugin"
   VERSION "0.9.9"
@@ -173,7 +164,6 @@ ctkMacroBuildLib(
   EXPORT_DIRECTIVE ${KIT_export_directive}
   INCLUDE_DIRECTORIES ${CTK_SUPERBUILD_BINARY_DIR}
   SRCS ${KIT_SRCS}
-  MOC_SRCS ${KIT_MOC_SRCS}
   UI_FORMS ${KIT_UI_FORMS}
   TARGET_LIBRARIES ${KIT_target_libraries}
   RESOURCES ${KIT_resources}

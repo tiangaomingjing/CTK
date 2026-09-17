@@ -46,42 +46,42 @@ namespace
 {
 //-----------------------------------------------------------------------------
 void checkFinalWidgetState(void* data)
-  {
+{
   ctkCheckablePushButton* widget = reinterpret_cast<ctkCheckablePushButton*>(data);
 
   CTKCOMPARE(widget->isChecked(), true);
-  }
+}
 //-----------------------------------------------------------------------------
 void checkFinalWidgetState2(void* data)
-  {
+{
   QWidget* parentWidget = reinterpret_cast<QWidget*>(data);
   QList<ctkCheckablePushButton*> widget = parentWidget->findChildren<ctkCheckablePushButton*>();
 
   if(widget.count())
-    {
+  {
     CTKCOMPARE(widget[0]->isChecked(), true);
-    }
-  else
-    {
-    QApplication::exit(EXIT_FAILURE);
-    }
   }
+  else
+  {
+    QApplication::exit(EXIT_FAILURE);
+  }
+}
 //-----------------------------------------------------------------------------
 void checkFinalWidgetState3(void* data)
-  {
+{
   QWidget* parentWidget = reinterpret_cast<QWidget*>(data);
   QList<ctkCheckablePushButton*> widget = parentWidget->findChildren<ctkCheckablePushButton*>();
 
   if(widget.count())
-    {
+  {
     CTKCOMPARE(widget[0]->isChecked(), true);
     CTKCOMPARE(widget[1]->isChecked(), false);
-    }
-  else
-    {
-    QApplication::exit(EXIT_FAILURE);
-    }
   }
+  else
+  {
+    QApplication::exit(EXIT_FAILURE);
+  }
+}
 }
 
 //-----------------------------------------------------------------------------
@@ -106,7 +106,7 @@ int ctkCheckablePushButtonEventTranslatorPlayerTest1(int argc, char * argv [])
 
   // Test case 2
   QWidget widget2(0);
-  ctkCheckablePushButton button1(QObject::tr("Button1"));
+  ctkCheckablePushButton button1("Button1");
 
   button1.setCheckable(true);
 
@@ -120,8 +120,8 @@ int ctkCheckablePushButtonEventTranslatorPlayerTest1(int argc, char * argv [])
 
   // Test case 3
   QWidget widget3(0);
-  ctkCheckablePushButton button2(QObject::tr("Button1"));
-  ctkCheckablePushButton button3(QObject::tr("Button2"));
+  ctkCheckablePushButton button2("Button1");
+  ctkCheckablePushButton button3("Button2");
 
   button2.setCheckable(true);
   button3.setCheckable(true);
@@ -137,9 +137,9 @@ int ctkCheckablePushButtonEventTranslatorPlayerTest1(int argc, char * argv [])
 
   // ------------------------
   if (argc < 2 || QString(argv[1]) != "-I")
-    {
+  {
     QTimer::singleShot(0, &etpWidget, SLOT(play()));
-    }
+  }
 
   etpWidget.show();
   return app.exec();

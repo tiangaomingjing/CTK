@@ -62,7 +62,7 @@ class QWidget;
 /// step->setHasOnEntryCommand(1);
 
 ///
-/// Need two connectins to use this class's onExit() function,
+/// Need two connections to use this class's onExit() function,
 /// and must also set the step's hasOnExitCommand() flag:
 /// QObject::connect(step, SIGNAL(invokeOnExitCommand(const
 /// ctkWorkflowWidgetStep*, const
@@ -96,7 +96,7 @@ public:
   QLineEdit* lineEdit()const;
   void setLineEdit(QLineEdit* lineEdit);
 
-  /// 
+  ///
   /// Get the values for the counters of the number of times we have
   /// run the onEntry() and onExit() functions
   int numberOfTimesRanOnEntry()const;
@@ -117,17 +117,17 @@ public Q_SLOTS:
 
   /// Adds the label and line edit on this step's user interface to
   /// the given list, which will be used by the superclass's
-  /// showUserInterface() function 
+  /// showUserInterface() function
   virtual void createUserInterface();
 
 Q_SIGNALS:
 
   /// Signals indicating to the workflow that these processes have
   /// completed
-  void validationComplete(bool validationSucceeded, const QString& branchId="")const;
-  void onEntryComplete()const;
-  void onExitComplete()const;
-  void createUserInterfaceComplete()const;
+  void validationComplete(bool validationSucceeded, const QString& branchId="");
+  void onEntryComplete();
+  void onExitComplete();
+  void createUserInterfaceComplete();
 
 protected:
   QScopedPointer<ctkExampleWorkflowWidgetStepUsingSignalsAndSlotsPrivate> d_ptr;

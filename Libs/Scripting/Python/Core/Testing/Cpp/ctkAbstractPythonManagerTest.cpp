@@ -15,9 +15,6 @@
 #include <iostream>
 
 //-----------------------------------------------------------------------------
-#if QT_VERSION < 0x040700
-  Q_DECLARE_METATYPE(QVariant)
-#endif
 
 //-----------------------------------------------------------------------------
 class ctkAbstractPythonManagerTester: public QObject
@@ -53,6 +50,8 @@ private Q_SLOTS:
 
   void testExecuteFile();
   void testExecuteFile_data();
+
+  void testExecuteFileDoesNotLeakSysPath();
 
   void testPythonAttributes();
   void testPythonAttributes_data();
@@ -144,9 +143,9 @@ void ctkAbstractPythonManagerTester::testPythonErrorOccured()
   QCOMPARE(this->PythonManager.pythonErrorOccured(), errorOccured);
 
   if(errorOccured)
-    {
+  {
     this->PythonManager.resetErrorFlag();
-    }
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -188,10 +187,10 @@ void ctkAbstractPythonManagerTester::testExecuteString()
 
   QCOMPARE(this->PythonManager.pythonErrorOccured(), errorOccured);
   if (errorOccured)
-    {
+  {
     this->PythonManager.resetErrorFlag();
     return;
-    }
+  }
   QCOMPARE(returnValue, expectedReturnValue);
   QCOMPARE(this->PythonManager.getVariable(expectedVariableName), expectedVariableValue);
 }
@@ -264,14 +263,46 @@ void ctkAbstractPythonManagerTester::testExecuteFile_data()
   QTest::newRow("0-emptyfile") << QString("")
                      << false;
 
-  QTest::newRow("1-helloworld") << QString("print 'Hello world'")
+  QTest::newRow("1-helloworld") << QString("print('Hello world')")
                      << false;
 
   QTest::newRow("2-syntaxerror") << QString("print '") // SyntaxError
                      << true;
 
-  QTest::newRow("3-check __file__ attribute") << QString("print 'This file is: %s' % __file__")
+  QTest::newRow("3-check __file__ attribute") << QString("print('This file is: %s' % __file__)")
                      << false;
+}
+
+// ----------------------------------------------------------------------------
+void ctkAbstractPythonManagerTester::testExecuteFileDoesNotLeakSysPath()
+{
+  QTemporaryFile pythonFile("testExecuteFileLeak-XXXXXX.py");
+  QVERIFY(pythonFile.open());
+  QTextStream out(&pythonFile);
+  out << "pass\n";
+  pythonFile.close();
+
+  const QString scriptDir = QFileInfo(pythonFile.fileName()).absolutePath();
+  const QString inSysPathExpr =
+      QString("%1 in sys.path").arg(ctkAbstractPythonManager::toPythonStringLiteral(scriptDir));
+
+  this->PythonManager.executeString("import sys");
+
+  QVariant beforeContains = this->PythonManager.executeString(
+        inSysPathExpr, ctkAbstractPythonManager::EvalInput);
+  QCOMPARE(beforeContains, QVariant(false));
+
+  this->PythonManager.executeFile(pythonFile.fileName());
+  QCOMPARE(this->PythonManager.pythonErrorOccured(), false);
+
+  QVariant afterContains = this->PythonManager.executeString(
+        inSysPathExpr, ctkAbstractPythonManager::EvalInput);
+  QCOMPARE(afterContains, QVariant(false));
+
+  QVariant helperExists = this->PythonManager.executeString(
+        "'_ctk_executefile_dir' in globals()",
+        ctkAbstractPythonManager::EvalInput);
+  QCOMPARE(helperExists, QVariant(false));
 }
 
 // ----------------------------------------------------------------------------
@@ -281,7 +312,6 @@ void ctkAbstractPythonManagerTester::testPythonAttributes()
   QFETCH(QStringList, expectedAttributeList);
 
   QString test_path = __FILE__; // return the local path of this source file
-  test_path.lastIndexOf("/");
   test_path.replace(test_path.lastIndexOf("/"),
                          test_path.size() - test_path.lastIndexOf("/"),
                          "/PythonAttributes-test.py");
@@ -290,9 +320,9 @@ void ctkAbstractPythonManagerTester::testPythonAttributes()
   QStringList AttributeList = this->PythonManager.pythonAttributes(pythonVariableName, QString("__main__").toLatin1(), false);
 
   foreach (const QString& expectedAttribute, expectedAttributeList)
-    {
+  {
     QVERIFY(AttributeList.contains(expectedAttribute));
-    }
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -348,7 +378,6 @@ void ctkAbstractPythonManagerTester::testPythonAttributeValues()
   QFETCH(QVariant, expectedValue);
 
   QString test_path = __FILE__; // return the local path of this source file
-  test_path.lastIndexOf("/");
   test_path.replace(test_path.lastIndexOf("/"),
                          test_path.size() - test_path.lastIndexOf("/"),
                          "/PythonAttributes-test.py");
@@ -421,14 +450,14 @@ void ctkAbstractPythonManagerTester::testPythonModule()
   PyObject* returnedPyObject = this->PythonManager.pythonModule(inputModuleList);
   PyObject* returnedPyString;
   if(returnedPyObject)
-    {
+  {
     returnedPyString = PyObject_GetAttrString(returnedPyObject, "__name__");
-    }
+  }
   else
-    {
-    returnedPyString = PyString_FromString("");
-    }
-  QString returnedString = PyString_AsString(returnedPyString);
+  {
+    returnedPyString = PyUnicode_FromString("");
+  }
+  QString returnedString = PyUnicode_AsUTF8(returnedPyString);
   QCOMPARE(returnedString, expectedReturnedString);
 }
 
@@ -445,7 +474,7 @@ void ctkAbstractPythonManagerTester::testPythonModule_data()
 
   QTest::newRow("1") << ""
                      << "__main__.__builtins__"
-                     << "__builtin__";
+                     << "builtins";
 
   QTest::newRow("2") << "class foo: pass"
                      << "__main__.foo"
@@ -467,14 +496,14 @@ void ctkAbstractPythonManagerTester::testPythonObject()
   PyObject* returnedPyObject = this->PythonManager.pythonObject(inputPythonVariableNameAndFunction);
   PyObject* returnedPyObjectString;
   if (returnedPyObject)
-    {
+  {
     returnedPyObjectString = PyObject_GetAttrString(returnedPyObject, "__name__");
-    }
+  }
   else
-    {
-    returnedPyObjectString = PyString_FromString("");
-    }
-  QString returnedString = PyString_AsString(returnedPyObjectString);
+  {
+    returnedPyObjectString = PyUnicode_FromString("");
+  }
+  QString returnedString = PyUnicode_AsUTF8(returnedPyObjectString);
   QCOMPARE(returnedString, expectedReturnedString);
 }
 
@@ -504,4 +533,4 @@ void ctkAbstractPythonManagerTester::testPythonObject_data()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkAbstractPythonManagerTest)
-#include "moc_ctkAbstractPythonManagerTest.cpp"
+#include "ctkAbstractPythonManagerTest.moc"

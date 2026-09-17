@@ -44,6 +44,7 @@
 #include "ctkFileDialog.h"
 
 // ctkDICOMCore includes
+#include "ctkDICOMBrowser.h"
 #include "ctkDICOMDatabase.h"
 #include "ctkDICOMFilterProxyModel.h"
 #include "ctkDICOMIndexer.h"
@@ -53,7 +54,6 @@
 #include "ctkDICOMAppWidget.h"
 #include "ctkDICOMThumbnailGenerator.h"
 #include "ctkThumbnailLabel.h"
-#include "ctkDICOMQueryResultsTabWidget.h"
 #include "ctkDICOMQueryRetrieveWidget.h"
 #include "ctkDICOMQueryWidget.h"
 
@@ -94,6 +94,8 @@ public:
 
   QTimer* AutoPlayTimer;
 
+  bool CopyOnImport{false};
+
   bool IsSearchWidgetPopUpMode;
 
   // local count variables to keep track of the number of items
@@ -113,6 +115,7 @@ ctkDICOMAppWidgetPrivate::ctkDICOMAppWidgetPrivate(ctkDICOMAppWidget* parent): q
   ThumbnailGenerator = QSharedPointer <ctkDICOMThumbnailGenerator> (new ctkDICOMThumbnailGenerator);
   DICOMDatabase->setThumbnailGenerator(ThumbnailGenerator.data());
   DICOMIndexer = QSharedPointer<ctkDICOMIndexer> (new ctkDICOMIndexer);
+  DICOMIndexer->setDatabase(DICOMDatabase.data());
   IndexerProgress = 0;
   UpdateSchemaProgress = 0;
   DisplayImportSummary = true;
@@ -125,36 +128,36 @@ ctkDICOMAppWidgetPrivate::ctkDICOMAppWidgetPrivate(ctkDICOMAppWidget* parent): q
 ctkDICOMAppWidgetPrivate::~ctkDICOMAppWidgetPrivate()
 {
   if ( IndexerProgress )
-    {
+  {
     delete IndexerProgress;
-    }
+  }
   if ( UpdateSchemaProgress )
-    {
+  {
     delete UpdateSchemaProgress;
-    }
+  }
 }
 
 void ctkDICOMAppWidgetPrivate::showUpdateSchemaDialog()
 {
   Q_Q(ctkDICOMAppWidget);
   if (UpdateSchemaProgress == 0)
-    {
+  {
     //
     // Set up the Update Schema Progress Dialog
     //
     UpdateSchemaProgress = new QProgressDialog(
-        q->tr("DICOM Schema Update"), "Cancel", 0, 100, q,
+        ctkDICOMAppWidget::tr("DICOM Schema Update"), ctkDICOMAppWidget::tr("Cancel"), 0, 100, q,
          Qt::WindowTitleHint | Qt::WindowSystemMenuHint);
 
     // We don't want the progress dialog to resize itself, so we bypass the label
     // by creating our own
-    QLabel* progressLabel = new QLabel(q->tr("Initialization..."));
+    QLabel* progressLabel = new QLabel(ctkDICOMAppWidget::tr("Initialization..."));
     UpdateSchemaProgress->setLabel(progressLabel);
     UpdateSchemaProgress->setWindowModality(Qt::ApplicationModal);
     UpdateSchemaProgress->setMinimumDuration(0);
     UpdateSchemaProgress->setValue(0);
 
-    //q->connect(UpdateSchemaProgress, SIGNAL(canceled()), 
+    //q->connect(UpdateSchemaProgress, SIGNAL(canceled()),
      //       DICOMIndexer.data(), SLOT(cancel()));
 
     q->connect(DICOMDatabase.data(), SIGNAL(schemaUpdateStarted(int)),
@@ -171,9 +174,9 @@ void ctkDICOMAppWidgetPrivate::showUpdateSchemaDialog()
     q->connect(DICOMDatabase.data(), SIGNAL(schemaUpdated()),
             &DICOMModel, SLOT(reset()));
     // reset the database if canceled
-    q->connect(UpdateSchemaProgress, SIGNAL(canceled()), 
+    q->connect(UpdateSchemaProgress, SIGNAL(canceled()),
             &DICOMModel, SLOT(reset()));
-    }
+  }
   UpdateSchemaProgress->show();
 }
 
@@ -181,49 +184,55 @@ void ctkDICOMAppWidgetPrivate::showIndexerDialog()
 {
   Q_Q(ctkDICOMAppWidget);
   if (IndexerProgress == 0)
-    {
+  {
     //
     // Set up the Indexer Progress Dialog
     //
-    IndexerProgress = new QProgressDialog( q->tr("DICOM Import"), "Cancel", 0, 100, q,
+    IndexerProgress = new QProgressDialog( ctkDICOMAppWidget::tr("DICOM Import"), ctkDICOMAppWidget::tr("Cancel"), 0, 100, q,
          Qt::WindowTitleHint | Qt::WindowSystemMenuHint);
 
     // We don't want the progress dialog to resize itself, so we bypass the label
     // by creating our own
-    QLabel* progressLabel = new QLabel(q->tr("Initialization..."));
+    QLabel* progressLabel = new QLabel(ctkDICOMAppWidget::tr("Initialization..."));
     IndexerProgress->setLabel(progressLabel);
     IndexerProgress->setWindowModality(Qt::ApplicationModal);
     IndexerProgress->setMinimumDuration(0);
     IndexerProgress->setValue(0);
 
-    q->connect(IndexerProgress, SIGNAL(canceled()), 
+    q->connect(IndexerProgress, SIGNAL(canceled()),
                  DICOMIndexer.data(), SLOT(cancel()));
 
-    q->connect(DICOMIndexer.data(), SIGNAL(progress(int)),
-            IndexerProgress, SLOT(setValue(int)));
-    q->connect(DICOMIndexer.data(), SIGNAL(indexingFilePath(QString)),
+    // QProgressDialog requires a rate limiter when used from another thread,
+    // otherwise it crashes with stack overflow
+    // (see https://bugreports.qt.io/browse/QTBUG-83265).
+    // Since this feature is obsolete anyway (since ctkDICOMBrowser can now
+    // has built-in progress reporting of background data import), we just disable it.
+    // q->connect(DICOMIndexer.data(), SIGNAL(progress(int)),
+    //        IndexerProgress, SLOT(setValue(int)));
+
+    q->connect(DICOMIndexer.data(), SIGNAL(progressDetail(QString)),
             progressLabel, SLOT(setText(QString)));
-    q->connect(DICOMIndexer.data(), SIGNAL(indexingFilePath(QString)),
+    q->connect(DICOMIndexer.data(), SIGNAL(progressDetail(QString)),
             q, SLOT(onFileIndexed(QString)));
 
     // close the dialog
-    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete()),
-            IndexerProgress, SLOT(close()));
+    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete(int,int,int,int)),
+            q, SLOT(setIndexingResult(int,int,int,int)));
     // reset the database to show new data
-    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete()),
+    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete(int,int,int,int)),
             &DICOMModel, SLOT(reset()));
     // stop indexing and reset the database if canceled
-    q->connect(IndexerProgress, SIGNAL(canceled()), 
+    q->connect(IndexerProgress, SIGNAL(canceled()),
             DICOMIndexer.data(), SLOT(cancel()));
-    q->connect(IndexerProgress, SIGNAL(canceled()), 
+    q->connect(IndexerProgress, SIGNAL(canceled()),
             &DICOMModel, SLOT(reset()));
 
     // allow users of this widget to know that the process has finished
-    q->connect(IndexerProgress, SIGNAL(canceled()), 
+    q->connect(IndexerProgress, SIGNAL(canceled()),
             q, SIGNAL(directoryImported()));
-    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete()),
+    q->connect(DICOMIndexer.data(), SIGNAL(indexingComplete(int,int,int,int)),
             q, SIGNAL(directoryImported()));
-    }
+  }
   IndexerProgress->show();
 }
 
@@ -257,12 +266,11 @@ ctkDICOMAppWidget::ctkDICOMAppWidget(QWidget* _parent):Superclass(_parent),
   d->ThumbnailsWidget->setThumbnailSize(
     QSize(d->ThumbnailWidthSlider->value(), d->ThumbnailWidthSlider->value()));
 
-  // signals related to tracking inserts
-  connect(d->DICOMDatabase.data(), SIGNAL(patientAdded(int,QString,QString,QString)), this,
-                              SLOT(onPatientAdded(int,QString,QString,QString)));
-  connect(d->DICOMDatabase.data(), SIGNAL(studyAdded(QString)), this, SLOT(onStudyAdded(QString)));
-  connect(d->DICOMDatabase.data(), SIGNAL(seriesAdded(QString)), this, SLOT(onSeriesAdded(QString)));
-  connect(d->DICOMDatabase.data(), SIGNAL(instanceAdded(QString)), this, SLOT(onInstanceAdded(QString)));
+#if QT_VERSION >= QT_VERSION_CHECK(6,7,0)
+    connect(d->AutoPlayCheckbox, &QCheckBox::checkStateChanged, this, &ctkDICOMAppWidget::onAutoPlayCheckboxStateChanged);
+#else
+    connect(d->AutoPlayCheckbox, &QCheckBox::stateChanged, this, &ctkDICOMAppWidget::onAutoPlayCheckboxStateChanged);
+#endif
 
   // Treeview signals
   connect(d->TreeView, SIGNAL(collapsed(QModelIndex)), this, SLOT(onTreeCollapsed(QModelIndex)));
@@ -278,11 +286,11 @@ ctkDICOMAppWidget::ctkDICOMAppWidget(QWidget* _parent):Superclass(_parent),
   //initialize directory from settings, then listen for changes
   QSettings settings;
   if ( settings.value("DatabaseDirectory", "") == "" )
-    {
+  {
     QString directory = QString("./ctkDICOM-Database");
     settings.setValue("DatabaseDirectory", directory);
     settings.sync();
-    }
+  }
   QString databaseDirectory = settings.value("DatabaseDirectory").toString();
   this->setDatabaseDirectory(databaseDirectory);
   d->DirectoryButton->setDirectory(databaseDirectory);
@@ -291,11 +299,19 @@ ctkDICOMAppWidget::ctkDICOMAppWidget(QWidget* _parent):Superclass(_parent),
 
   //Initialize import widget
   d->ImportDialog = new ctkFileDialog();
-  QCheckBox* importCheckbox = new QCheckBox("Copy on import", d->ImportDialog);
-  d->ImportDialog->setBottomWidget(importCheckbox);
+  bool usingNativeDialog = !d->ImportDialog->testOption(QFileDialog::DontUseNativeDialog);
+  if (!usingNativeDialog)
+  {
+    QCheckBox* importCheckbox = new QCheckBox(tr("Copy on import"), d->ImportDialog);
+    d->ImportDialog->setBottomWidget(importCheckbox);
+
+    QObject::connect(importCheckbox, &QCheckBox::toggled, [=] (bool checked) {
+      d->CopyOnImport = checked;
+    });
+  }
   d->ImportDialog->setFileMode(QFileDialog::Directory);
-  d->ImportDialog->setLabelText(QFileDialog::Accept,"Import");
-  d->ImportDialog->setWindowTitle("Import DICOM files from directory ...");
+  d->ImportDialog->setLabelText(QFileDialog::Accept,tr("Import"));
+  d->ImportDialog->setWindowTitle(tr("Import DICOM files from directory ..."));
   d->ImportDialog->setWindowModality(Qt::ApplicationModal);
 
   //connect signal and slots
@@ -401,15 +417,15 @@ void ctkDICOMAppWidget::setDatabaseDirectory(const QString& directory)
   //open DICOM database on the directory
   QString databaseFileName = directory + QString("/ctkDICOM.sql");
   try
-    {
+  {
     d->DICOMDatabase->openDatabase( databaseFileName );
-    }
-  catch (std::exception e)
-    {
+  }
+  catch (const std::exception &)
+  {
     std::cerr << "Database error: " << qPrintable(d->DICOMDatabase->lastError()) << "\n";
     d->DICOMDatabase->closeDatabase();
     return;
-    }
+  }
 
   // update the database schema if needed and provide progress
   this->updateDatabaseSchemaIfNeeded();
@@ -469,23 +485,23 @@ void ctkDICOMAppWidget::setSearchWidgetPopUpMode(bool flag){
   Q_D(ctkDICOMAppWidget);
 
   if(flag)
-    {
+  {
     d->SearchDockWidget->setTitleBarWidget(0);
     d->SearchPopUpButton->show();
     d->SearchDockWidget->hide();
     d->SearchDockWidget->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
     connect(d->SearchDockWidget, SIGNAL(topLevelChanged(bool)), this, SLOT(onSearchWidgetTopLevelChanged(bool)));
     connect(d->SearchPopUpButton, SIGNAL(clicked()), this, SLOT(onSearchPopUpButtonClicked()));
-    }
+  }
   else
-    {
+  {
     d->SearchDockWidget->setTitleBarWidget(new QWidget());
     d->SearchPopUpButton->hide();
     d->SearchDockWidget->show();
     d->SearchDockWidget->setFeatures(QDockWidget::NoDockWidgetFeatures);
     disconnect(d->SearchDockWidget, SIGNAL(topLevelChanged(bool)), this, SLOT(onSearchWidgetTopLevelChanged(bool)));
     disconnect(d->SearchPopUpButton, SIGNAL(clicked()), this, SLOT(onSearchPopUpButtonClicked()));
-    }
+  }
 
   d->IsSearchWidgetPopUpMode = flag;
 }
@@ -495,9 +511,15 @@ void ctkDICOMAppWidget::onFileIndexed(const QString& filePath)
 {
   // Update the progress dialog when the file name changes
   // - also allows for cancel button
-  QCoreApplication::instance()->processEvents();
+
+  // QProgressDialog requires a rate limiter when used from another thread,
+  // otherwise it crashes with stack overflow
+  // (see https://bugreports.qt.io/browse/QTBUG-83265).
+  // Since this feature is obsolete anyway (since ctkDICOMBrowser can now
+  // has built-in progress reporting of background data import), we just disable it.
+  //QCoreApplication::instance()->processEvents();
+
   qDebug() << "Indexing \n\n\n\n" << filePath <<"\n\n\n";
-  
 }
 
 //----------------------------------------------------------------------------
@@ -597,9 +619,9 @@ void ctkDICOMAppWidget::onThumbnailSelected(const ctkThumbnailLabel& widget)
 
   QModelIndex index = widget.property("sourceIndex").value<QPersistentModelIndex>();
   if(index.isValid())
-    {
+  {
     d->ImagePreview->onModelSelected(index);
-    }
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -610,55 +632,30 @@ void ctkDICOMAppWidget::onThumbnailDoubleClicked(const ctkThumbnailLabel& widget
     QModelIndex index = widget.property("sourceIndex").value<QPersistentModelIndex>();
 
     if(!index.isValid())
-      {
+    {
       return;
-      }
+    }
 
     ctkDICOMModel* model = const_cast<ctkDICOMModel*>(qobject_cast<const ctkDICOMModel*>(index.model()));
     QModelIndex index0 = index.sibling(index.row(), 0);
 
     if(model && (model->data(index0,ctkDICOMModel::TypeRole) != static_cast<int>(ctkDICOMModel::ImageType)))
-      {
+    {
         this->onModelSelected(index0);
         d->TreeView->setCurrentIndex(index0);
         d->ThumbnailsWidget->addThumbnails(index0);
         d->ImagePreview->onModelSelected(index0);
-      }
+    }
 }
 
 //----------------------------------------------------------------------------
-void ctkDICOMAppWidget::onPatientAdded(int databaseID, QString patientID, QString patientName, QString patientBirthDate )
+void ctkDICOMAppWidget::setIndexingResult(int patientsAdded, int studiesAdded, int seriesAdded, int imagesAdded)
 {
   Q_D(ctkDICOMAppWidget);
-  Q_UNUSED(databaseID);
-  Q_UNUSED(patientID);
-  Q_UNUSED(patientName);
-  Q_UNUSED(patientBirthDate);
-  ++d->PatientsAddedDuringImport;
-}
-
-//----------------------------------------------------------------------------
-void ctkDICOMAppWidget::onStudyAdded(QString studyUID)
-{
-  Q_D(ctkDICOMAppWidget);
-  Q_UNUSED(studyUID);
-  ++d->StudiesAddedDuringImport;
-}
-
-//----------------------------------------------------------------------------
-void ctkDICOMAppWidget::onSeriesAdded(QString seriesUID)
-{
-  Q_D(ctkDICOMAppWidget);
-  Q_UNUSED(seriesUID);
-  ++d->SeriesAddedDuringImport;
-}
-
-//----------------------------------------------------------------------------
-void ctkDICOMAppWidget::onInstanceAdded(QString instanceUID)
-{
-  Q_D(ctkDICOMAppWidget);
-  Q_UNUSED(instanceUID);
-  ++d->InstancesAddedDuringImport;
+  d->PatientsAddedDuringImport = patientsAdded;
+  d->StudiesAddedDuringImport = studiesAdded;
+  d->SeriesAddedDuringImport = seriesAdded;
+  d->InstancesAddedDuringImport = imagesAdded;
 }
 
 //----------------------------------------------------------------------------
@@ -666,14 +663,7 @@ void ctkDICOMAppWidget::onImportDirectory(QString directory)
 {
   Q_D(ctkDICOMAppWidget);
   if (QDir(directory).exists())
-    {
-    QCheckBox* copyOnImport = qobject_cast<QCheckBox*>(d->ImportDialog->bottomWidget());
-    QString targetDirectory;
-    if (copyOnImport->checkState() == Qt::Checked)
-      {
-      targetDirectory = d->DICOMDatabase->databaseDirectory();
-      }
-
+  {
     // reset counts
     d->PatientsAddedDuringImport = 0;
     d->StudiesAddedDuringImport = 0;
@@ -682,18 +672,21 @@ void ctkDICOMAppWidget::onImportDirectory(QString directory)
 
     // show progress dialog and perform indexing
     d->showIndexerDialog();
-    d->DICOMIndexer->addDirectory(*d->DICOMDatabase,directory,targetDirectory);
+
+    d->DICOMIndexer->addDirectory(directory, d->CopyOnImport);
 
     // display summary result
     if (d->DisplayImportSummary)
-      {
-      QString message = "Directory import completed.\n\n";
-      message += QString("%1 New Patients\n").arg(QString::number(d->PatientsAddedDuringImport));
-      message += QString("%1 New Studies\n").arg(QString::number(d->StudiesAddedDuringImport));
-      message += QString("%1 New Series\n").arg(QString::number(d->SeriesAddedDuringImport));
-      message += QString("%1 New Instances\n").arg(QString::number(d->InstancesAddedDuringImport));
-      QMessageBox::information(this,"DICOM Directory Import", message);
-      }
+    {
+      //: Arguments represents the number of new patients, studies, series and instances
+      QString message = tr("Directory import completed.\n\n"
+          "%1 New Patients\n"
+          "%2 New Studies\n"
+          "%3 New Series\n"
+          "%4 New Instances\n")
+          .arg(QString::number(d->PatientsAddedDuringImport), QString::number(d->StudiesAddedDuringImport), QString::number(d->SeriesAddedDuringImport), QString::number(d->InstancesAddedDuringImport));
+      QMessageBox::information(this, tr("DICOM Directory Import"), message);
+    }
   }
 }
 
@@ -704,53 +697,53 @@ Q_D(ctkDICOMAppWidget);
     ctkDICOMModel* model = const_cast<ctkDICOMModel*>(qobject_cast<const ctkDICOMModel*>(index.model()));
 
     if(model)
-      {
+    {
         QModelIndex index0 = index.sibling(index.row(), 0);
 
         if ( model->data(index0,ctkDICOMModel::TypeRole) == static_cast<int>(ctkDICOMModel::PatientType) )
-          {
+        {
           d->NextImageButton->show();
           d->PrevImageButton->show();
           d->NextSeriesButton->show();
           d->PrevSeriesButton->show();
           d->NextStudyButton->show();
           d->PrevStudyButton->show();
-          }
+        }
         else if ( model->data(index0,ctkDICOMModel::TypeRole) == static_cast<int>(ctkDICOMModel::StudyType) )
-          {
+        {
           d->NextImageButton->show();
           d->PrevImageButton->show();
           d->NextSeriesButton->show();
           d->PrevSeriesButton->show();
           d->NextStudyButton->hide();
           d->PrevStudyButton->hide();
-          }
+        }
         else if ( model->data(index0,ctkDICOMModel::TypeRole) == static_cast<int>(ctkDICOMModel::SeriesType) )
-          {
+        {
           d->NextImageButton->show();
           d->PrevImageButton->show();
           d->NextSeriesButton->hide();
           d->PrevSeriesButton->hide();
           d->NextStudyButton->hide();
           d->PrevStudyButton->hide();
-          }
+        }
         else
-          {
+        {
           d->NextImageButton->hide();
           d->PrevImageButton->hide();
           d->NextSeriesButton->hide();
           d->PrevSeriesButton->hide();
           d->NextStudyButton->hide();
           d->PrevStudyButton->hide();
-          }
+        }
         d->ActionRemove->setEnabled(
             model->data(index0,ctkDICOMModel::TypeRole) == static_cast<int>(ctkDICOMModel::SeriesType) ||
             model->data(index0,ctkDICOMModel::TypeRole) == static_cast<int>(ctkDICOMModel::StudyType) ||
             model->data(index0,ctkDICOMModel::TypeRole) == static_cast<int>(ctkDICOMModel::PatientType) );
-        }
+    }
 
       else
-        {
+      {
         d->NextImageButton->hide();
         d->PrevImageButton->hide();
         d->NextSeriesButton->hide();
@@ -758,7 +751,7 @@ Q_D(ctkDICOMAppWidget);
         d->NextStudyButton->hide();
         d->PrevStudyButton->hide();
         d->ActionRemove->setEnabled(false);
-        }
+      }
 }
 
 //----------------------------------------------------------------------------
@@ -768,11 +761,11 @@ void ctkDICOMAppWidget::onNextImage(){
     QModelIndex currentIndex = d->ImagePreview->currentImageIndex();
 
     if(currentIndex.isValid())
-      {
+    {
       ctkDICOMModel* model = const_cast<ctkDICOMModel*>(qobject_cast<const ctkDICOMModel*>(currentIndex.model()));
 
       if(model)
-        {
+      {
         QModelIndex seriesIndex = currentIndex.parent();
 
         int imageCount = model->rowCount(seriesIndex);
@@ -782,16 +775,16 @@ void ctkDICOMAppWidget::onNextImage(){
 
         int max = d->PlaySlider->maximum();
         if(imageID > 0 && imageID < max)
-          {
+        {
             d->PlaySlider->setValue(imageID);
-          }
+        }
 
         QModelIndex nextIndex = currentIndex.sibling(imageID, 0);
 
         d->ImagePreview->onModelSelected(nextIndex);
         d->ThumbnailsWidget->selectThumbnailFromIndex(nextIndex);
-        }
       }
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -801,11 +794,11 @@ void ctkDICOMAppWidget::onPreviousImage(){
     QModelIndex currentIndex = d->ImagePreview->currentImageIndex();
 
     if(currentIndex.isValid())
-      {
+    {
       ctkDICOMModel* model = const_cast<ctkDICOMModel*>(qobject_cast<const ctkDICOMModel*>(currentIndex.model()));
 
       if(model)
-        {
+      {
         QModelIndex seriesIndex = currentIndex.parent();
 
         int imageCount = model->rowCount(seriesIndex);
@@ -816,16 +809,16 @@ void ctkDICOMAppWidget::onPreviousImage(){
 
         int max = d->PlaySlider->maximum();
         if(imageID > 0 && imageID < max)
-          {
+        {
             d->PlaySlider->setValue(imageID);
-          }
+        }
 
         QModelIndex prevIndex = currentIndex.sibling(imageID, 0);
 
         d->ImagePreview->onModelSelected(prevIndex);
         d->ThumbnailsWidget->selectThumbnailFromIndex(prevIndex);
-        }
       }
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -835,11 +828,11 @@ void ctkDICOMAppWidget::onNextSeries(){
     QModelIndex currentIndex = d->ImagePreview->currentImageIndex();
 
     if(currentIndex.isValid())
-      {
+    {
       ctkDICOMModel* model = const_cast<ctkDICOMModel*>(qobject_cast<const ctkDICOMModel*>(currentIndex.model()));
 
       if(model)
-        {
+      {
         QModelIndex seriesIndex = currentIndex.parent();
         QModelIndex studyIndex = seriesIndex.parent();
 
@@ -852,8 +845,8 @@ void ctkDICOMAppWidget::onNextSeries(){
 
         d->ImagePreview->onModelSelected(nextIndex);
         d->ThumbnailsWidget->selectThumbnailFromIndex(nextIndex);
-        }
       }
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -863,11 +856,11 @@ void ctkDICOMAppWidget::onPreviousSeries(){
     QModelIndex currentIndex = d->ImagePreview->currentImageIndex();
 
     if(currentIndex.isValid())
-      {
+    {
       ctkDICOMModel* model = const_cast<ctkDICOMModel*>(qobject_cast<const ctkDICOMModel*>(currentIndex.model()));
 
       if(model)
-        {
+      {
         QModelIndex seriesIndex = currentIndex.parent();
         QModelIndex studyIndex = seriesIndex.parent();
 
@@ -881,8 +874,8 @@ void ctkDICOMAppWidget::onPreviousSeries(){
 
         d->ImagePreview->onModelSelected(prevIndex);
         d->ThumbnailsWidget->selectThumbnailFromIndex(prevIndex);
-        }
       }
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -892,11 +885,11 @@ void ctkDICOMAppWidget::onNextStudy(){
     QModelIndex currentIndex = d->ImagePreview->currentImageIndex();
 
     if(currentIndex.isValid())
-      {
+    {
       ctkDICOMModel* model = const_cast<ctkDICOMModel*>(qobject_cast<const ctkDICOMModel*>(currentIndex.model()));
 
       if(model)
-        {
+      {
         QModelIndex seriesIndex = currentIndex.parent();
         QModelIndex studyIndex = seriesIndex.parent();
         QModelIndex patientIndex = studyIndex.parent();
@@ -910,8 +903,8 @@ void ctkDICOMAppWidget::onNextStudy(){
 
         d->ImagePreview->onModelSelected(nextIndex);
         d->ThumbnailsWidget->selectThumbnailFromIndex(nextIndex);
-        }
       }
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -921,11 +914,11 @@ void ctkDICOMAppWidget::onPreviousStudy(){
     QModelIndex currentIndex = d->ImagePreview->currentImageIndex();
 
     if(currentIndex.isValid())
-      {
+    {
       ctkDICOMModel* model = const_cast<ctkDICOMModel*>(qobject_cast<const ctkDICOMModel*>(currentIndex.model()));
 
       if(model)
-        {
+      {
         QModelIndex seriesIndex = currentIndex.parent();
         QModelIndex studyIndex = seriesIndex.parent();
         QModelIndex patientIndex = studyIndex.parent();
@@ -940,8 +933,8 @@ void ctkDICOMAppWidget::onPreviousStudy(){
 
         d->ImagePreview->onModelSelected(prevIndex);
         d->ThumbnailsWidget->selectThumbnailFromIndex(prevIndex);
-        }
       }
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -963,16 +956,16 @@ void ctkDICOMAppWidget::onAutoPlayCheckboxStateChanged(int state){
     Q_D(ctkDICOMAppWidget);
 
     if(state == 0) //OFF
-      {
+    {
       disconnect(d->AutoPlayTimer, SIGNAL(timeout()), this, SLOT(onAutoPlayTimer()));
       d->AutoPlayTimer->deleteLater();
-      }
+    }
     else if(state == 2) //ON
-      {
+    {
       d->AutoPlayTimer = new QTimer(this);
       connect(d->AutoPlayTimer, SIGNAL(timeout()), this, SLOT(onAutoPlayTimer()));
       d->AutoPlayTimer->start(50);
-      }
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -1012,16 +1005,16 @@ void ctkDICOMAppWidget::onSearchPopUpButtonClicked(){
   Q_D(ctkDICOMAppWidget);
 
   if(d->SearchDockWidget->isFloating())
-    {
+  {
     d->SearchDockWidget->hide();
     d->SearchDockWidget->setFloating(false);
-    }
+  }
   else
-    {
+  {
     d->SearchDockWidget->setFloating(true);
     d->SearchDockWidget->adjustSize();
     d->SearchDockWidget->show();
-    }
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -1029,11 +1022,11 @@ void ctkDICOMAppWidget::onSearchWidgetTopLevelChanged(bool topLevel){
   Q_D(ctkDICOMAppWidget);
 
   if(topLevel)
-    {
+  {
     d->SearchDockWidget->show();
-    }
+  }
   else
-    {
+  {
     d->SearchDockWidget->hide();
-    }
+  }
 }

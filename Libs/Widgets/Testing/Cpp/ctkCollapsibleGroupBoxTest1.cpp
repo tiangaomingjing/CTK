@@ -38,10 +38,10 @@ int ctkCollapsibleGroupBoxTest1(int argc, char * argv [] )
   QApplication app(argc, argv);
 
   QWidget topLevel;
-  ctkCollapsibleGroupBox* groupBox = new ctkCollapsibleGroupBox(QObject::tr("GroupBox"));
-  QRadioButton *radio1 = new QRadioButton(QObject::tr("&Radio button 1"));
-  QRadioButton *radio2 = new QRadioButton(QObject::tr("R&adio button 2"));
-  QRadioButton *radio3 = new QRadioButton(QObject::tr("Ra&dio button 3"));
+  ctkCollapsibleGroupBox* groupBox = new ctkCollapsibleGroupBox("GroupBox");
+  QRadioButton *radio1 = new QRadioButton("&Radio button 1");
+  QRadioButton *radio2 = new QRadioButton("R&adio button 2");
+  QRadioButton *radio3 = new QRadioButton("Ra&dio button 3");
   ctkCollapsibleGroupBox* hiddenGroupBox = new ctkCollapsibleGroupBox;
   hiddenGroupBox->setTitle("Advanced...");
 
@@ -71,54 +71,53 @@ int ctkCollapsibleGroupBoxTest1(int argc, char * argv [] )
   topLevel.show();
 
   if (groupBox->collapsed())
-    {
+  {
     std::cerr<< "Wrong default collapse state." << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   groupBox->setCollapsed(true);
 
   if (groupBox->collapsed() != true)
-    {
+  {
     std::cerr<< "ctkCollapsibleGroupBox::setCollapsed failed." << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   if (radio1->isVisible())
-    {
+  {
     std::cerr << "ctkCollapsibleGroupBox::setChecked failed. "
               << "Children are visible" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   hiddenGroupBox->setVisible(true);
   if (hiddenGroupBox->isVisible())
-    {
+  {
     std::cerr << "Nested widget in ctkCollapsibleGroupBox failed. "
               << "Child is visible" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   groupBox->setChecked(true);
 
   if (groupBox->collapsed() != false)
-    {
+  {
     std::cerr<< "ctkCollapsibleGroupBox::setChecked failed." << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   if (!hiddenGroupBox->isVisible())
-    {
+  {
     std::cerr << "Nested widget in ctkCollapsibleGroupBox failed. "
               << "Child is not visible" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   if (argc < 2 || QString(argv[1]) != "-I" )
-    {
+  {
     QTimer::singleShot(200, &app, SLOT(quit()));
-    }
+  }
 
   return app.exec();
 }
-

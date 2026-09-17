@@ -33,40 +33,40 @@ bool ctkHostSoapMessageProcessor::process(
   const QtSoapMessage& message, QtSoapMessage* reply ) const
 {
   // TODO check for NULL hostInterface?
-  
+
   const QtSoapType& method = message.method();
   QString methodName = method.name().name();
 
   qDebug() << "HostMessageProcessor: Received soap method request: " << methodName;
 
   bool foundMethod = false;
-  
+
   if (methodName == "GetAvailableScreen")
-    {
+  {
     processGetAvailableScreen(message, reply);
     foundMethod = true;
-    }
+  }
   else if (methodName == "NotifyStateChanged")
-    {
+  {
     processNotifyStateChanged(message, reply);
     foundMethod = true;
-    }
+  }
   else if (methodName == "NotifyStatus")
-    {
+  {
     processNotifyStatus(message, reply);
     foundMethod = true;
-    }
+  }
   else if (methodName == "GenerateUID")
-    {
+  {
     processGenerateUID(message, reply);
     foundMethod = true;
-    }
+  }
   else if (methodName == "GetOutputLocation")
-    {
+  {
     processGetOutputLocation(message, reply);
     foundMethod = true;
-    }
-  
+  }
+
   return foundMethod;
 }
 
@@ -94,7 +94,7 @@ void ctkHostSoapMessageProcessor::processNotifyStateChanged(
   // query interface
   this->HostInterface->notifyStateChanged(ctkDicomSoapState::getState(inputType));
   // set reply message: nothing to be done
-
+  Q_UNUSED(reply);
   /*bool result = true;
   reply->setMethod("NotifyStateChanged");
   QtSoapType* resultType = new ctkDicomSoapBool("NotifyStateChangedResponse",result);
@@ -111,7 +111,7 @@ void ctkHostSoapMessageProcessor::processNotifyStatus(
   // query interface
   this->HostInterface->notifyStatus(ctkDicomSoapStatus::getStatus(inputType));
   // set reply message: nothing to be done
-	
+  Q_UNUSED(reply);
   /*bool result = true;
   reply->setMethod("NotifyStatus");
   QtSoapType* resultType = new ctkDicomSoapBool("NotifyStatusResponse",result);

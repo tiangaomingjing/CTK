@@ -4,7 +4,13 @@ project(CTKQtTesting)
 # 3rd party dependencies
 #
 find_package(QtTesting REQUIRED)
-set(QtTesting_LIBRARIES QtTesting)
+# The upstream target name changed from "QtTesting" (pre-2024) to "qttesting"
+# (lowercase) in newer revisions. Use whichever target the package provides.
+if(TARGET qttesting)
+  set(QtTesting_LIBRARIES qttesting)
+else()
+  set(QtTesting_LIBRARIES QtTesting)
+endif()
 
 #
 # See CTK/CMake/ctkMacroBuildLib.cmake for details
@@ -53,7 +59,7 @@ endif()
 
 # Define the C++ code for the file ctkQtTestingUtility
 # Define the headers
-# Define the methode addWidgetEventTranslator/Player()
+# Define the method addWidgetEventTranslator/Player()
 set(CTK_ADD_HEADER_EVENT_PLAYERS "// Event player includes\n")
 #set(CTK_ADD_WIDGET_EVENT_PLAYERS)
 foreach(CTK_HEADER_EVENT_PLAYERS ${CTK_HEADERS_EVENT_PLAYERS})
@@ -125,14 +131,6 @@ set(KIT_SRCS
   ctkXMLEventSource.h
   )
 
-# Header that should run through moc
-set(KIT_MOC_SRCS
-  ctkEventTranslatorPlayerWidget.h
-  ctkQtTestingUtility.h
-  ctkXMLEventObserver.h
-  ctkXMLEventSource.h
-  )
-
 # UI files
 set(KIT_UI_FORMS
   Resources/UI/ctkEventTranslatorPlayerWidget.ui
@@ -143,22 +141,22 @@ set(KIT_resources
   Resources/ctkQtTesting.qrc
 )
 
-# Set QtTesting_LIBRARIES variable
-set(QtTesting_LIBRARIES QtTesting)
-
 # Target libraries - See CMake/ctkFunctionGetTargetLibraries.cmake
 # The following macro will read the target libraries from the file 'target_libraries.cmake'
 ctkFunctionGetTargetLibraries(KIT_target_libraries)
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  list(APPEND KIT_target_libraries Qt5::Xml Qt5::XmlPatterns)
+list(APPEND KIT_target_libraries
+  Qt${CTK_QT_VERSION}::Xml
+  )
+if(CTK_QT_VERSION VERSION_LESS "6")
+  # QtXmlPatterns is Qt 5 only; ctkXMLEventSource guards its usage accordingly
+  list(APPEND KIT_target_libraries Qt5::XmlPatterns)
 endif()
 
 ctkMacroBuildLib(
   NAME ${PROJECT_NAME}
   EXPORT_DIRECTIVE ${KIT_export_directive}
   SRCS ${KIT_SRCS}
-  MOC_SRCS ${KIT_MOC_SRCS}
   UI_FORMS ${KIT_UI_FORMS}
   TARGET_LIBRARIES ${KIT_target_libraries}
   RESOURCES ${KIT_resources}
@@ -177,4 +175,3 @@ endif()
 #if(BUILD_TESTING)
 #  add_subdirectory(Testing)
 #endif()
-

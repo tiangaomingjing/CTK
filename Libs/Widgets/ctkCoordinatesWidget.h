@@ -32,7 +32,7 @@ class ctkCoordinatesWidgetPrivate;
 /// \ingroup Widgets
 ///
 /// ctkCoordinatesWidget is a simple container of dimension coordinates.
-/// For each coordinate a double spinbox is associated, everytime a value is
+/// For each coordinate a double spinbox is associated, every time a value is
 /// modified, the signal valueChanged is fired.
 /// TODO: use pimpl
 class CTK_WIDGETS_EXPORT ctkCoordinatesWidget : public QWidget
@@ -70,6 +70,11 @@ class CTK_WIDGETS_EXPORT ctkCoordinatesWidget : public QWidget
   /// ctkDoubleSpinBox::SizeHintByValue by default
   /// \sa ctkDoubleSpinBox::SizeHintPolicy
   Q_PROPERTY(ctkDoubleSpinBox::SizeHintPolicy sizeHintPolicy READ sizeHintPolicy WRITE setSizeHintPolicy)
+
+  Q_PROPERTY(bool frame READ hasFrame WRITE setFrame)
+
+  /// This property controls if values can be modified using the graphical user interface.
+  Q_PROPERTY(bool readOnly READ isReadOnly WRITE setReadOnly)
 
 public:
   explicit ctkCoordinatesWidget(QWidget* parent = 0);
@@ -132,7 +137,11 @@ public:
   double const * coordinates()const;
 
   /// Convenient function that sets up to 4 elements of the coordinates.
-  void setCoordinates(double x, double y = 0., double z = 0., double w = 0.);
+  Q_INVOKABLE void setCoordinates(double x, double y = 0., double z = 0., double w = 0.);
+
+  /// Gets the coordinate for the specified dimension
+  /// Returns 0.0 if \p dim is out of bounds.
+  Q_INVOKABLE double getCoordinate(int dim)const;
 
   /// Set the sizeHintPolicy property value.
   /// \sa sizeHintPolicy
@@ -140,6 +149,16 @@ public:
   /// Return the sizeHintPolicy property value.
   /// \sa sizeHintPolicy
   ctkDoubleSpinBox::SizeHintPolicy sizeHintPolicy()const;
+
+  /// Set/Get the frame
+  void setFrame(bool frame);
+  bool hasFrame() const;
+
+  /// Returns true if the widget is read-only. Read-only widgets only display values,
+  /// the values cannot be modified using the graphical user interface, and
+  /// spinbox is not displayed.
+  /// \sa setReadOnly
+  bool isReadOnly() const;
 
   /// Set/Get the value proxy of the spinboxes used to display the coordinates.
   /// \sa setValueProxy(), valueProxy()
@@ -154,12 +173,24 @@ public Q_SLOTS:
   /// Set the number of decimals of each coordinate spin box.
   void setDecimals(int decimals);
 
+  /// Set the widget to be read-only. Read-only widgets only display values,
+  /// the values cannot be modified using the graphical user interface, and
+  /// spinbox is not displayed.
+  /// \sa isReadOnly
+  void setReadOnly(bool readOnly);
+
 Q_SIGNALS:
   ///
-  /// valueChanged is fired anytime a coordinate is modified, the returned
-  /// value is the point coordinates
-  /// TODO: Don't fire the signal if the new values are not changed 
+  /// coordinatesChanged is fired anytime a coordinate is modified.
+  /// The argument contains the coordinate values.
+  /// \sa coordinatesChanged(double x, double y, double z, double w), dimension()
   void coordinatesChanged(double* pos);
+
+  /// coordinatesChanged is fired anytime a coordinate is modified.
+  /// The argument contains the coordinates up to the first 4 components.
+  /// Components values for dimensions beyond the widget's dimension() are 0.0.
+  /// \sa coordinatesChanged(double*), dimension()
+  void coordinatesChanged(double x, double y, double z, double w);
 
 protected Q_SLOTS:
   void updateCoordinates();

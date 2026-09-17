@@ -28,12 +28,12 @@
 #! \ingroup CMakeAPI
 macro(ctkMacroBuildLib)
   ctkMacroParseArguments(MY
-    "NAME;EXPORT_DIRECTIVE;SRCS;MOC_SRCS;GENERATE_MOC_SRCS;UI_FORMS;INCLUDE_DIRECTORIES;TARGET_LIBRARIES;RESOURCES;LIBRARY_TYPE"
+    "NAME;EXPORT_DIRECTIVE;SRCS;MOC_SRCS;GENERATE_MOC_SRCS;UI_FORMS;INCLUDE_DIRECTORIES;TARGET_LIBRARIES;RESOURCES;LIBRARY_TYPE;EXPORT_CUSTOM_CONTENT_FROM_VARIABLE"
     "ENABLE_QTTESTING"
     ${ARGN}
     )
 
-  # Keep parameter 'INCLUDE_DIRECTORIES' for backward compatiblity
+  # Keep parameter 'INCLUDE_DIRECTORIES' for backward compatibility
 
   # Sanity checks
   if(NOT DEFINED MY_NAME)
@@ -63,8 +63,7 @@ macro(ctkMacroBuildLib)
   set(my_includes
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
-    # with CMake >2.9, use QT4_MAKE_OUTPUT_FILE instead ?
-    ${CMAKE_CURRENT_BINARY_DIR}/Resources/UI
+    ${CTK_SOURCE_DIR}/Libs            # for ctkDeprecated.h
     )
 
   # Add the include directories from the library dependencies
@@ -73,11 +72,6 @@ macro(ctkMacroBuildLib)
   include_directories(
     ${my_includes}
     )
-
-  if(CTK_QT_VERSION VERSION_LESS "5")
-    # Add Qt include dirs and defines
-    include(${QT_USE_FILE})
-  endif()
 
   # Add the library directories from the external project
   ctkFunctionGetLibraryDirs(my_library_dirs ${lib_name})
@@ -91,6 +85,16 @@ macro(ctkMacroBuildLib)
   string(REGEX REPLACE "^CTK" "ctk" MY_EXPORT_HEADER_PREFIX ${MY_EXPORT_HEADER_PREFIX})
   set(MY_LIBNAME ${lib_name})
 
+  set(CTK_EXPORT_CUSTOM_CONTENT "")
+  if(MY_EXPORT_CUSTOM_CONTENT_FROM_VARIABLE)
+    if(DEFINED "${MY_EXPORT_CUSTOM_CONTENT_FROM_VARIABLE}")
+      set(CTK_EXPORT_CUSTOM_CONTENT "// ------- Expanded from \@CTK_EXPORT_CUSTOM_CONTENT\@ -------
+${${MY_EXPORT_CUSTOM_CONTENT_FROM_VARIABLE}}
+// ------------------------------------------------
+")
+    endif()
+  endif()
+
   configure_file(
     ${CTK_SOURCE_DIR}/Libs/ctkExport.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/${MY_EXPORT_HEADER_PREFIX}Export.h
@@ -98,62 +102,29 @@ macro(ctkMacroBuildLib)
   set(dynamicHeaders
     "${dynamicHeaders};${CMAKE_CURRENT_BINARY_DIR}/${MY_EXPORT_HEADER_PREFIX}Export.h")
 
-  # Make sure variable are cleared
-  set(MY_MOC_CPP)
-  set(MY_UI_CPP)
-  set(MY_QRC_SRCS)
-
-  # Wrap
-  if(MY_MOC_SRCS)
-    # this is a workaround for Visual Studio. The relative include paths in the generated
-    # moc files can get very long and can't be resolved by the MSVC compiler.
-    if(CTK_QT_VERSION VERSION_GREATER "4")
-      foreach(moc_src ${MY_MOC_SRCS})
-        qt5_wrap_cpp(MY_MOC_CPP ${moc_src} OPTIONS -f${moc_src} OPTIONS -DHAVE_QT5)
-      endforeach()
-    else()
-      foreach(moc_src ${MY_MOC_SRCS})
-        QT4_WRAP_CPP(MY_MOC_CPP ${moc_src} OPTIONS -f${moc_src})
-      endforeach()
-    endif()
-  endif()
-  if(MY_GENERATE_MOC_SRCS)
-    QT4_GENERATE_MOCS(${MY_GENERATE_MOC_SRCS})
-  endif()
-  if(CTK_QT_VERSION VERSION_GREATER "4")
-    if(Qt5Widgets_FOUND)
-      qt5_wrap_ui(MY_UI_CPP ${MY_UI_FORMS})
-    elseif(MY_UI_FORMS)
-      message(WARNING "Argument UI_FORMS ignored because Qt5Widgets module was not specified")
-    endif()
-  else()
-    QT4_WRAP_UI(MY_UI_CPP ${MY_UI_FORMS})
-  endif()
-  if(DEFINED MY_RESOURCES AND NOT MY_RESOURCES STREQUAL "")
-    if(CTK_QT_VERSION VERSION_GREATER "4")
-      qt5_add_resources(MY_QRC_SRCS ${MY_RESOURCES})
-    else()
-      QT4_ADD_RESOURCES(MY_QRC_SRCS ${MY_RESOURCES})
-    endif()
-  endif()
-
   source_group("Resources" FILES
     ${MY_RESOURCES}
     ${MY_UI_FORMS}
     )
 
-  source_group("Generated" FILES
-    ${MY_QRC_SRCS}
-    ${MY_MOC_CPP}
-    ${MY_UI_CPP}
-    ${MOC_CPP_DECORATOR}
-    )
-
   add_library(${lib_name} ${MY_LIBRARY_TYPE}
     ${MY_SRCS}
-    ${MY_MOC_CPP}
-    ${MY_UI_CPP}
-    ${MY_QRC_SRCS}
+    ${MY_RESOURCES}
+    )
+
+  target_compile_definitions(${lib_name}
+    PUBLIC
+      CTK_DISABLE_DEPRECATED_BEFORE=${CTK_DISABLE_DEPRECATED_BEFORE}
+    PRIVATE
+      HAVE_QT${CTK_QT_VERSION}
+    )
+
+  # Configure CMake Qt automatic code generation
+  set_target_properties(${lib_name} PROPERTIES
+    AUTOMOC ON
+    AUTORCC ON
+    AUTOUIC ON
+    AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Resources/UI"
     )
 
   # Set labels associated with the target.
@@ -202,5 +173,3 @@ macro(ctkMacroBuildLib)
     )
 
 endmacro()
-
-

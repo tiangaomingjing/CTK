@@ -8,7 +8,7 @@
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
 
-      http://www.commontk.org/LICENSE
+      http://commontk.org/LICENSE
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,6 +33,7 @@
 
 class ctkForcedTransferFunction: public ctkTransferFunction
 {
+  Q_OBJECT
 public:
   typedef ctkTransferFunction Superclass;
   ctkForcedTransferFunction(QObject* parent = 0) : Superclass(parent)
@@ -105,3 +106,5 @@ int ctkTransferFunctionRepresentationTest2( int argc, char * argv [])
 
   return EXIT_SUCCESS;
 }
+
+#include "ctkTransferFunctionRepresentationTest2.moc"

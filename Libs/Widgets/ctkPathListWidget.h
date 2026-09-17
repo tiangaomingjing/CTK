@@ -26,13 +26,10 @@
 
 // Qt includes
 #include <QListView>
+#include <QStandardItem>
 
 // QtGUI includes
 #include "ctkWidgetsExport.h"
-
-class ctkPathListWidgetPrivate;
-
-class QStandardItem;
 
 /// \ingroup Widgets
 ///
@@ -44,6 +41,7 @@ class QStandardItem;
 /// by setting file and directory options.
 /// \sa ctkPathLineEdit, ctkDirectoryButton
 ///
+class ctkPathListWidgetPrivate; // Forward declaration within this file
 class CTK_WIDGETS_EXPORT ctkPathListWidget : public QListView
 {
   Q_OBJECT
@@ -67,7 +65,6 @@ class CTK_WIDGETS_EXPORT ctkPathListWidget : public QListView
   Q_PROPERTY(QIcon directoryIcon READ directoryIcon WRITE setDirectoryIcon RESET unsetDirectoryIcon)
 
   Q_FLAGS(PathOption PathOptions)
-  Q_ENUMS(Mode)
 
 public:
 
@@ -102,6 +99,7 @@ public:
     /// Allow only directory entries.
     DirectoriesOnly
   };
+  Q_ENUM(Mode)
 
   /// Superclass typedef
   typedef QListView Superclass;
@@ -209,7 +207,7 @@ public:
   int row(const QString& path) const;
 
   /// Changes \a oldPath to the new value given by \a newPath. Does nothing if \a oldPath is not
-  /// in the list or \a newPath does not fullfill the current path options (constraints).
+  /// in the list or \a newPath does not fulfill the current path options (constraints).
   /// \param oldPath The path to be edited.
   /// \param newPath The new path replacing \a oldPath.
   /// \return <code>true</code> if the old path was successfully changed, <code>false</code> otherwise.
@@ -317,7 +315,53 @@ private:
   Q_PRIVATE_SLOT(d_func(), void _q_emitCurrentPathChanged(const QModelIndex &previous, const QModelIndex &current))
 };
 
+
+// --------------------------------------------------------------------------
+// ctkPathListWidgetPrivate
+
+//-----------------------------------------------------------------------------
+class ctkPathListWidgetPrivate
+{
+  Q_DECLARE_PUBLIC(ctkPathListWidget)
+
+protected:
+  ctkPathListWidget* const q_ptr;
+
+public:
+
+  enum PathType {
+    Unknown,
+    File,
+    Directory
+  };
+
+  ctkPathListWidgetPrivate(ctkPathListWidget& object);
+
+  void _q_emitPathClicked(const QModelIndex &index);
+  void _q_emitPathDoubleClicked(const QModelIndex &index);
+  void _q_emitPathActivated(const QModelIndex &index);
+  void _q_emitCurrentPathChanged(const QModelIndex &current, const QModelIndex &previous);
+
+  bool addPath(const QString& path);
+  bool removePath(const QString& path);
+
+  void fileOptionsChanged();
+  void directoryOptionsChanged();
+
+  PathType pathType(const QString& absolutePath) const;
+
+  bool isValidPath(const QString& absoluteFilePath, PathType pathType) const;
+  bool isValidFile(const QString& absoluteFilePath) const;
+  bool isValidDir(const QString& absoluteDirPath) const;
+
+  QStandardItemModel PathListModel;
+  ctkPathListWidget::Mode Mode;
+  ctkPathListWidget::PathOptions FileOptions;
+  ctkPathListWidget::PathOptions DirectoryOptions;
+  QIcon FileIcon;
+  QIcon DirectoryIcon;
+};
+
 Q_DECLARE_OPERATORS_FOR_FLAGS(ctkPathListWidget::PathOptions)
 
 #endif
-

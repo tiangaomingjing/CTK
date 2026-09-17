@@ -41,6 +41,9 @@ class ctkPathListWidgetWithButtonsTester : public QObject
 {
   Q_OBJECT
 
+public:
+  explicit ctkPathListWidgetWithButtonsTester(QObject* parent = nullptr) : QObject(parent) {}
+
 private slots:
 
   void testButtons();
@@ -67,11 +70,8 @@ void ctkPathListWidgetWithButtonsTester::testButtons()
   topLevel.layout()->addWidget(&pathListButtons);
 
   topLevel.show();
-#if (QT_VERSION >= 0x50000)
-  QTest::qWaitForWindowActive(&topLevel);
-#else
-  QTest::qWaitForWindowShown(&topLevel);
-#endif
+  bool result = QTest::qWaitForWindowActive(&topLevel);
+  Q_UNUSED(result);
 
   struct CloseModalDialog : public QRunnable
   {
@@ -101,4 +101,4 @@ void ctkPathListWidgetWithButtonsTester::testButtons()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkPathListWidgetWithButtonsTest)
-#include "moc_ctkPathListWidgetWithButtonsTest.cpp"
+#include "ctkPathListWidgetWithButtonsTest.moc"

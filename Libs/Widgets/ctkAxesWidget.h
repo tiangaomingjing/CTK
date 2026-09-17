@@ -34,14 +34,13 @@ class ctkAxesWidgetPrivate;
 class CTK_WIDGETS_EXPORT ctkAxesWidget : public QWidget
 {
   Q_OBJECT
-  Q_ENUMS(Axis)
   Q_PROPERTY(Axis currentAxis READ currentAxis WRITE setCurrentAxis NOTIFY currentAxisChanged)
   Q_PROPERTY(bool autoReset READ autoReset WRITE setAutoReset)
   Q_PROPERTY(QStringList axesLabels READ axesLabels WRITE setAxesLabels)
-public : 
+public :
 
   enum Axis
-    {
+  {
     None=0,
     Right,
     Left,
@@ -49,13 +48,14 @@ public :
     Inferior,
     Anterior,
     Posterior,
-    };
-  
+  };
+  Q_ENUM(Axis)
+
   ctkAxesWidget(QWidget *parent = 0);
   virtual ~ctkAxesWidget();
 
   ///
-  /// Current selected axis. None by default. 
+  /// Current selected axis. None by default.
   Axis currentAxis() const;
 
   ///
@@ -64,6 +64,15 @@ public :
   /// False by default.
   bool autoReset() const;
 
+  /// Get the axes labels
+  QStringList axesLabels() const;
+
+  /// Size hints
+  virtual QSize minimumSizeHint()const;
+  virtual QSize sizeHint()const;
+  virtual bool hasHeightForWidth()const;
+  virtual int heightForWidth(int width)const;
+
 Q_SIGNALS:
   void currentAxisChanged(ctkAxesWidget::Axis axis);
 
@@ -71,9 +80,9 @@ public slots :
   ///
   /// Select the current axis and emit the currentAxisChanged signal if it is
   /// a new one. Warning, if autoReset is true, the currentAxis will automatically
-  /// be reset to None. 
+  /// be reset to None.
   void setCurrentAxis(Axis axis);
-  
+
   ///
   /// Utility slot that set the current axis to none
   void setCurrentAxisToNone();
@@ -93,16 +102,7 @@ public slots :
   /// \sa axesLabels()
   bool setAxesLabels(const QStringList& labels);
 
-  /// Get the axes labels
-  QStringList axesLabels() const;
-
-  /// Size hints
-  virtual QSize minimumSizeHint()const;
-  virtual QSize sizeHint()const;
-  virtual bool hasHeightForWidth()const;
-  virtual int heightForWidth(int width)const;
-
-protected: 
+protected:
   void paintEvent(QPaintEvent *);
   void mousePressEvent(QMouseEvent *mouseEvent);
   void mouseMoveEvent(QMouseEvent *mouseEvent);
@@ -117,4 +117,3 @@ private :
 Q_DECLARE_METATYPE(ctkAxesWidget::Axis)
 
 #endif
-

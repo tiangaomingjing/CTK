@@ -3,10 +3,19 @@
 # Sets PYTHONQT_FOUND, PYTHONQT_INCLUDE_DIR, PYTHONQT_LIBRARY, PYTHONQT_LIBRARIES
 #
 
-# Python is required
-find_package(PythonLibs)
-if(NOT PYTHONLIBS_FOUND)
-  message(FATAL_ERROR "error: Python is required to build PythonQt")
+# Python3 is required
+if(NOT Python3_FOUND)
+  # Variable expected by FindPython3 CMake module
+  if(DEFINED PYTHON_INCLUDE_DIR AND DEFINED PYTHON_LIBRARY)
+    set(Python3_INCLUDE_DIR ${PYTHON_INCLUDE_DIR})
+    set(Python3_LIBRARY ${PYTHON_LIBRARY})
+    set(Python3_LIBRARY_DEBUG ${PYTHON_LIBRARY})
+    set(Python3_LIBRARY_RELEASE ${PYTHON_LIBRARY})
+  endif()
+  find_package(Python3 COMPONENTS Development)
+  if(NOT Python3_FOUND)
+    message(FATAL_ERROR "error: Python3 is required to build PythonQt")
+  endif()
 endif()
 
 if(NOT EXISTS "${PYTHONQT_INSTALL_DIR}")
@@ -46,7 +55,7 @@ endif()
 set(PYTHONQT_FOUND 0)
 set(PythonQt_FOUND 0)
 if(PYTHONQT_INCLUDE_DIR AND PYTHONQT_LIBRARY)
-  # Currently CMake'ified PythonQt only supports building against a python Release build. 
+  # Currently CMake'ified PythonQt only supports building against a python Release build.
   # This applies independently of CTK build type (Release, Debug, ...)
   add_definitions(-DPYTHONQT_USE_RELEASE_PYTHON_FALLBACK)
   set(PYTHONQT_FOUND 1)

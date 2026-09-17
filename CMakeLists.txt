@@ -18,11 +18,10 @@
 #
 ###########################################################################
 
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.20.6)
 
 foreach(p
-  CMP0054 # CMake 3.1
-  CMP0020 # CMake 2.8.11
+  CMP0177 # CMake 3.31
   )
   if(POLICY ${p})
     cmake_policy(SET ${p} NEW)
@@ -33,6 +32,7 @@ endforeach()
 # Superbuild
 #
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
+set(SUPERBUILD_TOPLEVEL_PROJECT "CTK")
 set(EXTERNAL_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/CMakeExternals)
 set(EXTERNAL_PROJECT_FILE_PREFIX "")
 include(ExternalProject)
@@ -47,6 +47,21 @@ if(APPLE)
     VARS CMAKE_OSX_ARCHITECTURES:STRING CMAKE_OSX_SYSROOT:PATH CMAKE_OSX_DEPLOYMENT_TARGET:STRING
     ALL_PROJECTS
     )
+endif()
+
+#-----------------------------------------------------------------------------
+# Setting C++ Standard
+#-----------------------------------------------------------------------------
+set(_msg "Setting C++ standard")
+message(STATUS "${_msg}")
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+message(STATUS "${_msg} - C++${CMAKE_CXX_STANDARD}")
+if(NOT CMAKE_CXX_STANDARD MATCHES "^(17|20)$")
+  message(FATAL_ERROR "CMAKE_CXX_STANDARD must be set to 17 or 20")
 endif()
 
 #-----------------------------------------------------------------------------
@@ -85,6 +100,8 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 if(NOT CMAKE_CONFIGURATION_TYPES)
   mark_as_superbuild(VARS CMAKE_BUILD_TYPE ALL_PROJECTS)
+else()
+  mark_as_superbuild(VARS CMAKE_CONFIGURATION_TYPES ALL_PROJECTS)
 endif()
 
 mark_as_superbuild(
@@ -99,6 +116,22 @@ mark_as_superbuild(
 #
 option(CTK_SUPERBUILD "Build ${PROJECT_NAME} and the projects it depends on." ON)
 mark_as_advanced(CTK_SUPERBUILD)
+
+#-----------------------------------------------------------------------------
+# Qt version
+#
+if(DEFINED Qt6_DIR)
+  set(_default_qt_major_version "6")
+else()
+  set(_default_qt_major_version "5")
+endif()
+set(CTK_QT_VERSION "${_default_qt_major_version}" CACHE STRING "Expected major Qt version")
+mark_as_advanced(CTK_QT_VERSION)
+set_property(CACHE CTK_QT_VERSION PROPERTY STRINGS 5 6)
+mark_as_superbuild(CTK_QT_VERSION)
+if(NOT "${CTK_QT_VERSION}" MATCHES "^(5|6)$")
+  message(FATAL_ERROR "CTK_QT_VERSION must be 5 or 6.")
+endif()
 
 #-----------------------------------------------------------------------------
 # Output directories.
@@ -137,6 +170,14 @@ set(CTK_MINOR_VERSION 1)
 set(CTK_PATCH_VERSION 0)
 set(CTK_VERSION
     "${CTK_MAJOR_VERSION}.${CTK_MINOR_VERSION}.${CTK_PATCH_VERSION}")
+
+# CTK_DISABLE_DEPRECATED_BEFORE controls which deprecated CTK APIs are compiled in.
+# Format is the hex encoding 0xMMmmpp (one byte each for major / minor / patch).
+# Example: -DCTK_DISABLE_DEPRECATED_BEFORE=0x000100 hides APIs deprecated in or before 0.1.0.
+# The default 0x000000 keeps all deprecated APIs available.
+# See Libs/ctkDeprecated.h for the CTK_DEPRECATED_SINCE() helper macro.
+set(CTK_DISABLE_DEPRECATED_BEFORE "0x000000" CACHE STRING
+    "Disable CTK APIs deprecated in or before this version (hex: 0xMMmmpp)")
 
 # Append the library version information to the library target
 # properties.  A parent project may set its own properties and/or may
@@ -219,6 +260,8 @@ foreach(file
   CMake/ctkMacroListFilter.cmake
   CMake/ctkMacroOptionUtils.cmake
   CMake/ctkMacroBuildLib.cmake
+  CMake/ctkFunctionAddExecutableUtf8.cmake
+  CMake/ctkFunctionExtractOptimizedLibrary.cmake
   CMake/ctkMacroBuildLibWrapper.cmake
   CMake/ctkMacroBuildPlugin.cmake
   CMake/ctkMacroBuildApp.cmake
@@ -251,10 +294,13 @@ foreach(file
   Libs/ctkExport.h.in
   CMake/ctkLinkerAsNeededFlagCheck.cmake
   CMake/ctk_compile_python_scripts.cmake.in
-  CMake/CMakeFindDependencyMacro.cmake
   )
   install(FILES ${file} DESTINATION ${CTK_INSTALL_CMAKE_DIR} COMPONENT Development)
 endforeach()
+
+# Public CTK headers that are not specific to any single library.
+install(FILES Libs/ctkDeprecated.h
+  DESTINATION ${CTK_INSTALL_INCLUDE_DIR} COMPONENT Development)
 
 install(FILES
   CMake/ctkLinkerAsNeededFlagCheck/CMakeLists.txt
@@ -413,16 +459,6 @@ if(UNIX AND NOT APPLE)
 endif()
 
 #-----------------------------------------------------------------------------
-# QT
-#
-ctkMacroSetupQt()
-
-# Update CTK_BASE_LIBRARIES with QT libraries
-if(QT4_FOUND)
-  set(CTK_BASE_LIBRARIES ${CTK_BASE_LIBRARIES} ${QT_LIBRARIES} CACHE INTERNAL "CTK base libraries" FORCE)
-endif()
-
-#-----------------------------------------------------------------------------
 # To make options show up in both CTK-SuperBuild and CTK regular build, let's add them
 # before the SuperBuild script is included
 #
@@ -454,22 +490,9 @@ endif()
 #-----------------------------------------------------------------------------
 # Other options
 
-# Git protocol option
-option(CTK_USE_GIT_PROTOCOL "If behind a firewall turn this OFF to use https instead." ON)
-mark_as_advanced(CTK_USE_GIT_PROTOCOL)
-set(git_protocol "git")
-if(NOT CTK_USE_GIT_PROTOCOL)
-  set(git_protocol "https")
-endif()
-
 # Let's mark as advanced some default properties
 mark_as_advanced(CMAKE_INSTALL_PREFIX)
 mark_as_advanced(DART_TESTING_TIMEOUT)
-
-# KWStyle
-option(CTK_USE_KWSTYLE     "Enable sourcecode-based style tests." OFF)
-mark_as_advanced(CTK_USE_KWSTYLE)
-mark_as_superbuild(CTK_USE_KWSTYLE)
 
 # Qt Designer Plugins
 option(CTK_BUILD_QTDESIGNER_PLUGINS "Build Qt Designer plugins" ON)
@@ -509,13 +532,13 @@ ctk_lib_option(Scripting/Python/Core
 ctk_lib_option(Scripting/Python/Widgets
                "Build the Python Widgets library" OFF)
 
-# VTK libraries have not yet been tested with Qt5
 ctk_lib_option(Visualization/VTK/Core
                "Build the VTK Core library" OFF)
 
 ctk_lib_option(Visualization/VTK/Widgets
                "Build the VTK Widgets library" OFF)
 
+if(CTK_QT_VERSION VERSION_EQUAL "5")
 ctk_lib_option(CommandLineModules/Core
                "Build the Command Line Module core library" OFF)
 
@@ -534,13 +557,24 @@ ctk_lib_option(CommandLineModules/Backend/LocalProcess
 ctk_lib_option(CommandLineModules/Backend/FunctionPointer
                "Build the Command Line Module back-end for function pointers" OFF)
 
+else()
+  # "CommandLineModules/Core" depends on XmlPatterns Qt component not available with Qt 6
+  set(CTK_LIB_CommandLineModules/Core OFF)
+  set(CTK_LIB_CommandLineModules/Frontend/QtWebKit OFF)
+  set(CTK_LIB_CommandLineModules/Frontend/QtGui OFF)
+  set(CTK_LIB_CommandLineModules/Backend/XMLChecker OFF)
+  set(CTK_LIB_CommandLineModules/Backend/LocalProcess OFF)
+  set(CTK_LIB_CommandLineModules/Backend/FunctionPointer OFF)
+endif()
+
 ctk_lib_option(XNAT/Core
                "Build the XNAT Core library" OFF)
 
 ctk_lib_option(XNAT/Widgets
                "Build the XNAT Widgets library" OFF)
 
-# Save the set of enabled libs in a cache file
+# Save enabled CTK libraries in the cache to ensure expected player and translator
+# are enabled in "Libs/QtTesting".
 set(_enabled_libs)
 foreach(_lib ${CTK_LIBS})
   if(CTK_LIB_${_lib})
@@ -548,6 +582,7 @@ foreach(_lib ${CTK_LIBS})
   endif()
 endforeach()
 set(CTK_ENABLED_LIBS ${_enabled_libs} CACHE INTERNAL "" FORCE)
+
 #-----------------------------------------------------------------------------
 # CTK Applications - Use ON or OFF to indicate if the application should be built by default
 #
@@ -558,6 +593,10 @@ ctk_app_option(ctkDICOM
 
 
 ctk_app_option(ctkDICOM2
+               "Build the new DICOM example application (experimental)" OFF
+               CTK_ENABLE_DICOM AND CTK_BUILD_EXAMPLES)
+
+ctk_app_option(ctkDICOMVisualBrowser
                "Build the new DICOM example application (experimental)" OFF
                CTK_ENABLE_DICOM AND CTK_BUILD_EXAMPLES)
 
@@ -581,6 +620,7 @@ ctk_app_option(ctkDICOMQueryRetrieve
                "Build the DICOM example application" OFF
                CTK_ENABLE_DICOM AND CTK_BUILD_EXAMPLES)
 
+if(CTK_QT_VERSION VERSION_EQUAL "5")
 ctk_app_option(ctkDICOMHost
                "Build the DICOM application host example application" OFF
                CTK_ENABLE_DICOMApplicationHosting AND CTK_BUILD_EXAMPLES)
@@ -592,16 +632,28 @@ ctk_app_option(ctkExampleHost
 ctk_app_option(ctkExampleHostedApp
                "Build the DICOM example application" OFF
                CTK_ENABLE_DICOMApplicationHosting AND CTK_BUILD_EXAMPLES)
+else()
+  # Host apps depends on "org.commontk.dah.core" which depends on QtSOAP not available with Qt 6
+  set(CTK_APP_ctkDICOMHost OFF)
+  set(CTK_APP_ctkExampleHost OFF)
+  set(CTK_APP_ctkExampleHostedApp OFF)
+endif()
 
-if(CTK_QT_VERSION VERSION_LESS "5")
+if(FALSE)
+# Since EventBusDemo depends on qxmlrpc that is lacking Qt5 support, it is excluded.
 ctk_app_option(ctkEventBusDemo
                "Build the DICOM example application" OFF
                CTK_ENABLE_PluginFramework AND CTK_BUILD_EXAMPLES)
 endif()
 
+if(CTK_QT_VERSION VERSION_EQUAL "5")
 ctk_app_option(ctkCommandLineModuleExplorer
                "Build the Command Line Module Explorer" OFF
                CTK_BUILD_EXAMPLES)
+else()
+  # "ctkCommandLineModuleExplorer" depends on "CommandLineModules/Core" which depends on XmlPatterns Qt component not available with Qt 6
+  set(CTK_APP_ctkCommandLineModuleExplorer OFF)
+endif()
 
 # We use the CTKWidgets library together with the Qt Designer plug-in
 # in ctkCommandLineModuleExplorer, so enabling the options here.
@@ -634,7 +686,7 @@ ctk_app_option(ctkSimplePythonShell
                "Build the DICOM example application" OFF
                CTK_ENABLE_Python_Wrapping AND CTK_BUILD_EXAMPLES)
 
-if(CTK_USE_QTTESTING AND CTK_QT_VERSION VERSION_LESS "5")
+if(CTK_USE_QTTESTING)
   ctk_app_option(ctkQtTesting
                 "Build the ctkQtTesting example application" OFF
                 CTK_BUILD_EXAMPLES)
@@ -663,12 +715,9 @@ set(plugin_list
   org.commontk.configadmin
   org.commontk.eventadmin
   org.commontk.log
+  org.commontk.log4qt
   org.commontk.metatype
   )
-
-if(CTK_QT_VERSION VERSION_LESS "5")
-  list(APPEND plugin_list org.commontk.log4qt)
-endif()
 
 foreach(_plugin ${plugin_list})
   ctk_plugin_option(${_plugin} "Build the ${_plugin} plugin." OFF)
@@ -681,6 +730,7 @@ ctk_plugin_option(org.commontk.plugingenerator.ui
                   CTK_APP_ctkPluginGenerator)
 
 # Plug-ins related to DICOM WG23 (Application Hosting)
+if(CTK_QT_VERSION VERSION_EQUAL "5")
 ctk_plugin_option(org.commontk.dah.core "Build the org.commontk.dah.core plugin." OFF)
 ctk_plugin_option(org.commontk.dah.hostedapp "Build the org.commontk.dah.hostedapp plugin." OFF
                   CTK_ENABLE_DICOMApplicationHosting)
@@ -690,17 +740,35 @@ ctk_plugin_option(org.commontk.dah.host "Build the org.commontk.dah.host plugin.
 ctk_plugin_option(org.commontk.dah.exampleapp
                   "Build the org.commontk.dah.exampleapp plugin." OFF
                   CTK_APP_ctkExampleHostedApp)
+else()
+  # "org.commontk.dah.core" and its dependent plugins depend on QtSOAP not available with Qt 6
+  set(CTK_PLUGIN_org.commontk.dah.core OFF)
+  set(CTK_PLUGIN_org.commontk.dah.hostedapp OFF)
+  set(CTK_PLUGIN_org.commontk.dah.host OFF)
+  set(CTK_PLUGIN_org.commontk.dah.exampleapp OFF)
+endif()
 
+if(CTK_QT_VERSION VERSION_EQUAL "5")
 ctk_plugin_option(org.commontk.dah.cmdlinemoduleapp
                   "Build the org.commontk.dah.cmdlinemoduleapp plugin." OFF
                   CTK_APP_ctkCommandLineModuleApp)
+else()
+  # "org.commontk.dah.cmdlinemoduleapp" depends on "CommandLineModules/Core" which depends on XmlPatterns Qt component not available with Qt 6
+  set(CTK_PLUGIN_org.commontk.dah.cmdlinemoduleapp OFF)
+endif()
 
+if(CTK_QT_VERSION VERSION_EQUAL "5")
 ctk_plugin_option(org.commontk.dah.examplehost
                   "Build the org.commontk.dah.examplehost plugin." OFF
                   CTK_APP_ctkExampleHost)
+else()
+  # "org.commontk.dah.examplehost" depends on "org.commontk.dah.core" which depends on QtSOAP not available with Qt 6
+  set(CTK_PLUGIN_org.commontk.dah.examplehost OFF)
+endif()
 
 # Plug-ins related to the EventBus demo application
-if(CTK_QT_VERSION VERSION_LESS "5")
+if(FALSE)
+# Since EventBusDemo depends on qxmlrpc that is lacking Qt5 support, it is excluded.
 ctk_plugin_option(org.commontk.eventbus
                   "Build the org.commontk.eventbus plugin." OFF
                   CTK_APP_ctkEventBusDemo)
@@ -752,8 +820,14 @@ ctk_enable_option(Python_Wrapping "Wrap CTK classes using Qt meta-object system 
                   CTK_LIB_Scripting/Python/Core)
 mark_as_superbuild(CTK_ENABLE_Python_Wrapping)
 
+include(CMakeDependentOption)
+cmake_dependent_option(
+  CTK_COMPILE_PYTHON_SCRIPT_KEEP_ONLY_PYC "Remove .py scripts from destination directory after compiling to .pyc" OFF
+  "CTK_ENABLE_Python_Wrapping" OFF)
+mark_as_superbuild(CTK_COMPILE_PYTHON_SCRIPT_KEEP_ONLY_PYC)
+
 # Build examples
-# Create the logical expression containing the minium set of required options
+# Create the logical expression containing the minimum set of required options
 # for the CTK_BUILD_EXAMPLES option to be ON
 set(_build_examples_logical_expr)
 foreach(_app ${CTK_ENABLED_APPS})
@@ -820,6 +894,8 @@ set(CTK_LIB_QtTesting ${CTK_USE_QTTESTING})
 if(CTK_USE_QTTESTING)
   list(APPEND CTK_LIBS QtTesting)
   list(APPEND target_directories "${CMAKE_CURRENT_SOURCE_DIR}/Libs/QtTesting^^CTK_LIB_QtTesting")
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Libs/QtTesting)
+  include_directories(${CMAKE_CURRENT_BINARY_DIR}/Libs/QtTesting)
 endif()
 
 #message(STATUS target_directories:${target_directories})
@@ -889,13 +965,17 @@ endif()
 
 # Check if dependencies are satisfied
 if(CTK_LIB_Scripting/Python/Core)
-  find_package(PythonInterp)
   if(NOT PYTHONINTERP_FOUND)
-    message(FATAL_ERROR "PYTHON_EXECUTABLE variable should be set to build CTK_LIB_Scripting/Python")
+    find_package(PythonInterp)
+    if(NOT PYTHONINTERP_FOUND)
+      message(FATAL_ERROR "PYTHON_EXECUTABLE variable should be set to build CTK_LIB_Scripting/Python")
+    endif()
   endif()
-  find_package(PythonLibs)
   if(NOT PYTHONLIBS_FOUND)
-    message(FATAL_ERROR "PYTHON_LIBRARIES and PYTHON_INCLUDE_DIRS should be set to build CTK_LIB_Scripting/Python")
+    find_package(PythonLibs)
+    if(NOT PYTHONLIBS_FOUND)
+      message(FATAL_ERROR "PYTHON_LIBRARIES and PYTHON_INCLUDE_DIRS should be set to build CTK_LIB_Scripting/Python")
+    endif()
   endif()
 endif()
 
@@ -938,21 +1018,15 @@ set(CTK_DEPENDENCIES
   VTK
   PythonQt
   DCMTK
-  ZMQ
   QtSOAP
   qxmlrpc
   qRestAPI
-  OpenIGTLink
   ITK
   QtTesting
   )
 
 if(BUILD_TESTING)
   list(APPEND CTK_DEPENDENCIES CTKData)
-endif()
-
-if(CTK_USE_KWSTYLE)
-  list(APPEND CTK_DEPENDENCIES KWStyle)
 endif()
 
 #-----------------------------------------------------------------------------
@@ -975,6 +1049,14 @@ if(CTK_USE_CONTRIBUTED_PLUGINS)
   endforeach()
 endif()
 
+#-----------------------------------------------------------------------------
+# QT
+#
+ctkMacroSetupQt()
+
+set_property(GLOBAL PROPERTY AUTOGEN_SOURCE_GROUP "Generated")
+
+#-----------------------------------------------------------------------------
 include(CMake/ctkBlockCheckDependencies.cmake)
 
 #-----------------------------------------------------------------------------
@@ -1067,6 +1149,89 @@ if(NOT DEFINED CTK_SUPERBUILD_BINARY_DIR)
 endif()
 
 #-----------------------------------------------------------------------------
+# Configure test launcher environment variables for the build tree
+
+set(CTK_PATHS_LAUNCHER_BUILD )
+set(CTK_LIBRARY_PATHS_LAUNCHER_BUILD )
+set(CTK_TEST_LAUNCH_BUILD_ENVIRONMENT )
+
+if(${CMAKE_VERSION} VERSION_EQUAL "3.22" OR ${CMAKE_VERSION} VERSION_GREATER "3.22")
+
+  # CMake 3.9 introduces support for "$<IF:...>" generator expression
+  # and GENERATOR_IS_MULTI_CONFIG property.
+
+  # CMake 3.22 introduces support for ENVIRONMENT_MODIFICATION test property.
+
+  # Generate expression evaluating to the current build configuration or "."
+  # for single configuration generator
+  get_property(_isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+  set(_cfg_intdir $<IF:${_isMultiConfig},$<CONFIG>,.>)
+
+  # Collect "library paths" and "paths" defined in external projects.
+  # Values for each are retrieved based on the label associated with the
+  # corresponding `mark_as_superbuild()` call used in each external project.
+
+  # Location of the Qt shared libraries
+  if(WIN32)
+    get_target_property(_qt_moc_executable Qt${CTK_QT_VERSION}::moc LOCATION)
+    get_filename_component(_qt_installed_library_dir ${_qt_moc_executable} PATH)
+  else()
+    get_target_property(_qt_core_lib Qt${CTK_QT_VERSION}::Core LOCATION)
+    get_filename_component(_qt_installed_library_dir ${_qt_core_lib} PATH)
+  endif()
+
+  # Library paths
+  set(CTK_LIBRARY_PATHS_LAUNCHER_BUILD
+    ${_qt_installed_library_dir}
+    )
+  foreach(varname IN LISTS CTK_EP_LABEL_LIBRARY_PATHS_LAUNCHER_BUILD)
+    set(value ${${varname}})
+    list(TRANSFORM value REPLACE "<CMAKE_CFG_INTDIR>" "${_cfg_intdir}")
+    list(APPEND CTK_LIBRARY_PATHS_LAUNCHER_BUILD ${value})
+  endforeach()
+
+  # Paths
+  set(CTK_PATHS_LAUNCHER_BUILD)
+  foreach(varname IN LISTS CTK_EP_LABEL_PATHS_LAUNCHER_BUILD)
+    set(value ${${varname}})
+    list(TRANSFORM value REPLACE "<CMAKE_CFG_INTDIR>" "${_cfg_intdir}")
+    list(APPEND CTK_PATHS_LAUNCHER_BUILD ${value})
+  endforeach()
+
+  # Set test launch "environment modification" specific to the build tree
+  set(CTK_TEST_LAUNCH_BUILD_ENVIRONMENT_MODIFICATION)
+
+  if(WIN32)
+    # Paths and Library paths
+    foreach(value IN LISTS CTK_PATHS_LAUNCHER_BUILD CTK_LIBRARY_PATHS_LAUNCHER_BUILD)
+      list(APPEND CTK_TEST_LAUNCH_BUILD_ENVIRONMENT_MODIFICATION
+        "PATH=path_list_prepend:${value}"
+        )
+    endforeach()
+
+  else()
+    # Path
+    foreach(value IN LISTS CTK_PATHS_LAUNCHER_BUILD)
+      list(APPEND CTK_TEST_LAUNCH_BUILD_ENVIRONMENT_MODIFICATION
+        "PATH=path_list_prepend:${value}"
+        )
+    endforeach()
+
+    # Library paths
+    set(variable_name "LD_LIBRARY_PATH")
+    if(APPLE)
+      set(variable_name "DYLD_LIBRARY_PATH")
+    endif()
+
+    foreach(value IN LISTS CTK_LIBRARY_PATHS_LAUNCHER_BUILD)
+      list(APPEND CTK_TEST_LAUNCH_BUILD_ENVIRONMENT_MODIFICATION
+        "${variable_name}=path_list_prepend:${value}"
+        )
+    endforeach()
+  endif()
+endif()
+
+#-----------------------------------------------------------------------------
 # Configure files with settings
 #
 configure_file(${CTK_SOURCE_DIR}/CMake/UseCTK.cmake.in
@@ -1086,6 +1251,17 @@ set(CMAKE_CXX_FLAGS ${CTK_CXX_FLAGS} CACHE STRING "CMake C Flags" FORCE)
 set(CMAKE_C_FLAGS ${CTK_C_FLAGS} CACHE STRING "CMake CXX Flags" FORCE)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_INIT} ${CTK_EXE_LINKER_FLAGS}" CACHE STRING "Flags used when linking executables" FORCE)
+
+# On macOS, Apple's linker warns about duplicate -lm entries inherited from
+# external dependencies (notably ITK) via transitive target_link_libraries
+# chains. The duplicates are harmless but produce spurious warnings.
+if(APPLE)
+  foreach(_flag_var CMAKE_SHARED_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
+    if(NOT "${${_flag_var}}" MATCHES "no_warn_duplicate_libraries")
+      set(${_flag_var} "${${_flag_var}} -Wl,-no_warn_duplicate_libraries" CACHE STRING "" FORCE)
+    endif()
+  endforeach()
+endif()
 
 #-----------------------------------------------------------------------------
 # Set the header template which defines custom export/import macros
@@ -1142,20 +1318,30 @@ endif()
 #add_subdirectory(Testing)
 #add_subdirectory(Examples)
 
-
-#-----------------------------------------------------------------------------
-# Style Checking configuration
-#
-include(Utilities/KWStyle/KWStyle.cmake)
-
 #---------------------------------------------------------------------------
 # Documentation
 #
 add_subdirectory( Documentation )
+
+#---------------------------------------------------------------------------
+# Install rules
+#
+foreach(file
+  # PluginFramework
+  CMake/ctkFunctionGeneratePluginManifest.cmake
+  CMake/ctkFunctionGeneratePluginUseFile.cmake
+  CMake/ctkMacroGeneratePluginResourceFile.cmake
+  CMake/ctkFunctionExtractPluginTargets.cmake
+  CMake/ctkFunctionGetAllPluginTargets.cmake
+  CMake/ctkFunctionGetTargetDependencies.cmake
+  CMake/ctkFunctionGetPluginDependencies.cmake
+  CMake/ctkMacroSetupPlugins.cmake
+  )
+  install(FILES ${file} DESTINATION ${CTK_INSTALL_CMAKE_DIR} COMPONENT Development)
+endforeach()
 
 #-----------------------------------------------------------------------------
 # The commands in this directory are intended to be executed as
 # the end of the whole configuration process, as a "last step".
 # This directory is typically the last SUBDIRS in the main CMakeLists.txt.
 add_subdirectory(CMake/LastConfigureStep)
-

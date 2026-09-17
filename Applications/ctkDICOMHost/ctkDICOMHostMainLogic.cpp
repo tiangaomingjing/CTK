@@ -16,9 +16,9 @@
 #include "ctkDICOMDatabase.h"
 #include "ctkDicomAvailableDataHelper.h"
 
-ctkDICOMHostMainLogic::ctkDICOMHostMainLogic(ctkHostedAppPlaceholderWidget* placeHolder, ctkDICOMAppWidget* dicomAppWidget, 
-                                             QWidget* placeHolderForControls) : 
-  QObject(placeHolder), 
+ctkDICOMHostMainLogic::ctkDICOMHostMainLogic(ctkHostedAppPlaceholderWidget* placeHolder, ctkDICOMAppWidget* dicomAppWidget,
+                                             QWidget* placeHolderForControls) :
+  QObject(placeHolder),
   PlaceHolderForHostedApp(placeHolder),
   DicomAppWidget(dicomAppWidget),
   PlaceHolderForControls(placeHolderForControls),
@@ -61,7 +61,7 @@ void ctkDICOMHostMainLogic::aboutToQuit()
 void ctkDICOMHostMainLogic::configureHostedApp()
 {
   //qDebug() << "load button clicked";
-  AppFileName = QFileDialog::getOpenFileName(PlaceHolderForHostedApp,"Choose hosted application",QApplication::applicationDirPath());
+  AppFileName = QFileDialog::getOpenFileName(PlaceHolderForHostedApp,tr("Choose hosted application"),QApplication::applicationDirPath());
   HostControls->setAppFileName(AppFileName);
   emit SelectionValid(((this->Host) && (this->HostControls->validAppFileName()) && (ValidSelection)));
 }
@@ -69,18 +69,18 @@ void ctkDICOMHostMainLogic::configureHostedApp()
 void ctkDICOMHostMainLogic::sendDataToHostedApp()
 {
  if ((this->Host) && (this->HostControls->validAppFileName()) && (ValidSelection))
-  {
+ {
     *Data = ctkDicomAppHosting::AvailableData(); // empty AvailableData structure (at least not with the same id...)
     foreach (const QString &str, SelectedFiles) {
       if (str.isEmpty())
         continue;
       qDebug() << str;
 
-      ctkDicomAvailableDataHelper::addToAvailableData(*Data, 
-        Host->objectLocatorCache(), 
+      ctkDicomAvailableDataHelper::addToAvailableData(*Data,
+        Host->objectLocatorCache(),
         str);
     }
- 
+
     SendData = true;
     if(this->Host->getApplicationState() == ctkDicomAppHosting::EXIT)
     {
@@ -89,12 +89,13 @@ void ctkDICOMHostMainLogic::sendDataToHostedApp()
     if(this->Host->getApplicationState() == ctkDicomAppHosting::IDLE)
     {
       bool reply = this->Host->getDicomAppService()->setState(ctkDicomAppHosting::INPROGRESS);
+      qDebug() << "  setState(INPROGRESS) returned: " << reply;
     }
     if(this->Host->getApplicationState() == ctkDicomAppHosting::INPROGRESS)
     {
       publishSelectedData();
     }
-  }
+ }
 }
 
 void ctkDICOMHostMainLogic::onAppReady()
@@ -112,6 +113,7 @@ void ctkDICOMHostMainLogic::onAppReady()
 
 void ctkDICOMHostMainLogic::onTreeSelectionChanged(const QItemSelection & selected, const QItemSelection & deselected)
 {
+    Q_UNUSED(deselected);
     ValidSelection=false;
 
     if(selected.indexes().count() > 0)
@@ -123,7 +125,7 @@ void ctkDICOMHostMainLogic::onTreeSelectionChanged(const QItemSelection & select
 
         if(model && (model->data(index0,ctkDICOMModel::TypeRole) == static_cast<int>(ctkDICOMModel::SeriesType)))
         {
-          QString s = "Series selected: ";
+          QString s = tr("Series selected: ");
           QString seriesUID = model->data(index0,ctkDICOMModel::UIDRole).toString();
           s.append(seriesUID);
           SelectedFiles = DicomAppWidget->database()->filesForSeries(seriesUID);
@@ -133,7 +135,7 @@ void ctkDICOMHostMainLogic::onTreeSelectionChanged(const QItemSelection & select
       }
     }
     if (ValidSelection==false)
-      emit TreeSelectionChanged("no series selected");
+      emit TreeSelectionChanged(tr("no series selected"));
     emit SelectionValid(((this->Host) && (this->HostControls->validAppFileName()) && (ValidSelection)));
 }
 

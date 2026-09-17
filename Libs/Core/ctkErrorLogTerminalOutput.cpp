@@ -29,6 +29,7 @@
 #ifdef _MSC_VER
 # include <io.h> // For _write()
 #else
+# include <cerrno>
 # include <unistd.h>
 #endif
 
@@ -69,8 +70,8 @@ ctkErrorLogTerminalOutputPrivate::~ctkErrorLogTerminalOutputPrivate()
 // ctkErrorLogTerminalOutput methods
 
 // --------------------------------------------------------------------------
-ctkErrorLogTerminalOutput::ctkErrorLogTerminalOutput()
-  : d_ptr(new ctkErrorLogTerminalOutputPrivate)
+ctkErrorLogTerminalOutput::ctkErrorLogTerminalOutput(QObject* parent)
+  : Superclass(parent), d_ptr(new ctkErrorLogTerminalOutputPrivate)
 {
 }
 
@@ -118,22 +119,37 @@ void ctkErrorLogTerminalOutput::output(const QString& text)
   {
     QMutexLocker locker(&d->EnableMutex);
     if (!d->Enabled)
-      {
+    {
       return;
-      }
+    }
   }
 
   {
     QMutexLocker locker(&d->OutputMutex);
-    QString textWithNewLine = text + "\n";
+    QByteArray bytes = text.toUtf8();
+    bytes.append('\n');
+    int offset = 0;
+    while (offset < bytes.size())
+    {
 #ifdef _MSC_VER
-    int res = _write(d->FD, qPrintable(textWithNewLine), textWithNewLine.size());
-#else
-    ssize_t res = write(d->FD, qPrintable(textWithNewLine), textWithNewLine.size());
-#endif
-    if (res == -1)
+      int written = _write(d->FD, bytes.constData() + offset, bytes.size() - offset);
+      if (written <= 0)
       {
-      return;
+        break;
       }
+      offset += written;
+#else
+      ssize_t written = write(d->FD, bytes.constData() + offset, bytes.size() - offset);
+      if (written == -1)
+      {
+        if (errno == EINTR)
+        {
+          continue;
+        }
+        break;
+      }
+      offset += static_cast<int>(written);
+#endif
+    }
   }
 }

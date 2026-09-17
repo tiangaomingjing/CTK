@@ -8,7 +8,7 @@
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
 
-      http://www.commontk.org/LICENSE
+      http://commontk.org/LICENSE
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,29 +48,29 @@ class CustomSpy : public QObject
 {
   Q_OBJECT
 public:
-  CustomSpy()
-    {
+  explicit CustomSpy(QObject* parent = nullptr) : QObject(parent)
+  {
     this->AcknowledgedSignals = 0;
-    }
+  }
 
 public slots:
   void onValuesChanged(double min, double max)
-    {
+{
     ++this->AcknowledgedSignals;
     this->MinSpyData.append(min);
     this->MaxSpyData.append(max);
-    }
+}
 
 public:
   void getSpyReport(double min, double max)
-    {
+  {
     QCOMPARE(this->AcknowledgedSignals, 1);
 
     QCOMPARE(this->MinSpyData.size(), 1);
     ctkTest::COMPARE(this->MinSpyData[0], min);
     QCOMPARE(this->MaxSpyData.size(), 1);
     ctkTest::COMPARE(this->MaxSpyData[0], max);
-    }
+  }
 
   QList<double> MinSpyData;
   QList<double> MaxSpyData;
@@ -83,6 +83,8 @@ public:
 class ctkDoubleRangeSliderValueProxyTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkDoubleRangeSliderValueProxyTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
 
   void testSetValues();
@@ -125,8 +127,8 @@ void ctkDoubleRangeSliderValueProxyTester::testSetValues()
 
   // Spy
   CustomSpy valuesSpy;
-  QObject::connect(&slider, SIGNAL(valuesChanged(double, double)),
-                   &valuesSpy, SLOT(onValuesChanged(double, double)));
+  QObject::connect(&slider, SIGNAL(valuesChanged(double,double)),
+                   &valuesSpy, SLOT(onValuesChanged(double,double)));
 
   // Test
   QFETCH(double, min);
@@ -426,4 +428,4 @@ void ctkDoubleRangeSliderValueProxyTester::testSetPositionCommonData()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkDoubleRangeSliderValueProxyTest)
-#include "moc_ctkDoubleRangeSliderValueProxyTest.cpp"
+#include "ctkDoubleRangeSliderValueProxyTest.moc"

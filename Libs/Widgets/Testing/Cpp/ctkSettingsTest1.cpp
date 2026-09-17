@@ -20,9 +20,14 @@
 
 // Qt includes
 #include <QApplication>
+#if (QT_VERSION < QT_VERSION_CHECK(5,14,0))
 #include <QDesktopWidget>
+#endif
 #include <QDialog>
 #include <QMainWindow>
+#if (QT_VERSION >= QT_VERSION_CHECK(5,14,0))
+#include <QScreen>
+#endif
 #include <QTimer>
 
 // CTK includes
@@ -37,7 +42,7 @@ int ctkSettingsTest1(int argc, char * argv [] )
 {
   QApplication app(argc, argv);
   app.setOrganizationName("CommonToolkit");
-  app.setOrganizationDomain("www.commontk.org");
+  app.setOrganizationDomain("commontk.org");
   app.setApplicationName("CTK");
   QSettings::setDefaultFormat(QSettings::IniFormat);
   // Test all the settings constructors
@@ -46,36 +51,41 @@ int ctkSettingsTest1(int argc, char * argv [] )
   ctkSettings settings3(QSettings::IniFormat, QSettings::UserScope, "CommonToolkit", "CTK", 0);
   ctkSettings settings4("foo", QSettings::IniFormat, 0);
   ctkSettings settings5(0);
-  
+
   QMainWindow mainWindow(0);
   mainWindow.show();
-  
+
+#if (QT_VERSION >= QT_VERSION_CHECK(5,14,0))
+  QRect desktopRect = mainWindow.screen()->availableGeometry();
+#else
   QDesktopWidget desktop;
   QRect desktopRect = desktop.availableGeometry(&mainWindow);
+#endif
+
   const QPoint origin = desktopRect.topLeft();
 
   mainWindow.move(origin);
   mainWindow.resize(640, 470);
-  
+
   settings.saveState(mainWindow,"");
   mainWindow.move(origin + QPoint(30, 20));
   mainWindow.resize(300, 200);
   settings.saveState(mainWindow, "key");
-  
+
   settings.restoreState("", mainWindow);
   if (mainWindow.pos() != origin ||
       mainWindow.size() != QSize(640, 470))
-    {
+  {
     std::cerr << "ctkSettings::restoreState failed" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
   settings.restoreState("key", mainWindow);
   if (mainWindow.pos() != (origin + QPoint(30, 20)) ||
       mainWindow.size() != QSize(300, 200))
-    {
+  {
     std::cerr << "ctkSettings::restoreState failed" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   QDialog dialog(0);
   dialog.show();
@@ -86,27 +96,26 @@ int ctkSettingsTest1(int argc, char * argv [] )
   dialog.move(50, 50);
   dialog.resize(432, 743);
   settings.saveState(dialog, "key3");
-  
+
   settings.restoreState("key2", dialog);
   if (dialog.pos() != QPoint(456,456) ||
       dialog.size() != QSize(320, 222))
-    {
+  {
     std::cerr << "ctkSettings::restoreState failed" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
   settings.restoreState("key3", dialog);
   if (dialog.pos() != QPoint(50,50) ||
       dialog.size() != QSize(432, 743))
-    {
+  {
     std::cerr << "ctkSettings::restoreState failed" << std::endl;
     return EXIT_FAILURE;
-    }
-    
+  }
+
   if (argc < 2 || QString(argv[1]) != "-I" )
-    {
+  {
     QTimer::singleShot(200, &app, SLOT(quit()));
-    }
+  }
 
   return app.exec();
 }
-

@@ -106,8 +106,18 @@ void ctkPluginFramework::start(const ctkPlugin::StartOptions& options)
     switch (d->state)
     {
     case INSTALLED:
+#if (QT_VERSION >= QT_VERSION_CHECK(5,8,0))
+      Q_FALLTHROUGH();
+#else
+      /* FALLTHRU */
+#endif
     case RESOLVED:
       d->init();
+#if (QT_VERSION >= QT_VERSION_CHECK(5,8,0))
+      Q_FALLTHROUGH();
+#else
+      /* FALLTHRU */
+#endif
     case STARTING:
       d->operation.fetchAndStoreOrdered(ctkPluginPrivate::ACTIVATING);
       break;
@@ -205,7 +215,11 @@ QByteArray ctkPluginFramework::getResource(const QString& path) const
     resourcePath += QString("/") + path;
 
   QFile resourceFile(resourcePath);
-  resourceFile.open(QIODevice::ReadOnly);
+  if (!resourceFile.open(QIODevice::ReadOnly))
+  {
+    qWarning() << "ctkPluginFramework: Failed to open resource:" << resourcePath;
+    return QByteArray();
+  }
   return resourceFile.readAll();
 }
 

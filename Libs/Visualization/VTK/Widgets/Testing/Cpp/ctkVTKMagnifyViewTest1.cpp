@@ -25,20 +25,18 @@
 
 // CTK includes
 #include "ctkVTKMagnifyView.h"
+#include "ctkVTKOpenGLNativeWidget.h"
+#include "ctkVTKWidgetsUtils.h"
 
 // VTK includes
 #if CTK_USE_QVTKOPENGLWIDGET
-#include <QVTKOpenGLWidget.h>
-#include <vtkGenericOpenGLRenderWindow.h>
-typedef QVTKOpenGLWidget QVTKOpenGLWidgetType;
-#else
-#include <QVTKWidget.h>
-typedef QVTKWidget QVTKOpenGLWidgetType;
+# include <vtkGenericOpenGLRenderWindow.h>
 #endif
 #include <vtkNew.h>
 #include <vtkRenderer.h>
 #include <vtkRendererCollection.h>
 #include <vtkRenderWindow.h>
+#include <vtkVersion.h>
 
 // STD includes
 #include <cstdlib>
@@ -47,11 +45,7 @@ typedef QVTKWidget QVTKOpenGLWidgetType;
 //-----------------------------------------------------------------------------
 int ctkVTKMagnifyViewTest1(int argc, char * argv [] )
 {
-#if CTK_USE_QVTKOPENGLWIDGET
-    QSurfaceFormat format = QVTKOpenGLWidget::defaultFormat();
-    format.setSamples(0);
-    QSurfaceFormat::setDefaultFormat(format);
-#endif
+  ctk::vtkSetSurfaceDefaultFormat();
 
   QApplication app(argc, argv);
 
@@ -69,7 +63,7 @@ int ctkVTKMagnifyViewTest1(int argc, char * argv [] )
       magnify.observeRenderWindowEvents() != true ||
       magnify.updateInterval() != 20 ||
       magnify.numberObserved() != 0)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView: Wrong default values. " << std::endl
               << " " << magnify.showCrosshair()
               << " " << qPrintable(magnify.crosshairPen().color().name())
@@ -83,160 +77,159 @@ int ctkVTKMagnifyViewTest1(int argc, char * argv [] )
               << " " << magnify.updateInterval()
               << " " << magnify.numberObserved() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Magnification
   magnify.setMagnification(10.5);
   if (magnify.magnification() != 10.5)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:setMagnification failed. "
               << magnify.magnification() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Observe render window events
   magnify.setObserveRenderWindowEvents(false);
   if (magnify.observeRenderWindowEvents() != false)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:setObserveRenderWindowEvents failed. "
               << magnify.observeRenderWindowEvents() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Update interval
   magnify.setUpdateInterval(0);
   if (magnify.updateInterval() != 0)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:setUpdateInterval failed. "
               << magnify.updateInterval() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Adding / removing observed QVTKWidgets
   QObject widgetParent;
-  QList<QVTKOpenGLWidgetType* > allVTKWidgets;
-  QList<QSharedPointer<QVTKOpenGLWidgetType> > widgetsToDelete;
+  QList<ctkVTKOpenGLNativeWidget* > allVTKWidgets;
+  QList<QSharedPointer<ctkVTKOpenGLNativeWidget> > widgetsToDelete;
   int numVTKWidgets = 3;
   for (int i = 0; i < numVTKWidgets; i++)
-    {
-    QVTKOpenGLWidgetType* widget = new QVTKOpenGLWidgetType();
+  {
+    ctkVTKOpenGLNativeWidget* widget = new ctkVTKOpenGLNativeWidget();
     allVTKWidgets.append(widget);
-    widgetsToDelete.append(QSharedPointer<QVTKOpenGLWidgetType>(widget));
+    widgetsToDelete.append(QSharedPointer<ctkVTKOpenGLNativeWidget>(widget));
 
 #if CTK_USE_QVTKOPENGLWIDGET
       vtkSmartPointer<vtkGenericOpenGLRenderWindow> renderWindow =
           vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
-      widget->SetRenderWindow(renderWindow);
+      widget->setRenderWindow(renderWindow);
 #endif
 
     vtkNew<vtkRenderer> renderer;
-    widget->GetRenderWindow()->AddRenderer(renderer.GetPointer());
+    widget->renderWindow()->AddRenderer(renderer.GetPointer());
     double gray = static_cast<double>(i) / (numVTKWidgets-1);
     renderer->SetBackground( gray, gray, gray);
     renderer->SetBackground2( 0., 0., 1.);
     renderer->SetGradientBackground(true);
     widget->show();
-    }
+  }
 
   // Observe one widget
   magnify.observe(allVTKWidgets[0]);
   if (!magnify.isObserved(allVTKWidgets[0]) || magnify.isObserved(allVTKWidgets[1]) ||
       magnify.isObserved(allVTKWidgets[2]) || magnify.numberObserved() != 1)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:observe(QVTKWidget*) failed. "
               << "Number observed = " << magnify.numberObserved() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Observe two more widgets
   magnify.observe(allVTKWidgets.mid(1,2));
   if (!magnify.isObserved(allVTKWidgets[0]) || !magnify.isObserved(allVTKWidgets[1]) ||
       !magnify.isObserved(allVTKWidgets[2]) || magnify.numberObserved() != 3)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:observe(QList<QVTKWidget*>) failed. "
               << "Number observed = " << magnify.numberObserved() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Re-observe a widget
   magnify.observe(allVTKWidgets[2]);
   if (!magnify.isObserved(allVTKWidgets[0]) || !magnify.isObserved(allVTKWidgets[1]) ||
       !magnify.isObserved(allVTKWidgets[2]) || magnify.numberObserved() != 3)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:observe(QVTKWidget*) failed on re-observe. "
               << "Number observed = " << magnify.numberObserved() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Re-observe a list of widgets
   magnify.observe(allVTKWidgets.mid(0,2));
   if (!magnify.isObserved(allVTKWidgets[0]) || !magnify.isObserved(allVTKWidgets[1]) ||
       !magnify.isObserved(allVTKWidgets[2]) || magnify.numberObserved() != 3)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:observe(QList<QVTKWidget*>) failed on re-"
               << "observe. Number observed = " << magnify.numberObserved()
               << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Remove a widget
   magnify.remove(allVTKWidgets[2]);
   if (!magnify.isObserved(allVTKWidgets[0]) || !magnify.isObserved(allVTKWidgets[1]) ||
       magnify.isObserved(allVTKWidgets[2]) || magnify.numberObserved() != 2)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:remove(QVTKWidget*) failed. "
               << "Number observed = " << magnify.numberObserved() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Re-remove a widget
   magnify.remove(allVTKWidgets[2]);
   if (!magnify.isObserved(allVTKWidgets[0]) || !magnify.isObserved(allVTKWidgets[1]) ||
       magnify.isObserved(allVTKWidgets[2]) || magnify.numberObserved() != 2)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:remove(QVTKWidget*) failed on re-remove. "
               << "Number observed = " << magnify.numberObserved() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Remove a list of widgets
   magnify.remove(allVTKWidgets.mid(0,2));
   if (magnify.isObserved(allVTKWidgets[0]) || magnify.isObserved(allVTKWidgets[1]) ||
       magnify.isObserved(allVTKWidgets[2]) || magnify.numberObserved() != 0)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:remove(QList<QVTKWidget*>) failed. "
               << "Number observed = " << magnify.numberObserved() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Re-remove a list of widgets
   magnify.remove(allVTKWidgets.mid(1,2));
   if (magnify.isObserved(allVTKWidgets[0]) || magnify.isObserved(allVTKWidgets[1]) ||
       magnify.isObserved(allVTKWidgets[2]) || magnify.numberObserved() != 0)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:remove(QList<QVTKWidget*>) failed on re-remove."
               << " Number observed = " << magnify.numberObserved() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   // Observe a list of widgets of length one
   magnify.observe(allVTKWidgets.mid(1,1));
   if (magnify.isObserved(allVTKWidgets[0]) || !magnify.isObserved(allVTKWidgets[1]) ||
       magnify.isObserved(allVTKWidgets[2]) || magnify.numberObserved() != 1)
-    {
+  {
     std::cerr << "ctkVTKMagnifyView:observe(QList<QVTKWidget*>) failed on lists of "
               << "length 1. Number observed = " << magnify.numberObserved()
               << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   magnify.show();
   if (argc < 2 || QString(argv[1]) != "-I" )
-    {
+  {
     QTimer::singleShot(200, &app, SLOT(quit()));
-    }
+  }
 
   return app.exec();
 
 }
-

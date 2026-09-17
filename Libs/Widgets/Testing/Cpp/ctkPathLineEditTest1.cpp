@@ -25,6 +25,8 @@
 #include <QTimer>
 #include <QVBoxLayout>
 
+#include <QStandardPaths>
+
 // CTK includes
 #include "ctkPathLineEdit.h"
 
@@ -38,11 +40,18 @@ int ctkPathLineEditTest1(int argc, char * argv [] )
   QApplication app(argc, argv);
 
   QWidget topLevel;
+
   ctkPathLineEdit button;
+
   ctkPathLineEdit button2("Files",
                           QStringList() << "Images (*.png *.jpg)" << "Text (*.txt)",
                           ctkPathLineEdit::Files);
-  ctkPathLineEdit button3("Dirs", QStringList("CTK*"));
+
+  ctkPathLineEdit button3("Dirs", QStringList(), ctkPathLineEdit::Dirs);
+  button3.setShowHistoryButton(false);
+
+  QString documentsFolder = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+  button3.setCurrentPath(documentsFolder);
 
   QVBoxLayout* layout = new QVBoxLayout;
   layout->addWidget(&button);
@@ -52,54 +61,54 @@ int ctkPathLineEditTest1(int argc, char * argv [] )
 
   button.setCurrentPath(QDir::tempPath());
   if (button.currentPath() != QDir::tempPath())
-    {
+  {
     std::cerr << "ctkPathLineEdit::setCurrentPath() failed"
               << qPrintable(button.currentPath()) << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   button.setLabel("Default");
 
   if (button.label() != "Default")
-    {
+  {
     std::cerr << "ctkPathLineEdit::setLabel() failed"
               << qPrintable(button.label()) << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   QStringList nameFilters= button2.nameFilters();
   nameFilters <<  "*.conf";
   button2.setNameFilters(nameFilters);
 
   if (button2.nameFilters() != nameFilters)
-    {
+  {
     std::cerr << "ctkPathLineEdit::setNameFilters() failed" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   button2.setFilters(button2.filters() | ctkPathLineEdit::Readable);
   if (!(button2.filters() & ctkPathLineEdit::Readable))
-    {
+  {
     std::cerr << "ctkPathLineEdit::setFilters() failed"
               << button2.filters() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   button2.setCurrentFileExtension("jpg");
 
   if (!button2.currentPath().endsWith(".jpg"))
-    {
+  {
     std::cerr << "ctkPathLineEdit::setCurrentFileExtension() failed"
               << qPrintable(button2.currentPath()) << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   topLevel.show();
 
   if (argc < 2 || QString(argv[1]) != "-I" )
-    {
+  {
     QTimer::singleShot(500, &app, SLOT(quit()));
-    }
+  }
 
   QTimer::singleShot(100, &button, SLOT(retrieveHistory()));
   QTimer::singleShot(115, &button2, SLOT(addCurrentPathToHistory()));

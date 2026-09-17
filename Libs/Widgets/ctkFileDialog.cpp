@@ -19,6 +19,7 @@
 =========================================================================*/
 
 // QT includes
+#include <QGuiApplication>
 #include <QChildEvent>
 #include <QDebug>
 #include <QDialogButtonBox>
@@ -51,6 +52,7 @@ public:
   bool AcceptButtonEnable;
   bool AcceptButtonState;
   bool IgnoreEvent;
+  bool UsingNativeDialog;
 };
 
 //------------------------------------------------------------------------------
@@ -60,24 +62,32 @@ ctkFileDialogPrivate::ctkFileDialogPrivate(ctkFileDialog& object)
   this->IgnoreEvent = false;
   this->AcceptButtonEnable = true;
   this->AcceptButtonState = true;
+  this->UsingNativeDialog = true;
 }
 
 //------------------------------------------------------------------------------
 void ctkFileDialogPrivate::init()
 {
   Q_Q(ctkFileDialog);
+  this->UsingNativeDialog = !(q->options() & QFileDialog::DontUseNativeDialog);
+  if (!this->UsingNativeDialog)
+  {
+    this->observeAcceptButton();
 
-  this->observeAcceptButton();
-
-  QObject::connect(this->listView()->selectionModel(),
-                   SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
-                   q, SLOT(onSelectionChanged()));
+    QObject::connect(this->listView()->selectionModel(),
+                    SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
+                    q, SLOT(onSelectionChanged()));
+  }
 }
 
 //------------------------------------------------------------------------------
 QPushButton* ctkFileDialogPrivate::acceptButton()const
 {
   Q_Q(const ctkFileDialog);
+  if (this->UsingNativeDialog)
+  {
+    return NULL;  // Native dialog does not support modifying or getting widget elements.
+  }
   QDialogButtonBox* buttonBox = q->findChild<QDialogButtonBox*>();
   Q_ASSERT(buttonBox);
   QDialogButtonBox::StandardButton button =
@@ -89,6 +99,10 @@ QPushButton* ctkFileDialogPrivate::acceptButton()const
 QListView* ctkFileDialogPrivate::listView()const
 {
   Q_Q(const ctkFileDialog);
+  if (this->UsingNativeDialog)
+  {
+    return NULL;  // Native dialog does not support modifying or getting widget elements.
+  }
   QListView* listView= q->findChild<QListView*>("listView");
   Q_ASSERT(listView);
   return listView;
@@ -98,6 +112,10 @@ QListView* ctkFileDialogPrivate::listView()const
 QTreeView* ctkFileDialogPrivate::treeView()const
 {
   Q_Q(const ctkFileDialog);
+  if (this->UsingNativeDialog)
+  {
+    return NULL;  // Native dialog does not support modifying or getting widget elements.
+  }
   QTreeView* treeView = q->findChild<QTreeView*>();
   Q_ASSERT(treeView);
   return treeView;
@@ -127,12 +145,10 @@ ctkFileDialog::ctkFileDialog(QWidget *parentWidget,
 {
   Q_D(ctkFileDialog);
 
-// The findChild<QDialogButtonBox*>() call fails on Mac/Qt5 because native
-// dialogs don't publish any internals. No problems on other OS.
-// Can be applied to Qt4 as well, if problems arise there.
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
-  this->setOptions(DontUseNativeDialog);
-#endif
+  if (QGuiApplication::testAttribute(Qt::AA_DontUseNativeDialogs))
+  {
+    this->setOptions(QFileDialog::DontUseNativeDialog);
+  }
 
   d->init();
 }
@@ -145,33 +161,38 @@ ctkFileDialog::~ctkFileDialog()
 //------------------------------------------------------------------------------
 void ctkFileDialog::setBottomWidget(QWidget* widget, const QString& label)
 {
+  Q_D(ctkFileDialog);
+  if (d->UsingNativeDialog)
+  {
+    return;  // Native dialog does not support modifying or getting widget elements.
+  }
   QGridLayout* gridLayout = qobject_cast<QGridLayout*>(this->layout());
   QWidget* oldBottomWidget = this->bottomWidget();
   // remove the old widget from the layout if any
   if (oldBottomWidget)
-    {
+  {
     if (oldBottomWidget == widget)
-      {
+    {
       return;
-      }
+    }
     gridLayout->removeWidget(oldBottomWidget);
     delete oldBottomWidget;
-    }
+  }
   if (widget == 0)
-    {
+  {
     return;
-    }
+  }
   if (!label.isEmpty())
-    {
+  {
     gridLayout->addWidget(new QLabel(label), 4, 0);
     gridLayout->addWidget(widget,4, 1,1, 1);
-    }
+  }
   else
-    {
+  {
     gridLayout->addWidget(widget,4, 0,1, 2);
-    }
+  }
   // The dialog button box is no longer spanned on 2 rows but on 3 rows if
-  // there is a "bottom widget" 
+  // there is a "bottom widget"
   QDialogButtonBox* buttonBox = this->findChild<QDialogButtonBox*>();
   Q_ASSERT(buttonBox);
   gridLayout->removeWidget(buttonBox);
@@ -190,19 +211,28 @@ QWidget* ctkFileDialog::bottomWidget()const
 void ctkFileDialog::setSelectionMode(QAbstractItemView::SelectionMode mode)
 {
   Q_D(ctkFileDialog);
+  if (d->UsingNativeDialog)
+  {
+    return;  // Native dialog does not support modifying or getting widget elements.
+  }
   foreach(QAbstractItemView* view, QList<QAbstractItemView*>()
           << d->listView()
           << d->treeView()
           )
-    {
+  {
     view->setSelectionMode(mode);
-    }
+  }
 }
 
 //------------------------------------------------------------------------------
 QAbstractItemView::SelectionMode ctkFileDialog::selectionMode() const
 {
   Q_D(const ctkFileDialog);
+  if (d->UsingNativeDialog)
+  {
+    // Native dialog does not support modifying or getting widget elements.
+    return QAbstractItemView::NoSelection;
+  }
   return d->listView()->selectionMode();
 }
 
@@ -210,19 +240,27 @@ QAbstractItemView::SelectionMode ctkFileDialog::selectionMode() const
 void ctkFileDialog::clearSelection()
 {
   Q_D(ctkFileDialog);
+  if (d->UsingNativeDialog)
+  {
+    return;  // Native dialog does not support modifying or getting widget elements.
+  }
   foreach(QAbstractItemView* view, QList<QAbstractItemView*>()
           << d->listView()
           << d->treeView()
           )
-    {
+  {
     view->clearSelection();
-    }
+  }
 }
 
 //------------------------------------------------------------------------------
 void ctkFileDialog::setAcceptButtonEnable(bool enable)
 {
   Q_D(ctkFileDialog);
+  if (d->UsingNativeDialog)
+  {
+    return;  // Native dialog does not support modifying or getting widget elements.
+  }
   d->AcceptButtonEnable = enable;
   d->IgnoreEvent = true;
   d->acceptButton()->setEnabled(d->AcceptButtonEnable && d->AcceptButtonState);
@@ -233,26 +271,30 @@ void ctkFileDialog::setAcceptButtonEnable(bool enable)
 bool ctkFileDialog::eventFilter(QObject *obj, QEvent *event)
 {
   Q_D(ctkFileDialog);
+  if (d->UsingNativeDialog)
+  {
+    return true;  // Native dialog does not support modifying or getting widget elements.
+  }
   QPushButton* button = d->acceptButton();
   QDialogButtonBox* dialogButtonBox = qobject_cast<QDialogButtonBox*>(obj);
   if (obj == button && event->type() == QEvent::EnabledChange &&
       !d->IgnoreEvent)
-    {
+  {
     d->IgnoreEvent = true;
     d->AcceptButtonState = button->isEnabledTo(qobject_cast<QWidget*>(button->parent()));
     button->setEnabled(d->AcceptButtonEnable && d->AcceptButtonState);
     d->IgnoreEvent = false;
-    }
+  }
   else if (obj == button && event->type() == QEvent::Destroy)
-    {
+  {
     // The accept button is deleted probably because setAcceptMode() is being called.
     // observe the parent to check when the accept button is added back
     obj->parent()->installEventFilter(this);
-    }
+  }
   else if (dialogButtonBox && event->type() == QEvent::ChildAdded)
-    {
+  {
     dynamic_cast<QChildEvent*>(event)->child()->installEventFilter(this);
-    }
+  }
   return QFileDialog::eventFilter(obj, event);
 }
 
@@ -267,26 +309,26 @@ void ctkFileDialog::accept()
 {
   QLineEdit* fileNameEdit = qobject_cast<QLineEdit*>(this->sender());
   if (fileNameEdit)
-    {
+  {
     QFileInfo info(fileNameEdit->text());
     if (info.isDir())
-      {
+    {
       setDirectory(info.absoluteFilePath());
       return;
-      }
     }
+  }
   // Don't accept read-only directories if we are in AcceptSave mode.
-  if ((this->fileMode() == Directory || this->fileMode() == DirectoryOnly) &&
+  if ((this->fileMode() == Directory) &&
       this->acceptMode() == AcceptSave)
-    {
+  {
     QStringList files = this->selectedFiles();
     QString fn = files.first();
     QFileInfo info(fn);
     if (info.isDir() && !info.isWritable())
-      {
+    {
       this->setDirectory(info.absoluteFilePath());
       return;
-      }
     }
+  }
   this->Superclass::accept();
 }

@@ -22,11 +22,13 @@
 #include <QApplication>
 #include <QDoubleSpinBox>
 #include <QLineEdit>
+#include <QSignalSpy>
 #include <QString>
 #include <QStyle>
 #include <QStyleOptionSlider>
 #include <QTimer>
 #include <QVector3D>
+#include <QVector4D>
 
 // CTK includes
 #include "ctkCoordinatesWidget.h"
@@ -36,6 +38,8 @@
 class ctkCoordinatesWidgetTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkCoordinatesWidgetTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
   void testDefaults();
 
@@ -50,6 +54,11 @@ private slots:
 
   void testDecimalsByShortcuts();
   void testDecimalsByShortcuts_data();
+
+  void testCoordinatesChangedSignal();
+  void testCoordinatesChangedSignal_data();
+
+  void testCoordinatesChangedNotFiredIfUnchanged();
 
 private:
   void testDecimals(ctkCoordinatesWidget* coordinatesWidget, int decimals);
@@ -116,9 +125,9 @@ void ctkCoordinatesWidgetTester
   QList<QDoubleSpinBox*> spinBoxes =
     coordinatesWidget->findChildren<QDoubleSpinBox*>();
   foreach(QDoubleSpinBox* spinBox, spinBoxes)
-    {
+  {
     QCOMPARE(spinBox->decimals(), decimals);
-    }
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -130,9 +139,9 @@ void ctkCoordinatesWidgetTester
   QList<QDoubleSpinBox*> spinBoxes =
     coordinatesWidget->findChildren<QDoubleSpinBox*>();
   foreach(QDoubleSpinBox* spinBox, spinBoxes)
-    {
+  {
     displayedText << spinBox->text();
-    }
+  }
   QCOMPARE(displayedText.join(", "), expectedDisplayedText);
 }
 
@@ -190,12 +199,12 @@ void ctkCoordinatesWidgetTester::testDecimalsByKey()
     spinBoxes[0]->findChildren<QLineEdit*>();
   QString text = lineEdits[0]->text();
   switch (decimalsOffset)
-    {
+  {
     case 1:
       if (!text.contains('.'))
-        {
+      {
         text += '.';
-        }
+      }
       text += '7';
       lineEdits[0]->setText(text);
       break;
@@ -215,7 +224,7 @@ void ctkCoordinatesWidgetTester::testDecimalsByKey()
       break;
     default:
       break;
-    }
+  }
 
   QFETCH(QVector3D, finalDecimals);
   QCOMPARE(spinBoxes[0]->decimals(), static_cast<int>(finalDecimals.x()));
@@ -328,9 +337,9 @@ void ctkCoordinatesWidgetTester::testDecimalsByShortcuts()
   QFETCH(int, key);
   QFETCH(int, repeat);
   for (int i = 0; i < repeat; ++i)
-    {
+  {
     QTest::keyClick(spinBoxes[0], key, Qt::ControlModifier);
-    }
+  }
   QFETCH(int, expectedDecimals);
   QFETCH(QString, expectedDisplayedText);
   testDecimals(&coordinatesWidget, expectedDecimals);
@@ -356,5 +365,102 @@ void ctkCoordinatesWidgetTester::testDecimalsByShortcuts_data()
 }
 
 // ----------------------------------------------------------------------------
+void ctkCoordinatesWidgetTester::testCoordinatesChangedSignal()
+{
+  QFETCH(int, dimension);
+  QFETCH(QVector4D, input1);
+  QFETCH(QVector4D, input2);
+  QFETCH(QVector4D, expected2);
+  QFETCH(bool, emitExpected);
+
+  ctkCoordinatesWidget coordinatesWidget;
+  coordinatesWidget.setDimension(dimension);
+  coordinatesWidget.setCoordinates(input1.x(), input1.y(), input1.z(), input1.w());
+
+  QSignalSpy spy(&coordinatesWidget,
+    SIGNAL(coordinatesChanged(double,double,double,double)));
+  coordinatesWidget.setCoordinates(input2.x(), input2.y(), input2.z(), input2.w());
+
+  if (!emitExpected)
+  {
+    QCOMPARE(spy.count(), 0);
+    return;
+  }
+  QCOMPARE(spy.count(), 1);
+  QList<QVariant> args = spy.takeFirst();
+  QCOMPARE(args[0].toDouble(), static_cast<double>(expected2.x()));
+  QCOMPARE(args[1].toDouble(), static_cast<double>(expected2.y()));
+  QCOMPARE(args[2].toDouble(), static_cast<double>(expected2.z()));
+  QCOMPARE(args[3].toDouble(), static_cast<double>(expected2.w()));
+}
+
+// ----------------------------------------------------------------------------
+void ctkCoordinatesWidgetTester::testCoordinatesChangedSignal_data()
+{
+  QTest::addColumn<int>("dimension");
+  QTest::addColumn<QVector4D>("input1");
+  QTest::addColumn<QVector4D>("input2");
+  QTest::addColumn<QVector4D>("expected2");
+  QTest::addColumn<bool>("emitExpected");
+
+  QTest::newRow("3D: w is always 0")
+    << 3
+    << QVector4D(0.0f, 0.0f, 0.0f, 0.0f)
+    << QVector4D(1.0f, 2.0f, 3.0f, 4.0f) << QVector4D(1.0f, 2.0f, 3.0f, 0.0f) << true;
+  QTest::newRow("3D: no change")
+    << 3
+    << QVector4D(1.0f, 2.0f, 3.0f, 4.0f)
+    << QVector4D(1.0f, 2.0f, 3.0f, 4.0f) << QVector4D() << false;
+  QTest::newRow("4D: all components")
+    << 4
+    << QVector4D(0.0f, 0.0f, 0.0f, 0.0f)
+    << QVector4D(1.0f, 2.0f, 3.0f, 4.0f) << QVector4D(1.0f, 2.0f, 3.0f, 4.0f) << true;
+  QTest::newRow("4D: no change")
+    << 4
+    << QVector4D(1.0f, 2.0f, 3.0f, 4.0f)
+    << QVector4D(1.0f, 2.0f, 3.0f, 4.0f) << QVector4D() << false;
+  QTest::newRow("2D: z and w are 0")
+    << 2
+    << QVector4D(0.0f, 0.0f, 0.0f, 0.0f)
+    << QVector4D(1.0f, 2.0f, 3.0f, 4.0f) << QVector4D(1.0f, 2.0f, 0.0f, 0.0f) << true;
+  QTest::newRow("2D: no change")
+    << 2
+    << QVector4D(1.0f, 2.0f, 3.0f, 4.0f)
+    << QVector4D(1.0f, 2.0f, 3.0f, 4.0f) << QVector4D() << false;
+  QTest::newRow("3D: negative values")
+    << 3
+    << QVector4D(0.0f, 0.0f, 0.0f, 0.0f)
+    << QVector4D(-1.0f, -2.0f, -3.0f, -4.0f) << QVector4D(-1.0f, -2.0f, -3.0f, 0.0f) << true;
+  QTest::newRow("3D: change to zeros")
+    << 3
+    << QVector4D(1.0f, 2.0f, 3.0f, 4.0f)
+    << QVector4D(0.0f, 0.0f, 0.0f, 0.0f) << QVector4D(0.0f, 0.0f, 0.0f, 0.0f) << true;
+}
+
+// ----------------------------------------------------------------------------
+void ctkCoordinatesWidgetTester::testCoordinatesChangedNotFiredIfUnchanged()
+{
+  ctkCoordinatesWidget coordinatesWidget;
+  QSignalSpy spy(&coordinatesWidget,
+    SIGNAL(coordinatesChanged(double,double,double,double)));
+
+  // First set: should emit
+  coordinatesWidget.setCoordinates(1.0, 2.0, 3.0);
+  QCOMPARE(spy.count(), 1);
+
+  // Same values: should not emit again
+  coordinatesWidget.setCoordinates(1.0, 2.0, 3.0);
+  QCOMPARE(spy.count(), 1);
+
+  // Different values: should emit
+  coordinatesWidget.setCoordinates(4.0, 5.0, 6.0);
+  QCOMPARE(spy.count(), 2);
+
+  // Same values as last set: should not emit again
+  coordinatesWidget.setCoordinates(4.0, 5.0, 6.0);
+  QCOMPARE(spy.count(), 2);
+}
+
+// ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkCoordinatesWidgetTest)
-#include "moc_ctkCoordinatesWidgetTest.cpp"
+#include "ctkCoordinatesWidgetTest.moc"

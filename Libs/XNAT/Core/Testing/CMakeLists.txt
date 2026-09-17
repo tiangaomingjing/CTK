@@ -8,21 +8,15 @@ create_test_sourcelist(Tests ${KIT}CppTests.cpp
   ${KITTests_SRCS}
   )
 
-set(KITTests_MOC_SRCS
-  ctkXnatSessionTest.h
+ctk_add_executable_utf8(${KIT}CppTests ${Tests} ${KITTests_SRCS} ${KITTests_MOC_SRCS})
+
+# Configure CMake Qt automatic code generation
+set_target_properties(${KIT}CppTests PROPERTIES
+  AUTOMOC ON
   )
 
-if(CTK_QT_VERSION VERSION_LESS "5")
-  QT4_WRAP_CPP(KITTests_MOC_CPP ${KITTests_MOC_SRCS})
-else()
-  qt5_wrap_cpp(KITTests_MOC_CPP ${KITTests_MOC_SRCS})
-endif()
-
-add_executable(${KIT}CppTests ${Tests} ${KITTests_SRCS} ${KITTests_MOC_SRCS} ${KITTests_MOC_CPP})
 target_link_libraries(${KIT}CppTests ${LIBRARY_NAME} ${CTK_BASE_LIBRARIES})
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  target_link_libraries(${KIT}CppTests Qt5::Test)
-endif()
+target_link_libraries(${KIT}CppTests Qt${CTK_QT_VERSION}::Test)
 
 SIMPLE_TEST(ctkXnatSessionTest)

@@ -49,22 +49,22 @@ QSignalSpy *Spy1;
 QSignalSpy *Spy2;
 //-----------------------------------------------------------------------------
 void checkFinalWidgetState(void* data)
-  {
+{
   QWidget* parentWidget = reinterpret_cast<QWidget*>(data);
   QList<ctkCollapsibleGroupBox*> widget = parentWidget->findChildren<ctkCollapsibleGroupBox*>();
 
   if(widget.count())
-    {
+  {
     CTKCOMPARE(Spy1->count(), 2);
     CTKCOMPARE(Spy2->count(), 4);
     CTKCOMPARE(widget[0]->collapsed(), false);
     CTKCOMPARE(widget[1]->collapsed(), true);
-    }
-  else
-    {
-    QApplication::exit(EXIT_FAILURE);
-    }
   }
+  else
+  {
+    QApplication::exit(EXIT_FAILURE);
+  }
+}
 }
 
 //-----------------------------------------------------------------------------
@@ -81,10 +81,10 @@ int ctkCollapsibleGroupBoxEventTranslatorPlayerTest1(int argc, char * argv [] )
 
   // Test case 1
   QWidget widget(0);
-  ctkCollapsibleGroupBox* groupBox = new ctkCollapsibleGroupBox(QObject::tr("GroupBox"));
-  QRadioButton *radio1 = new QRadioButton(QObject::tr("&Radio button 1"));
-  QRadioButton *radio2 = new QRadioButton(QObject::tr("R&adio button 2"));
-  QRadioButton *radio3 = new QRadioButton(QObject::tr("Ra&dio button 3"));
+  ctkCollapsibleGroupBox* groupBox = new ctkCollapsibleGroupBox("GroupBox");
+  QRadioButton *radio1 = new QRadioButton("&Radio button 1");
+  QRadioButton *radio2 = new QRadioButton("R&adio button 2");
+  QRadioButton *radio3 = new QRadioButton("Ra&dio button 3");
   ctkCollapsibleGroupBox* hiddenGroupBox = new ctkCollapsibleGroupBox;
   hiddenGroupBox->setTitle("Advanced...");
 
@@ -121,11 +121,10 @@ int ctkCollapsibleGroupBoxEventTranslatorPlayerTest1(int argc, char * argv [] )
 
   // ------------------------
   if (argc < 2 || QString(argv[1]) != "-I")
-    {
+  {
     QTimer::singleShot(0, &etpWidget, SLOT(play()));
-    }
+  }
 
   etpWidget.show();
   return app.exec();
 }
-

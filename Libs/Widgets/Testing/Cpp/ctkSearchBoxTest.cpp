@@ -31,6 +31,9 @@ class ctkSearchBoxTester : public QObject
 {
   Q_OBJECT
 
+public:
+  explicit ctkSearchBoxTester(QObject* parent = nullptr) : QObject(parent) {}
+
 private slots:
 
   void testSignals();
@@ -41,11 +44,8 @@ void ctkSearchBoxTester::testSignals()
 {
   ctkSearchBox searchBox;
   searchBox.show();
-#if (QT_VERSION >= 0x50000)
-  QTest::qWaitForWindowActive(&searchBox);
-#else
-  QTest::qWaitForWindowShown(&searchBox);
-#endif
+  bool result = QTest::qWaitForWindowActive(&searchBox);
+  Q_UNUSED(result);
 
   QSignalSpy textEditedSpy(&searchBox, SIGNAL(textEdited(QString)));
   QSignalSpy textChangedSpy(&searchBox, SIGNAL(textChanged(QString)));
@@ -77,4 +77,4 @@ void ctkSearchBoxTester::testSignals()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkSearchBoxTest)
-#include "moc_ctkSearchBoxTest.cpp"
+#include "ctkSearchBoxTest.moc"

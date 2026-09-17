@@ -38,7 +38,6 @@ class vtkAlgorithmOutput;
 class CTK_VISUALIZATION_VTK_WIDGETS_EXPORT ctkVTKSliceView : public ctkVTKAbstractView
 {
   Q_OBJECT
-  Q_ENUMS(RenderWindowLayoutType)
   Q_PROPERTY(RenderWindowLayoutType renderWindowLayoutType
              READ renderWindowLayoutType WRITE setRenderWindowLayoutType)
   Q_PROPERTY(QColor highlightedBoxColor READ highlightedBoxColor WRITE setHighlightedBoxColor)
@@ -55,6 +54,7 @@ public:
   /// within the different render view items.
   /// \sa setRenderWindowLayout() renderWindowLayoutType()
   enum RenderWindowLayoutType{LeftRightTopBottom = 0, LeftRightBottomTop};
+  Q_ENUM(RenderWindowLayoutType)
 
   /// Set active camera
   void setActiveCamera(vtkCamera * newActiveCamera);
@@ -71,11 +71,11 @@ public:
 
   /// Set background color
   /// \sa vtkLightBoxRendererManager::SetBackgroundColor
-  virtual void setBackgroundColor(const QColor& newBackgroundColor);
+  void setBackgroundColor(const QColor& newBackgroundColor) override;
 
   /// Get background color
   /// \sa setBackgroundColor();
-  virtual QColor backgroundColor()const;
+  QColor backgroundColor()const override;
 
   /// Get highlightedBox color
   /// \sa setHighlightedBoxColor();
@@ -100,12 +100,8 @@ public Q_SLOTS:
   void resetCamera();
 
   /// Set image data
-  /// \sa vtkLightBoxRendererManager::SetImageData
-#if (VTK_MAJOR_VERSION <= 5)
-  void setImageData(vtkImageData* newImageData);
-#else
+  /// \sa vtkLightBoxRendererManager::SetImageDataConnection
   void setImageDataConnection(vtkAlgorithmOutput* newImageDataPort);
-#endif
 
   /// Set highlightedBox color
   /// \sa vtkLightBoxRendererManager::SetHighlightedBoxColor
@@ -132,16 +128,17 @@ public Q_SLOTS:
   /// \sa lightBoxRendererManager()
   /// \sa vtkLightBoxRendererManager::SetRenderWindowColumnCount
   void setLightBoxRendererManagerColumnCount(int newColumnCount);
-  
+
 Q_SIGNALS:
   void resized(const QSize& size);
 
 protected:
-  virtual bool eventFilter(QObject *object, QEvent *event);
+  ctkVTKSliceView(ctkVTKSliceViewPrivate* pimpl, QWidget* parent);
+  bool eventFilter(QObject *object, QEvent *event) override;
 
 private:
   Q_DECLARE_PRIVATE(ctkVTKSliceView);
   Q_DISABLE_COPY(ctkVTKSliceView);
-}; 
+};
 
 #endif

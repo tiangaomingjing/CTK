@@ -31,7 +31,7 @@ macro(ctkMacroBuildApp)
     ${ARGN}
     )
 
-  # Keep parameter 'INCLUDE_DIRECTORIES' for backward compatiblity
+  # Keep parameter 'INCLUDE_DIRECTORIES' for backward compatibility
 
   # Sanity checks
   if(NOT DEFINED MY_NAME)
@@ -70,61 +70,37 @@ macro(ctkMacroBuildApp)
     ${my_library_dirs}
     )
 
-  if(CTK_QT_VERSION VERSION_LESS "5")
-    # Add Qt include dirs and defines
-    include(${QT_USE_FILE})
-  endif()
-
-  # Make sure variable are cleared
-  set(MY_UI_CPP)
-  set(MY_MOC_CPP)
-  set(MY_QRC_SRCS)
-
-  if (CTK_QT_VERSION VERSION_GREATER "4")
-    # Wrap
-    if(MY_MOC_SRCS)
-      # this is a workaround for Visual Studio. The relative include paths in the generated
-      # moc files can get very long and can't be resolved by the MSVC compiler.
-      foreach(moc_src ${MY_MOC_SRCS})
-        QT5_WRAP_CPP(MY_MOC_CPP ${moc_src} OPTIONS -f${moc_src} OPTIONS -DHAVE_QT5)
-      endforeach()
-    endif()
-    QT5_WRAP_UI(MY_UI_CPP ${MY_UI_FORMS})
-    if(DEFINED MY_RESOURCES)
-      QT5_ADD_RESOURCES(MY_QRC_SRCS ${MY_RESOURCES})
-    endif()
-  else()
-    # Wrap
-    if(MY_MOC_SRCS)
-      # this is a workaround for Visual Studio. The relative include paths in the generated
-      # moc files can get very long and can't be resolved by the MSVC compiler.
-      foreach(moc_src ${MY_MOC_SRCS})
-        QT4_WRAP_CPP(MY_MOC_CPP ${moc_src} OPTIONS -f${moc_src})
-      endforeach()
-    endif()
-    QT4_WRAP_UI(MY_UI_CPP ${MY_UI_FORMS})
-    if(DEFINED MY_RESOURCES)
-      QT4_ADD_RESOURCES(MY_QRC_SRCS ${MY_RESOURCES})
-    endif()
-  endif()
-
   source_group("Resources" FILES
     ${MY_RESOURCES}
     ${MY_UI_FORMS}
     )
 
-  source_group("Generated" FILES
-    ${MY_QRC_SRCS}
-    ${MY_MOC_CPP}
-    ${MY_UI_CPP}
+  # Create executable
+  ctk_add_executable_utf8(${proj_name}
+    ${MY_SRCS}
+    ${MY_RESOURCES}
     )
 
-  # Create executable
-  add_executable(${proj_name}
-    ${MY_SRCS}
-    ${MY_MOC_CPP}
-    ${MY_UI_CPP}
-    ${MY_QRC_SRCS}
+  target_compile_definitions(${proj_name} PRIVATE
+    HAVE_QT${CTK_QT_VERSION}
+    )
+
+  # Configure CMake Qt automatic code generation
+  set(uic_search_paths)
+  foreach(ui_src IN LISTS MY_UI_FORMS)
+    if(NOT IS_ABSOLUTE ${ui_src})
+      set(ui_src "${CMAKE_CURRENT_SOURCE_DIR}/${ui_src}")
+    endif()
+    get_filename_component(ui_path ${ui_src} PATH)
+    list(APPEND uic_search_paths ${ui_path})
+  endforeach()
+  list(REMOVE_DUPLICATES uic_search_paths)
+
+  set_target_properties(${proj_name} PROPERTIES
+    AUTOMOC ON
+    AUTORCC ON
+    AUTOUIC ON
+    AUTOUIC_SEARCH_PATHS "${uic_search_paths}"
     )
 
   # Set labels associated with the target.
@@ -151,5 +127,3 @@ macro(ctkMacroBuildApp)
   endif()
 
 endmacro()
-
-

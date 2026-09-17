@@ -30,7 +30,7 @@ class QStringList;
 
 struct ctkCmdLineModuleParameterPrivate;
 
-/** 
+/**
  * \class ctkCmdLineModuleParameter
  * \brief Single parameter to a module, like a threshold of a filter.
  * \ingroup CommandLineModulesCore_API
@@ -113,7 +113,7 @@ public:
   QString deprecatedLongFlagAliasesAsString() const;
 
   /**
-   * @return A (possibly empty) list of deprectated long flag aliases.
+   * @return A (possibly empty) list of deprecated long flag aliases.
    */
   QStringList deprecatedLongFlagAliases() const;
 
@@ -209,7 +209,7 @@ public:
   QStringList fileExtensions() const;
 
   /**
-   * @return The coordinate system (either "lps", "ras", oder "ijk") for the "point" or "region"
+   * @return The coordinate system (either "lps", "ras", or "ijk") for the "point" or "region"
    *         parameter tags.
    */
   QString coordinateSystem() const;

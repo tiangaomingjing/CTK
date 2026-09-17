@@ -19,6 +19,7 @@
 =========================================================================*/
 
 // Qt includes
+#include <QRegularExpression>
 #include <QThread>
 
 // CTK includes
@@ -138,14 +139,16 @@ void ctkVTKOutputWindow::DisplayDebugText(const char* text)
 QString ctkVTKOutputWindow::parseText(const QString& text, ctkErrorLogContext& context)
 {
   context.Message = text;
-  QRegExp contextRegExp("[a-zA-Z\\s]+: In (.+), line ([\\d]+)\\n(.+\\((?:0x)?[a-fA-F0-9]+\\))\\:\\s(.*)");
-  if (contextRegExp.exactMatch(text))
-    {
-    context.File = contextRegExp.cap(1);
-    context.Category = contextRegExp.cap(3);
-    context.Line = contextRegExp.cap(2).toInt();
-    context.Message = contextRegExp.cap(4);
-    }
+  static const QRegularExpression contextRegExp(
+    "^[a-zA-Z\\s]+: In (.+), line ([\\d]+)\\n(.+\\((?:0x)?[a-fA-F0-9]+\\))\\:\\s(.*)");
+  QRegularExpressionMatch contextMatch = contextRegExp.match(text);
+  if (contextMatch.hasMatch())
+  {
+    context.File = contextMatch.captured(1);
+    context.Category = contextMatch.captured(3);
+    context.Line = contextMatch.captured(2).toInt();
+    context.Message = contextMatch.captured(4);
+  }
   return context.Message;
 }
 
@@ -186,9 +189,9 @@ ctkVTKErrorLogMessageHandlerPrivate(ctkVTKErrorLogMessageHandler& object) : q_pt
 ctkVTKErrorLogMessageHandlerPrivate::~ctkVTKErrorLogMessageHandlerPrivate()
 {
   if (this->SavedVTKOutputWindow)
-    {
+  {
     this->SavedVTKOutputWindow->Delete();
-    }
+  }
   this->CTKVTKOutputWindow->Delete();
 }
 
@@ -199,8 +202,8 @@ ctkVTKErrorLogMessageHandlerPrivate::~ctkVTKErrorLogMessageHandlerPrivate()
 QString ctkVTKErrorLogMessageHandler::HandlerName = QLatin1String("VTK");
 
 //----------------------------------------------------------------------------
-ctkVTKErrorLogMessageHandler::ctkVTKErrorLogMessageHandler() :
-  Superclass(), d_ptr(new ctkVTKErrorLogMessageHandlerPrivate(*this))
+ctkVTKErrorLogMessageHandler::ctkVTKErrorLogMessageHandler(QObject* parent) :
+  Superclass(parent), d_ptr(new ctkVTKErrorLogMessageHandlerPrivate(*this))
 {
 }
 
@@ -220,16 +223,16 @@ void ctkVTKErrorLogMessageHandler::setEnabledInternal(bool value)
 {
   Q_D(ctkVTKErrorLogMessageHandler);
   if (value)
-    {
+  {
     d->SavedVTKOutputWindow = vtkOutputWindow::GetInstance();
     d->SavedVTKOutputWindow->Register(0);
     vtkOutputWindow::SetInstance(d->CTKVTKOutputWindow);
-    }
+  }
   else
-    {
+  {
     Q_ASSERT(d->SavedVTKOutputWindow);
     vtkOutputWindow::SetInstance(d->SavedVTKOutputWindow);
     d->SavedVTKOutputWindow->Delete();
     d->SavedVTKOutputWindow = 0;
-    }
+  }
 }

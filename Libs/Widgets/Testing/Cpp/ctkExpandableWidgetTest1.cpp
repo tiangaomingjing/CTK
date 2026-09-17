@@ -30,10 +30,6 @@
 #include <QTreeView>
 #include <QVBoxLayout>
 
-#if (QT_VERSION < 0x50000)
-#include <QPlastiqueStyle>
-#endif
-
 // CTK includes
 #include "ctkExpandableWidget.h"
 
@@ -44,9 +40,6 @@
 //-----------------------------------------------------------------------------
 int ctkExpandableWidgetTest1(int argc, char * argv [] )
 {
-#if (QT_VERSION < 0x50000)
-  QApplication::setStyle(new QPlastiqueStyle);
-#endif
   QApplication app(argc, argv);
 
   QWidget topLevel;
@@ -97,9 +90,9 @@ int ctkExpandableWidgetTest1(int argc, char * argv [] )
   topLevel.show();
 
   if (argc < 2 || QString(argv[1]) != "-I" )
-    {
+  {
     QTimer::singleShot(200, &app, SLOT(quit()));
-    }
+  }
 
   return app.exec();
 }

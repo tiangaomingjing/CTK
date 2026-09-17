@@ -145,7 +145,7 @@ ctkPluginPrivate::ctkPluginPrivate(
     const QMap<QString, QStringList>& e = i.next();
     const QStringList& res = e.value(ctkPluginConstants::RESOLUTION_DIRECTIVE);
     const QStringList& version = e.value(ctkPluginConstants::PLUGIN_VERSION_ATTRIBUTE);
-    ctkRequirePlugin* rp = new ctkRequirePlugin(this, e.value("$key").front(),
+    ctkRequirePlugin* rp = new ctkRequirePlugin(this, e.value("$key").constFirst(),
                                                 res.empty() ? QString() : res.front(),
                                                 version.empty() ? QString() : version.front());
     require.push_back(rp);
@@ -349,6 +349,11 @@ void ctkPluginPrivate::finalizeActivation()
   case ctkPlugin::STARTING:
     if (operation.fetchAndAddOrdered(0) == ACTIVATING) return; // finalization already in progress.
     // Lazy activation; fall through to RESOLVED.
+#if (QT_VERSION >= QT_VERSION_CHECK(5,8,0))
+    Q_FALLTHROUGH();
+#else
+    /* FALLTHRU */
+#endif
   case ctkPlugin::RESOLVED:
   {
     //6:
@@ -529,7 +534,7 @@ void ctkPluginPrivate::update0(const QUrl& updateLocation, bool wasActive)
     {
       try
       {
-        this->q_func().data()->start();
+        this->q_func().toStrongRef()->start();
       }
       catch (const ctkPluginException& pe)
       {
@@ -541,7 +546,7 @@ void ctkPluginPrivate::update0(const QUrl& updateLocation, bool wasActive)
       const ctkPluginException& pe = dynamic_cast<const ctkPluginException&>(e);
       throw pe;
     }
-    catch (std::bad_cast)
+    catch (const std::bad_cast&)
     {
       throw ctkPluginException(QString("Failed to get update plugin: ") + e.what(),
                                ctkPluginException::UNSPECIFIED);
@@ -583,14 +588,14 @@ void ctkPluginPrivate::update0(const QUrl& updateLocation, bool wasActive)
    {
      try
      {
-       this->q_func().data()->start();
+       this->q_func().toStrongRef()->start();
      }
      catch (const ctkPluginException& pe)
      {
        fwCtx->listeners.frameworkError(this->q_func(), pe);
      }
    }
- }
+}
 
 //----------------------------------------------------------------------------
 int ctkPluginPrivate::getStartLevel()
@@ -701,7 +706,7 @@ void ctkPluginPrivate::startDependencies()
         // started if all its dependencies could be resolved.
         throw ctkPluginException(
             QString("Internal error: dependent plugin %1 inside version range %2 is not installed.").
-            arg(pr->name).arg(pr->pluginRange.toString()));
+            arg(pr->name, pr->pluginRange.toString()));
       }
       else
       {
@@ -729,14 +734,14 @@ ctkPluginException* ctkPluginPrivate::start0()
     if (!pluginLoader.isLoaded())
     {
       error_type = ctkPluginException::ACTIVATOR_ERROR;
-      throw ctkPluginException(QString("Loading plugin %1 failed: %2").arg(pluginLoader.fileName()).arg(pluginLoader.errorString()),
+      throw ctkPluginException(QString("Loading plugin %1 failed: %2").arg(pluginLoader.fileName(), pluginLoader.errorString()),
                                ctkPluginException::ACTIVATOR_ERROR);
     }
 
     pluginActivator = qobject_cast<ctkPluginActivator*>(pluginLoader.instance());
     if (!pluginActivator)
     {
-      throw ctkPluginException(QString("Creating ctkPluginActivator instance from %1 failed: %2").arg(pluginLoader.fileName()).arg(pluginLoader.errorString()),
+      throw ctkPluginException(QString("Creating ctkPluginActivator instance from %1 failed: %2").arg(pluginLoader.fileName(), pluginLoader.errorString()),
                                ctkPluginException::ACTIVATOR_ERROR);
     }
 

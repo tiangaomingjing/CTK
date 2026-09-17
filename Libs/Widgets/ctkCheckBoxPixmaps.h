@@ -26,8 +26,8 @@
    All rights reserved.
 
    ParaView is a free software; you can redistribute it and/or modify it
-   under the terms of the ParaView license version 1.2. 
-   
+   under the terms of the ParaView license version 1.2.
+
    See http://www.paraview.org/paraview/project/license.html for the full ParaView license.
    A copy of this license can be obtained by contacting
    Kitware Inc.
@@ -66,7 +66,7 @@ class ctkCheckBoxPixmapsPrivate;
 /// \ingroup Widgets
 ///
 /// ctkCheckBoxPixmaps is a helper class that can used to create pixmaps for
-/// checkboxs in various states. This is useful for showing checkboxes in qt-views.
+/// checkboxes in various states. This is useful for showing checkboxes in qt-views.
 class CTK_WIDGETS_EXPORT ctkCheckBoxPixmaps : public QObject
 {
   Q_OBJECT

@@ -22,6 +22,7 @@
 #include <QAction>
 #include <QDebug>
 #include <QHeaderView>
+#include <QMenu>
 #include <QPainter>
 #include <QSortFilterProxyModel>
 #include <QStandardItem>
@@ -85,7 +86,8 @@ void ctkActionsWidgetPrivate::setupHeaders()
 {
   this->ActionsModel->setColumnCount(4);
   QStringList headers;
-  headers << "Action" << "Shortcut(s)" << "Context" << "Details";
+  headers << ctkActionsWidget::tr("Action") << ctkActionsWidget::tr("Shortcut(s)")
+          << ctkActionsWidget::tr("Context") << ctkActionsWidget::tr("Details");
   this->ActionsModel->setHorizontalHeaderLabels(headers);
 }
 
@@ -97,32 +99,32 @@ void ctkActionsWidgetPrivate
   // Name
   QString actionText = action->text();
   if (actionText.indexOf('&') != -1)
-    {
+  {
     actionText = actionText.remove(actionText.indexOf('&'),1);  // remove mnemonic
-    }
+  }
   items[ctkActionsWidget::NameColumn]->setText(actionText);
   items[ctkActionsWidget::NameColumn]->setIcon(action->icon());
   // Shortcut
   QStringList shortcuts;
   foreach(const QKeySequence& keySequence, action->shortcuts())
-    {
+  {
     shortcuts << keySequence.toString(QKeySequence::NativeText);
-    }
+  }
   items[ctkActionsWidget::ShortcutColumn]->setText(
     shortcuts.join("; "));
-  // Context
+  // Context (this is written to the recorded file, therefore it must not be translated)
   QString shortcutContext;
   switch (action->shortcutContext())
-    {
+  {
     case Qt::WidgetShortcut:
     case Qt::WidgetWithChildrenShortcut:
-      shortcutContext = "Widget";
+      shortcutContext = /*no tr*/ "Widget";
       break;
     case Qt::WindowShortcut:
     case Qt::ApplicationShortcut:
     default:
-      shortcutContext = "Application";
-    }
+      shortcutContext = /*no tr*/ "Application";
+  }
   items[ctkActionsWidget::ContextColumn]->setText(shortcutContext);
   items[ctkActionsWidget::DetailsColumn]->setText(action->toolTip() != actionText
     ? action->toolTip() : QString(""));
@@ -150,25 +152,29 @@ void ctkActionsWidget::addAction(QAction* action, const QString& group)
   Q_ASSERT(actionGroupItem);
   QList<QStandardItem*> actionItems;
   for (int i = 0; i < 4; ++i)
-    {
+  {
     QStandardItem* item = new QStandardItem;
+    #if (QT_VERSION >= QT_VERSION_CHECK(5,14,0))
+    item->setData(QVariant::fromValue(qobject_cast<QObject*>(action)));
+    #else
     item->setData(qVariantFromValue(qobject_cast<QObject*>(action)));
+    #endif
     item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
     actionItems << item;
-    }
+  }
 
   d->updateItems(actionItems, action);
-  
+
   bool expandGroupItem = (actionGroupItem->rowCount() == 0);
   actionGroupItem->appendRow(actionItems);
   // if the group didn't exist yet or was empty, then open/expand it
-  // automatcally to show its contents. If the group was not empty, then let
+  // automatically to show its contents. If the group was not empty, then let
   // it as is (maybe the user closed/collapsed it for a good reason...
   if (expandGroupItem)
-    {
+  {
     d->ActionsTreeView->expand(
       d->SortFilterActionsProxyModel->mapFromSource(d->ActionsModel->indexFromItem(actionGroupItem)));
-    }
+  }
   d->ActionsTreeView->resizeColumnToContents(ctkActionsWidget::NameColumn);
   d->ActionsTreeView->resizeColumnToContents(ctkActionsWidget::DetailsColumn);
   connect(action, SIGNAL(changed()), this, SLOT(updateAction()));
@@ -181,9 +187,9 @@ void ctkActionsWidget::addActions(QList<QAction*> actions, const QString& group)
   bool wasSortinEnabled = d->ActionsTreeView->isSortingEnabled();
   d->ActionsTreeView->setSortingEnabled(false);
   foreach(QAction* action, actions)
-    {
+  {
     this->addAction(action, group);
-    }
+  }
   d->ActionsTreeView->setSortingEnabled(wasSortinEnabled);
 }
 
@@ -200,16 +206,16 @@ QStandardItem* ctkActionsWidget::groupItem(const QString& group)
 {
   Q_D(ctkActionsWidget);
   if (group.isEmpty())
-    {
+  {
     return d->ActionsModel->invisibleRootItem();
-    }
+  }
   // check if the group already exists
   QList<QStandardItem *> foundGroup =
     d->ActionsModel->findItems(group);
   if (foundGroup.size() > 0)
-    {
+  {
     return foundGroup[0];
-    }
+  }
   QStandardItem* groupItem = new QStandardItem(group);
   groupItem->setFlags(Qt::ItemIsEnabled);
   d->ActionsModel->appendRow(groupItem);
@@ -273,13 +279,18 @@ void ctkActionsWidget::updateAction()
   Q_D(ctkActionsWidget);
   QAction* action = qobject_cast<QAction*>(this->sender());
   Q_ASSERT(action);
+  #if (QT_VERSION >= QT_VERSION_CHECK(5,14,0))
+  QVariant variant = QVariant::fromValue(qobject_cast<QObject*>(action));
+  #else
+  QVariant variant = qVariantFromValue(qobject_cast<QObject*>(action));
+  #endif
   QModelIndexList foundActions =
     d->ActionsModel->match(d->ActionsModel->index(0,0),
-    Qt::UserRole + 1, qVariantFromValue(qobject_cast<QObject*>(action)),
+    Qt::UserRole + 1, variant,
     -1, Qt::MatchExactly | Qt::MatchRecursive);
   Q_ASSERT(foundActions.size());
   foreach (QModelIndex actionIndex, foundActions)
-    {
+  {
     QModelIndex parentIndex = actionIndex.parent();
     QStandardItem* parent = parentIndex.isValid()
       ? d->ActionsModel->itemFromIndex(parentIndex)
@@ -288,11 +299,11 @@ void ctkActionsWidget::updateAction()
     Q_ASSERT(actionRow >= 0);
     QList<QStandardItem*> actionItems;
     for(int i = 0; i < 4; ++i)
-      {
+    {
       actionItems << parent->child(actionRow, i);
-      }
-    d->updateItems(actionItems, action);
     }
+    d->updateItems(actionItems, action);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -337,8 +348,15 @@ ctkSortFilterActionsProxyModel::ctkSortFilterActionsProxyModel(QObject* parentOb
 void ctkSortFilterActionsProxyModel::setActionsWithNoShortcutVisible(bool visible)
 {
   Q_D(ctkSortFilterActionsProxyModel);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+  this->beginFilterChange();
+#endif
   d->ActionsWithNoShortcutVisible = visible;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+  this->endFilterChange();
+#else
   this->invalidateFilter();
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -352,8 +370,15 @@ bool ctkSortFilterActionsProxyModel::areActionsWithNoShortcutVisible()const
 void ctkSortFilterActionsProxyModel::setMenuActionsVisible(bool visible)
 {
   Q_D(ctkSortFilterActionsProxyModel);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+  this->beginFilterChange();
+#endif
   d->MenuActionsVisible = visible;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+  this->endFilterChange();
+#else
   this->invalidateFilter();
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -373,25 +398,25 @@ bool ctkSortFilterActionsProxyModel::filterAcceptsRow(int source_row, const QMod
   QAction* action = shortcutItem ?
     qobject_cast<QAction*>(shortcutItem->data().value<QObject*>()) : 0;
   if (!action)
-    {
+  {
     return true;
-    }
+  }
   if (action->isSeparator())
-    {
+  {
     return false;
-    }
+  }
   if (action->text().isEmpty())
-    {// not sure what the empty text actions are
+  {// not sure what the empty text actions are
     return false;
-    }
+  }
   if (!d->ActionsWithNoShortcutVisible && shortcutItem->text().isEmpty())
-    {
+  {
     return false;
-    }
+  }
   if (!d->MenuActionsVisible && action->menu())
-    {
+  {
     return false;
-    }
+  }
   return true;
 }
 
@@ -399,17 +424,13 @@ bool ctkSortFilterActionsProxyModel::filterAcceptsRow(int source_row, const QMod
 void ctkRichTextItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem & option,
                                     const QModelIndex &index) const
 {
-#if (QT_VERSION < QT_VERSION_CHECK(5,0,0))
-  QStyleOptionViewItemV4 options = option;
-#else
   QStyleOptionViewItem options = option;
-#endif
   initStyleOption(&options, index);
   if (! Qt::mightBeRichText(options.text))
-    {
+  {
     this->QStyledItemDelegate::paint(painter, option, index);
     return;
-    }
+  }
 
   painter->save();
 
@@ -432,16 +453,12 @@ void ctkRichTextItemDelegate::paint(QPainter* painter, const QStyleOptionViewIte
 QSize ctkRichTextItemDelegate::sizeHint(const QStyleOptionViewItem & option,
                                         const QModelIndex & index)const
 {
-#if (QT_VERSION < QT_VERSION_CHECK(5,0,0))
-  QStyleOptionViewItemV4 options = option;
-#else
   QStyleOptionViewItem options = option;
-#endif
   initStyleOption(&options, index);
   if (! Qt::mightBeRichText(options.text))
-    {
+  {
     return this->QStyledItemDelegate::sizeHint(option, index);;
-    }
+  }
 
   QTextDocument doc;
   doc.setHtml(options.text);

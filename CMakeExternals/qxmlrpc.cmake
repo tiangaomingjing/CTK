@@ -38,16 +38,13 @@ if(NOT DEFINED qxmlrpc_DIR)
     set(location_args GIT_REPOSITORY ${${proj}_GIT_REPOSITORY}
                       GIT_TAG ${revision_tag})
   else()
-    set(location_args GIT_REPOSITORY "${git_protocol}://github.com/commontk/qxmlrpc.git"
+    set(location_args GIT_REPOSITORY "https://github.com/commontk/qxmlrpc.git"
                       GIT_TAG ${revision_tag})
   endif()
 
   set(ep_cache_args)
-  if(CTK_QT_VERSION VERSION_LESS "5")
-    list(APPEND ep_cache_args
-      -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE}
-      )
-  else()
+
+  if(CTK_QT_VERSION VERSION_EQUAL "5")
     list(APPEND ep_cache_args
       -DQt5_DIR:PATH=${Qt5_DIR}
       )
@@ -57,6 +54,12 @@ if(NOT DEFINED qxmlrpc_DIR)
         -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
         )
     endif()
+  elseif(CTK_QT_VERSION VERSION_EQUAL "6")
+    list(APPEND ep_cache_args
+      -DQt6_DIR:PATH=${Qt6_DIR}
+      )
+  else()
+    message(FATAL_ERROR "Support for Qt${CTK_QT_VERSION} is not implemented")
   endif()
 
   ExternalProject_Add(${proj}

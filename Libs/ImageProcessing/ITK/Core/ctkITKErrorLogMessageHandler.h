@@ -35,10 +35,11 @@ class ctkITKErrorLogMessageHandlerPrivate;
 class CTK_IMAGEPROCESSING_ITK_CORE_EXPORT ctkITKErrorLogMessageHandler :
     public ctkErrorLogAbstractMessageHandler
 {
+  Q_OBJECT
 public:
   typedef ctkErrorLogAbstractMessageHandler Superclass;
 
-  ctkITKErrorLogMessageHandler();
+  ctkITKErrorLogMessageHandler(QObject* parent = nullptr);
   virtual ~ctkITKErrorLogMessageHandler();
 
   static QString HandlerName;

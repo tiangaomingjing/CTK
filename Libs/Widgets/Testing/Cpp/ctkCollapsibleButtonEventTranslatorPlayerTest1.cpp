@@ -46,14 +46,14 @@ namespace
 {
 //-----------------------------------------------------------------------------
 void checkFinalWidgetState(void* data)
-  {
+{
   ctkCollapsibleButton* widget = reinterpret_cast<ctkCollapsibleButton*>(data);
 
   CTKCOMPARE(widget->collapsed(), true);
   CTKCOMPARE(widget->collapsedHeight(), 10);
 
   QApplication::exit(EXIT_SUCCESS);
-  }
+}
 }
 
 //-----------------------------------------------------------------------------
@@ -71,11 +71,11 @@ int ctkCollapsibleButtonEventTranslatorPlayerTest1(int argc, char * argv [])
   // Test case 1
   ctkCollapsibleButton* widget = new ctkCollapsibleButton();
   widget->setText("top button");
-  QPushButton * button= new QPushButton(QObject::tr("Button"));
-  ctkCollapsibleButton *collapsibleButton2 = new ctkCollapsibleButton(QObject::tr("Nested Collapsible Button"));
-  ctkCollapsibleButton *collapsibleButton3 = new ctkCollapsibleButton(QObject::tr("CollapsibleButton"));
+  QPushButton * button= new QPushButton("Button");
+  ctkCollapsibleButton *collapsibleButton2 = new ctkCollapsibleButton("Nested Collapsible Button");
+  ctkCollapsibleButton *collapsibleButton3 = new ctkCollapsibleButton("CollapsibleButton");
   collapsibleButton3->setIcon(collapsibleButton3->style()->standardIcon(QStyle::SP_FileDialogDetailedView));
-  QPushButton * button2 = new QPushButton(QObject::tr("Nested PushButton"));
+  QPushButton * button2 = new QPushButton("Nested PushButton");
 
   QVBoxLayout *nestedBox = new QVBoxLayout;
   nestedBox->addWidget(button2);
@@ -93,9 +93,9 @@ int ctkCollapsibleButtonEventTranslatorPlayerTest1(int argc, char * argv [])
 
   // ------------------------
   if (argc < 2 || QString(argv[1]) != "-I")
-    {
+  {
     QTimer::singleShot(0, &etpWidget, SLOT(play()));
-    }
+  }
 
   etpWidget.show();
   return app.exec();

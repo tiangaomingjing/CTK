@@ -36,8 +36,9 @@
 // ctkWorkflowStepPrivate methods
 
 // --------------------------------------------------------------------------
-ctkWorkflowStepPrivate::ctkWorkflowStepPrivate(ctkWorkflowStep& object)
-  :q_ptr(&object)
+ctkWorkflowStepPrivate::ctkWorkflowStepPrivate(ctkWorkflowStep& object, QObject* parent)
+  : QObject(parent)
+  , q_ptr(&object)
 {
   qRegisterMetaType<ctkWorkflowStep*>("ctkWorkflowStep*");
   this->Workflow = 0;
@@ -58,7 +59,7 @@ ctkWorkflowStepPrivate::ctkWorkflowStepPrivate(ctkWorkflowStep& object)
   this->ValidationTransition->setTargetState(this->ValidationState);
   this->ProcessingState->addTransition(this->ValidationTransition);
 
-  // Create 'failed validation' transation
+  // Create 'failed validation' transaction
   this->ValidationFailedTransition = 0;
   this->ValidationFailedTransition =
       new ctkWorkflowIntrastepTransition(ctkWorkflowIntrastepTransition::ValidationFailedTransition);
@@ -70,49 +71,49 @@ ctkWorkflowStepPrivate::ctkWorkflowStepPrivate(ctkWorkflowStep& object)
 ctkWorkflowStepPrivate::~ctkWorkflowStepPrivate()
 {
   if (!this->ValidationState.isNull())
-    {
+  {
     delete this->ValidationState;
-    }
+  }
   if (!this->ProcessingState.isNull())
-    {
+  {
     delete this->ProcessingState;
-    }
+  }
 
   // If we delete the states, then Qt will handle deleting the transitions
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStepPrivate::validationCompleteInternal(bool validationResults, const QString& branchId)const
+void ctkWorkflowStepPrivate::validationCompleteInternal(bool validationResults, const QString& branchId)
 {
   emit validationComplete(validationResults, branchId);
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStepPrivate::onEntryCompleteInternal()const
+void ctkWorkflowStepPrivate::onEntryCompleteInternal()
 {
   emit onEntryComplete();
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStepPrivate::onExitCompleteInternal()const
+void ctkWorkflowStepPrivate::onExitCompleteInternal()
 {
   emit onExitComplete();
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStepPrivate::invokeValidateCommandInternal(const QString& desiredBranchId)const
+void ctkWorkflowStepPrivate::invokeValidateCommandInternal(const QString& desiredBranchId)
 {
   emit invokeValidateCommand(desiredBranchId);
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStepPrivate::invokeOnEntryCommandInternal(const ctkWorkflowStep* comingFrom, const ctkWorkflowInterstepTransition::InterstepTransitionType transitionType)const
+void ctkWorkflowStepPrivate::invokeOnEntryCommandInternal(const ctkWorkflowStep* comingFrom, const ctkWorkflowInterstepTransition::InterstepTransitionType transitionType)
 {
   emit invokeOnEntryCommand(comingFrom, transitionType);
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStepPrivate::invokeOnExitCommandInternal(const ctkWorkflowStep* goingTo, const ctkWorkflowInterstepTransition::InterstepTransitionType transitionType)const
+void ctkWorkflowStepPrivate::invokeOnExitCommandInternal(const ctkWorkflowStep* goingTo, const ctkWorkflowInterstepTransition::InterstepTransitionType transitionType)
 {
   emit invokeOnExitCommand(goingTo, transitionType);
 }
@@ -158,11 +159,11 @@ void ctkWorkflowStep::setId(const QString& newId)
 {
   Q_D(ctkWorkflowStep);
   if (d->Workflow && d->Workflow->hasStep(newId) && !this->id().isEmpty())
-    {
+  {
     qWarning() << QString("ctkWorkflowStep - Failed to change id from '%1' to '%2' - "
-                          "Step already added to a workflow !").arg(this->id()).arg(newId);
+                          "Step already added to a workflow !").arg(this->id(), newId);
     return;
-    }
+  }
   d->Id = newId;
 }
 
@@ -210,44 +211,44 @@ QObject* ctkWorkflowStep::ctkWorkflowStepQObject()
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStep::validationComplete(bool validationResults, const QString& branchId)const
+void ctkWorkflowStep::validationComplete(bool validationResults, const QString& branchId)
 {
-  Q_D(const ctkWorkflowStep);
+  Q_D(ctkWorkflowStep);
   d->validationCompleteInternal(validationResults, branchId);
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStep::onEntryComplete()const
+void ctkWorkflowStep::onEntryComplete()
 {
-  Q_D(const ctkWorkflowStep);
+  Q_D(ctkWorkflowStep);
   d->onEntryCompleteInternal();
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStep::onExitComplete()const
+void ctkWorkflowStep::onExitComplete()
 {
-  Q_D(const ctkWorkflowStep);
+  Q_D(ctkWorkflowStep);
   d->onExitCompleteInternal();
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStep::invokeValidateCommand(const QString& desiredBranchId)const
+void ctkWorkflowStep::invokeValidateCommand(const QString& desiredBranchId)
 {
-  Q_D(const ctkWorkflowStep);
+  Q_D(ctkWorkflowStep);
   d->invokeValidateCommandInternal(desiredBranchId);
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStep::invokeOnEntryCommand(const ctkWorkflowStep* comingFrom, const ctkWorkflowInterstepTransition::InterstepTransitionType transitionType)const
+void ctkWorkflowStep::invokeOnEntryCommand(const ctkWorkflowStep* comingFrom, const ctkWorkflowInterstepTransition::InterstepTransitionType transitionType)
 {
-  Q_D(const ctkWorkflowStep);
+  Q_D(ctkWorkflowStep);
   d->invokeOnEntryCommandInternal(comingFrom, transitionType);
 }
 
 // --------------------------------------------------------------------------
-void ctkWorkflowStep::invokeOnExitCommand(const ctkWorkflowStep* goingTo, const ctkWorkflowInterstepTransition::InterstepTransitionType transitionType)const
+void ctkWorkflowStep::invokeOnExitCommand(const ctkWorkflowStep* goingTo, const ctkWorkflowInterstepTransition::InterstepTransitionType transitionType)
 {
-  Q_D(const ctkWorkflowStep);
+  Q_D(ctkWorkflowStep);
   d->invokeOnExitCommandInternal(goingTo, transitionType);
 }
 
@@ -256,9 +257,9 @@ void ctkWorkflowStep::validate(const QString& desiredBranchId)
 {
   Q_D(ctkWorkflowStep);
   if (this->workflow()->verbose())
-    {
+  {
     qDebug() << QString("validate - validating the input from %1").arg(d->Name);
-    }
+  }
 
   this->validationComplete(true, desiredBranchId);
 }

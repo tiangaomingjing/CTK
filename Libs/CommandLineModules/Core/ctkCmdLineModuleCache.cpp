@@ -101,8 +101,6 @@ QByteArray ctkCmdLineModuleCache::rawXmlDescription(const QUrl& moduleLocation) 
   }
   // lazily load the XML description from the file system
   QByteArray xml;
-  QString a = moduleLocation.toString();
-  QString fn = d->xmlFileName(moduleLocation);
   QFile xmlFile(d->xmlFileName(moduleLocation));
   if (xmlFile.exists() && xmlFile.open(QIODevice::ReadOnly))
   {
@@ -184,7 +182,10 @@ void ctkCmdLineModuleCache::removeCacheEntry(const QUrl& moduleLocation)
 
 void ctkCmdLineModuleCache::clearCache()
 {
-  foreach(const QUrl &url, d->LocationToXmlDescription.keys())
+  // Copy keys first because removeCacheEntry() modifies the map,
+  // which would invalidate iterators if we iterated the map directly.
+  const auto keys = d->LocationToXmlDescription.keys();
+  for (const QUrl& url : keys)
   {
     removeCacheEntry(url);
   }

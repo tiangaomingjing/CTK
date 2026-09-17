@@ -39,7 +39,7 @@ class ctkWorkflowWidgetStepPrivate;
 
 /// \ingroup Widgets
 ///
-/// \brief ctkWorkflowWidgetStep is a convienience class to quickly
+/// \brief ctkWorkflowWidgetStep is a convenience class to quickly
 /// construct a ctkWorkflowStep with a user interface.
 ///
 /// It embeds a QWidget* stepArea, onto which step-specific widgets can be placed.
@@ -67,7 +67,6 @@ class CTK_WIDGETS_EXPORT ctkWorkflowWidgetStep : public QWidget, public ctkWorkf
   Q_PROPERTY(QString backButtonText READ backButtonText WRITE setBackButtonText)
   Q_PROPERTY(QString nextButtonText READ nextButtonText WRITE setNextButtonText)
   Q_FLAGS(ButtonBoxHint ButtonBoxHints)
-  Q_ENUMS(ButtonBoxHint)
   Q_PROPERTY(ButtonBoxHints buttonBoxHints READ buttonBoxHints WRITE setButtonBoxHints)
 public:
 
@@ -79,6 +78,7 @@ public:
     NextButtonDisabled = 0x8,
     ButtonBoxHidden = 0x10
   };
+  Q_ENUM(ButtonBoxHint)
   Q_DECLARE_FLAGS(ButtonBoxHints, ButtonBoxHint)
 
   explicit ctkWorkflowWidgetStep(QWidget* newParent = 0);
@@ -131,22 +131,22 @@ protected:
   /// \brief Signal (emitted by the private implementation) indicating that the step's
   /// createUserInterface() method should be called.
   /// \sa createUserInterface()
-  void invokeCreateUserInterfaceCommand()const;
+  void invokeCreateUserInterfaceCommand();
 
   /// \brief Signal (emitted by the private implementation) indicating that the step's
   /// createUserInterface() method has completed.
   /// \sa createUserInterface()
-  void createUserInterfaceComplete()const;
+  void createUserInterfaceComplete();
 
   /// \brief Signal (emitted by the private implementation) indicating that the step's
   /// 'showUserInterface() method should be called.
   /// \sa showUserInterface()
-  void invokeShowUserInterfaceCommand()const;
+  void invokeShowUserInterfaceCommand();
 
   /// \brief Signal (emitted by the private implementation) indicating that the step's
   /// showUserInterface() method has completed.
   /// \sa showUserInterface()
-  void showUserInterfaceComplete()const;
+  void showUserInterfaceComplete();
 
 private:
 
@@ -164,4 +164,3 @@ private:
  Q_DECLARE_OPERATORS_FOR_FLAGS(ctkWorkflowWidgetStep::ButtonBoxHints)
 
 #endif
-

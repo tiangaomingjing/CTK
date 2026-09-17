@@ -23,17 +23,19 @@
 
 // Qt includes
 #include <QtGlobal>
-#ifndef HAVE_QT5
-#include <QDesignerCustomWidgetCollectionInterface>
-#else
 #include <QtUiPlugin/QDesignerCustomWidgetCollectionInterface>
-#endif
 
 // CTK includes
 #include "ctkDICOMWidgetsPluginsExport.h"
+#include "ctkDICOMJobListWidgetPlugin.h"
+#include "ctkDICOMPatientViewPlugin.h"
 #include "ctkDICOMQueryRetrieveWidgetPlugin.h"
+#include "ctkDICOMServerNodeWidget2Plugin.h"
+#include "ctkDICOMSeriesTableViewPlugin.h"
+#include "ctkDICOMStudyListViewPlugin.h"
 #include "ctkDICOMTableManagerPlugin.h"
 #include "ctkDICOMTableViewPlugin.h"
+#include "ctkDICOMVisualBrowserWidgetPlugin.h"
 
 /// \class Group the plugins in one library
 class CTK_DICOM_WIDGETS_PLUGINS_EXPORT ctkDICOMWidgetsPlugins
@@ -41,20 +43,24 @@ class CTK_DICOM_WIDGETS_PLUGINS_EXPORT ctkDICOMWidgetsPlugins
   , public QDesignerCustomWidgetCollectionInterface
 {
   Q_OBJECT
-#ifdef HAVE_QT5
   Q_PLUGIN_METADATA(IID "org.commontk.DICOM")
-#endif
   Q_INTERFACES(QDesignerCustomWidgetCollectionInterface);
 
 public:
   QList<QDesignerCustomWidgetInterface*> customWidgets() const
-    {
+  {
     QList<QDesignerCustomWidgetInterface *> plugins;
+    plugins << new ctkDICOMJobListWidgetPlugin;
+    plugins << new ctkDICOMPatientViewPlugin;
     plugins << new ctkDICOMQueryRetrieveWidgetPlugin;
+    plugins << new ctkDICOMServerNodeWidget2Plugin;
+    plugins << new ctkDICOMSeriesTableViewPlugin;
+    plugins << new ctkDICOMStudyListViewPlugin;
     plugins << new ctkDICOMTableManagerPlugin;
     plugins << new ctkDICOMTableViewPlugin;
+    plugins << new ctkDICOMVisualBrowserWidgetPlugin;
     return plugins;
-    }
+  }
 };
 
 #endif

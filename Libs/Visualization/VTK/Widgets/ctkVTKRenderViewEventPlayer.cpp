@@ -24,7 +24,7 @@
 #include <QMessageBox>
 #include <QKeyEvent>
 #include <QMouseEvent>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QTimer>
 #include <QWidget>
 
@@ -45,25 +45,26 @@ bool ctkVTKRenderViewEventPlayer::playEvent(QObject* Object,
   Q_UNUSED(Error);
   QWidget* widget = qobject_cast<QWidget*>(Object);
   if(widget && Object->inherits(mClassType.data()))
-    {
+  {
     if (Command == "3DViewSize")
+    {
+      static const QRegularExpression mouseRegExp("\\(([^,]*),([^,]*),([^,]),([^,]),([^,]*)\\)");
+      QRegularExpressionMatch mouseMatch = mouseRegExp.match(Arguments);
+      if (mouseMatch.hasMatch())
       {
-      QRegExp mouseRegExp("\\(([^,]*),([^,]*),([^,]),([^,]),([^,]*)\\)");
-      if (mouseRegExp.indexIn(Arguments)!= -1)
-        {
-        QVariant v = mouseRegExp.cap(1);
+        QVariant v = mouseMatch.captured(1);
         int w = v.toInt();
-        v = mouseRegExp.cap(2);
+        v = mouseMatch.captured(2);
         int h = v.toInt();
-        v = mouseRegExp.cap(3);
+        v = mouseMatch.captured(3);
 //        int app_w = v.toInt();
-        v = mouseRegExp.cap(4);
+        v = mouseMatch.captured(4);
 //        int app_h = v.toInt();
-        v = mouseRegExp.cap(5);
+        v = mouseMatch.captured(5);
         bool rescale = v.toBool();
 
         if ( (w != widget->width() || h != widget->height()) && rescale == true)
-          {
+        {
           QMessageBox::StandardButton answer = QMessageBox::warning(0, tr("Size issue ..."),
                                                  tr("The Render view size is: width : %1 \t height : %2 \n"
                                                  "But the size was         width : %3 \t height : %4 \n"
@@ -76,58 +77,73 @@ bool ctkVTKRenderViewEventPlayer::playEvent(QObject* Object,
                                                  QMessageBox::Yes | QMessageBox::No ,
                                                  QMessageBox::Yes);
           if (answer == QMessageBox::Yes )
-            {
+          {
             qDebug() << "Foo ****";
 //            widget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
             widget->setMinimumSize(QSize(w,h));
             widget->setMaximumSize(QSize(w,h));
             widget->updateGeometry();
             widget->topLevelWidget()->topLevelWidget()->updateGeometry();
-            }
           }
         }
-      return true;
       }
+      return true;
+    }
     if (Command == "mousePress" || Command == "mouseRelease" ||
         Command == "mouseMove" || Command == "mouseWheel")
+    {
+      static const QRegularExpression mouseRegExp("\\(([^,]*),([^,]*),([^,]),([^,]),([^,]*)\\)");
+      QRegularExpressionMatch mouseMatch = mouseRegExp.match(Arguments);
+      if (mouseMatch.hasMatch())
       {
-      QRegExp mouseRegExp("\\(([^,]*),([^,]*),([^,]),([^,]),([^,]*)\\)");
-      if (mouseRegExp.indexIn(Arguments)!= -1)
-        {
         double x_center = widget->size().width() / 2.0;
         double y_center = widget->size().height() / 2.0;
 
-        QVariant v = mouseRegExp.cap(1);
+        QVariant v = mouseMatch.captured(1);
         double x = x_center - (v.toDouble() * x_center);
         x = static_cast<int>(x + 0.5);
 
-        v = mouseRegExp.cap(2);
+        v = mouseMatch.captured(2);
         double y = y_center - (v.toDouble() * y_center);
         y = static_cast<int>(y + 0.5);
 
-        v = mouseRegExp.cap(4);
+        v = mouseMatch.captured(4);
         Qt::MouseButtons buttons = static_cast<Qt::MouseButton>(v.toInt());
 
-        v = mouseRegExp.cap(5);
+        v = mouseMatch.captured(5);
         Qt::KeyboardModifiers keym = static_cast<Qt::KeyboardModifier>(v.toInt());
 
-        v = mouseRegExp.cap(3);
+        v = mouseMatch.captured(3);
         if (Command == "mouseWheel")
-          {
-//           QEvent::Type type = QEvent::Wheel;
+        {
            int delta = ( v.toInt() == 0 ) ? -1 : 1;
+#if (QT_VERSION >= QT_VERSION_CHECK(5,15,0))
+           // For Qt 5.15+ (including Qt6)
+           QPointF globalPos = widget->mapToGlobal(QPoint(x, y));
+           QWheelEvent we(
+             QPointF(x, y),
+             globalPos,
+             /*pixelDelta = */ QPoint(0, 0),
+             /*angleDelta = */ QPoint(0, delta), /* transform old delta into QPoint */
+             buttons,
+             keym,
+             Qt::ScrollUpdate,
+             /*inverted =  */ false
+           );
+#else
            QWheelEvent we(QPoint(x,y), delta, buttons, keym);
+#endif
            QCoreApplication::sendEvent(Object, &we);
            return true;
-          }
+        }
         Qt::MouseButton button = static_cast<Qt::MouseButton>(v.toInt());
         QEvent::Type type = (Command == "mousePress")? QEvent::MouseButtonPress :
           ((Command=="mouseMove")?  QEvent::MouseMove : QEvent::MouseButtonRelease);
         QMouseEvent e(type, QPoint(x,y), button, buttons, keym);
         QCoreApplication::sendEvent(Object, &e);
-        }
-      return true;
       }
+      return true;
     }
+  }
   return false;
 }

@@ -39,16 +39,17 @@ class CTK_CORE_EXPORT ctkErrorLogTerminalOutput : public QObject
   Q_FLAGS(TerminalOutputs)
 
 public:
-  ctkErrorLogTerminalOutput();
+  typedef QObject Superclass;
+  ctkErrorLogTerminalOutput(QObject* parent = 0);
   virtual ~ctkErrorLogTerminalOutput();
 
   enum TerminalOutput
-    {
+  {
     None            = 0x0,
     StandardError   = 0x1,
     StandardOutput  = 0x2,
     All             = StandardError | StandardOutput
-    };
+  };
   Q_DECLARE_FLAGS(TerminalOutputs, TerminalOutput)
 
   bool enabled()const;

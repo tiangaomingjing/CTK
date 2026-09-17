@@ -50,10 +50,6 @@ public:
   bool showSearchIcon;
   bool alwaysShowClearIcon;
   bool hideClearIcon;
-
-#if QT_VERSION < 0x040700
-  QString placeholderText;
-#endif
 };
 
 // --------------------------------------------------
@@ -73,7 +69,7 @@ void ctkSearchBoxPrivate::init()
   Q_Q(ctkSearchBox);
 
   // Set a text by default on the QLineEdit
-  q->setPlaceholderText(q->tr("Search..."));
+  q->setPlaceholderText(ctkSearchBox::tr("Search..."));
 
   QObject::connect(q, SIGNAL(textChanged(QString)),
                    q, SLOT(updateClearButtonState()));
@@ -96,15 +92,11 @@ QRect ctkSearchBoxPrivate::searchRect()const
   // If the QLineEdit has a frame, the icon must be shifted from
   // the frame line width
   if (q->hasFrame())
-    {
-#if QT_VERSION < QT_VERSION_CHECK(5,0,0)
-    QStyleOptionFrameV2 opt;
-#else
+  {
     QStyleOptionFrame opt;
-#endif
     q->initStyleOption(&opt);
     sRect.adjust(opt.lineWidth, opt.lineWidth, -opt.lineWidth, -opt.lineWidth);
-    }
+  }
   // Hardcoded: shrink by 1 pixel because some styles have a focus frame inside
   // the line edit frame.
   sRect.adjust(1, 1, -1, -1);
@@ -127,26 +119,6 @@ ctkSearchBox::~ctkSearchBox()
 {
 }
 
-#if QT_VERSION < 0x040700
-// --------------------------------------------------
-QString ctkSearchBox::placeholderText()const
-{
-  Q_D(const ctkSearchBox);
-  return d->placeholderText;
-}
-
-// --------------------------------------------------
-void ctkSearchBox::setPlaceholderText(const QString &defaultText)
-{
-  Q_D(ctkSearchBox);
-  d->placeholderText = defaultText;
-  if (!this->hasFocus())
-    {
-    this->update();
-    }
-}
-#endif
-
 // --------------------------------------------------
 void ctkSearchBox::setShowSearchIcon(bool show)
 {
@@ -168,9 +140,9 @@ void ctkSearchBox::setAlwaysShowClearIcon(bool show)
   Q_D(ctkSearchBox);
   d->alwaysShowClearIcon = show;
   if (show == true)
-    {
+  {
     d->hideClearIcon = false;
-    }
+  }
   this->update();
 }
 
@@ -226,76 +198,19 @@ void ctkSearchBox::paintEvent(QPaintEvent * event)
   QRect cRect = d->clearRect();
   QRect sRect = d->showSearchIcon ? d->searchRect() : QRect();
 
-#if QT_VERSION >= 0x040700
-  QRect r = rect();
-  QPalette pal = palette();
-
-#if QT_VERSION < QT_VERSION_CHECK(5,0,0)
-  QStyleOptionFrameV2 panel;
-#else
-  QStyleOptionFrame panel;
-#endif
-  initStyleOption(&panel);
-  r = this->style()->subElementRect(QStyle::SE_LineEditContents, &panel, this);
-  r.setX(r.x() + this->textMargins().left());
-  r.setY(r.y() + this->textMargins().top());
-  r.setRight(r.right() - this->textMargins().right());
-  r.setBottom(r.bottom() - this->textMargins().bottom());
-  p.setClipRect(r);
-
-  QFontMetrics fm = fontMetrics();
-  Qt::Alignment va = QStyle::visualAlignment(this->layoutDirection(),
-                                             QFlag(this->alignment()));
-  int vscroll = 0;
-  const int verticalMargin = 1;
-  const int horizontalMargin = 2;
-  switch (va & Qt::AlignVertical_Mask) {
-   case Qt::AlignBottom:
-       vscroll = r.y() + r.height() - fm.height() - verticalMargin;
-       break;
-   case Qt::AlignTop:
-       vscroll = r.y() + verticalMargin;
-       break;
-   default:
-       //center
-       vscroll = r.y() + (r.height() - fm.height() + 1) / 2;
-       break;
-  }
-  QRect lineRect(r.x() + horizontalMargin, vscroll,
-                 r.width() - 2*horizontalMargin, fm.height());
-
-  int minLB = qMax(0, -fm.minLeftBearing());
-
-  if (this->text().isEmpty())
-    {
-    if (!this->hasFocus() && !this->placeholderText().isEmpty())
-      {
-      QColor col = pal.text().color();
-      col.setAlpha(128);
-      QPen oldpen = p.pen();
-      p.setPen(col);
-      lineRect.adjust(minLB, 0, 0, 0);
-      QString elidedText = fm.elidedText(this->placeholderText(), Qt::ElideRight, lineRect.width());
-      p.drawText(lineRect, va, elidedText);
-      p.setPen(oldpen);
-      }
-    }
-  p.setClipRect(this->rect());
-#endif
-
   // Draw clearIcon
   if (!d->hideClearIcon)
-    {
+  {
     QPixmap closePixmap = d->clearIcon.pixmap(cRect.size(),this->isEnabled() ? QIcon::Normal : QIcon::Disabled);
     this->style()->drawItemPixmap(&p, cRect, Qt::AlignCenter, closePixmap);
-    }
+  }
 
   // Draw searchIcon
   if (d->showSearchIcon)
-    {
+  {
     QPixmap searchPixmap = d->searchIcon.pixmap(sRect.size(), this->isEnabled() ? QIcon::Normal : QIcon::Disabled);
     this->style()->drawItemPixmap(&p, sRect, Qt::AlignCenter, searchPixmap);
-    }
+  }
 }
 
 // --------------------------------------------------
@@ -304,18 +219,18 @@ void ctkSearchBox::mousePressEvent(QMouseEvent *e)
   Q_D(ctkSearchBox);
 
   if(d->clearRect().contains(e->pos()))
-    {
+  {
     this->clear();
     emit this->textEdited(this->text());
     return;
-    }
+  }
 
   if(d->showSearchIcon && d->searchRect().contains(e->pos()))
-    {
+  {
     this->selectAll();
     return;
-    }
-  
+  }
+
   this->Superclass::mousePressEvent(e);
 }
 
@@ -326,13 +241,13 @@ void ctkSearchBox::mouseMoveEvent(QMouseEvent *e)
 
   if(d->clearRect().contains(e->pos()) ||
      (d->showSearchIcon && d->searchRect().contains(e->pos())))
-    {
+  {
     this->setCursor(Qt::PointingHandCursor);
-    }
+  }
   else
-    {
+  {
     this->setCursor(this->isReadOnly() ? Qt::ArrowCursor : Qt::IBeamCursor);
-    }
+  }
   this->Superclass::mouseMoveEvent(e);
 }
 
@@ -353,8 +268,7 @@ void ctkSearchBox::updateClearButtonState()
 {
   Q_D(ctkSearchBox);
   if (!d->alwaysShowClearIcon)
-    {
+  {
     d->hideClearIcon = this->text().isEmpty() ? true : false;
-    }
+  }
 }
-

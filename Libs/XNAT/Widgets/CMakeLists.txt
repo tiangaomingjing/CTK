@@ -10,12 +10,6 @@ set(KIT_SRCS
   ctkXnatLoginDialog.cpp
 )
 
-# Files which should be processed by Qts moc
-set(KIT_MOC_SRCS
-  ctkXnatLoginDialog.h
-)
-
-
 # UI forms
 set(KIT_UI_FORMS
   ctkXnatLoginDialog.ui
@@ -31,15 +25,12 @@ set(KIT_target_libraries)
 
 ctkFunctionGetTargetLibraries(KIT_target_libraries)
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  list(APPEND KIT_target_libraries Qt5::Widgets)
-endif()
+list(APPEND KIT_target_libraries Qt${CTK_QT_VERSION}::Widgets)
 
 ctkMacroBuildLib(
   NAME ${PROJECT_NAME}
   EXPORT_DIRECTIVE ${KIT_export_directive}
   SRCS ${KIT_SRCS}
-  MOC_SRCS ${KIT_MOC_SRCS}
   UI_FORMS ${KIT_UI_FORMS}
   TARGET_LIBRARIES ${KIT_target_libraries}
   RESOURCES ${KIT_resources}

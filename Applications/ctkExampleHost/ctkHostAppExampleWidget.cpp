@@ -63,7 +63,7 @@ ctkHostAppExampleWidget::~ctkHostAppExampleWidget()
 void ctkHostAppExampleWidget::loadButtonClicked()
 {
   qDebug() << "load button clicked";
-  this->setAppFileName(QFileDialog::getOpenFileName(this,"Choose hosted application",QApplication::applicationDirPath()));
+  this->setAppFileName(QFileDialog::getOpenFileName(this,tr("Choose hosted application"),QApplication::applicationDirPath()));
 }
 
 //----------------------------------------------------------------------------
@@ -83,8 +83,8 @@ void ctkHostAppExampleWidget::placeholderResized()
 void ctkHostAppExampleWidget::appProcessError(QProcess::ProcessError error)
 {
   if (error == QProcess::Crashed)
-    {
+  {
     qDebug() << "crash detected";
     ui->crashLabel->setVisible(true);
-    }
+  }
 }

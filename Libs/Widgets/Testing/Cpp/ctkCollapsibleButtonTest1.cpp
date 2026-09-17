@@ -41,12 +41,12 @@ int ctkCollapsibleButtonTest1(int argc, char * argv [] )
   ctkCollapsibleButton collapsibleButton;
   collapsibleButton.setText("top button");
   QDoubleSpinBox *spinBox = new QDoubleSpinBox;
-  QPushButton * button= new QPushButton(QObject::tr("Button"));
-  ctkCollapsibleButton *collapsibleButton2 = new ctkCollapsibleButton(QObject::tr("Nested Collapsible Button"));
-  ctkCollapsibleButton *collapsibleButton3 = new ctkCollapsibleButton(QObject::tr("CollapsibleButton"));
+  QPushButton * button= new QPushButton("Button");
+  ctkCollapsibleButton *collapsibleButton2 = new ctkCollapsibleButton("Nested Collapsible Button");
+  ctkCollapsibleButton *collapsibleButton3 = new ctkCollapsibleButton("CollapsibleButton");
   // ctkCollapsibleButton::icon is not activated
   collapsibleButton3->setIcon(collapsibleButton3->style()->standardIcon(QStyle::SP_FileDialogDetailedView));
-  QPushButton * button2 = new QPushButton(QObject::tr("Nested PushButton"));
+  QPushButton * button2 = new QPushButton("Nested PushButton");
 
   QVBoxLayout *nestedBox = new QVBoxLayout;
   nestedBox->addWidget(button2);
@@ -62,102 +62,102 @@ int ctkCollapsibleButtonTest1(int argc, char * argv [] )
   collapsibleButton.show();
 
   if (collapsibleButton.collapsed())
-    {
+  {
     std::cerr<< "Wrong default collapse state." << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   collapsibleButton.setCollapsed(true);
 
   if (collapsibleButton.collapsed() != true)
-    {
+  {
     std::cerr<< "ctkCollapsibleButton::setCollapsed failed." << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   if (spinBox->isVisible())
-    {
+  {
     std::cerr << "ctkCollapsibleButton::setChecked failed. "
               << "Children are visible" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   collapsibleButton.setChecked(true);
 
   if (collapsibleButton.collapsed() != false)
-    {
+  {
     std::cerr<< "ctkCollapsibleButton::setChecked failed." << std::endl;
     return EXIT_FAILURE;
-    }
-  
+  }
+
   collapsibleButton2->setCollapsedHeight(40);
-  
+
   if (collapsibleButton2->collapsedHeight() != 40)
-    {
+  {
     std::cerr << "ctkCollapsibleButton::setCollapsedHeight failed."
               << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   collapsibleButton.setContentsFrameShape(QFrame::Box);
   collapsibleButton2->setContentsFrameShape(QFrame::Box);
 
   if (collapsibleButton2->contentsFrameShape() != QFrame::Box)
-    {
+  {
     std::cerr << "ctkCollapsibleButton::setContentsFrameShape failed."
               << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   collapsibleButton2->setContentsFrameShadow(QFrame::Raised);
 
   if (collapsibleButton2->contentsFrameShadow() != QFrame::Raised)
-    {
+  {
     std::cerr << "ctkCollapsibleButton::setContentsFrameShadow failed."
               << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   collapsibleButton2->setContentsLineWidth(2);
 
   if (collapsibleButton2->contentsLineWidth() != 2)
-    {
+  {
     std::cerr << "ctkCollapsibleButton::setContentsLineWidth failed."
               << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   collapsibleButton2->setContentsMidLineWidth(3);
 
   if (collapsibleButton2->contentsMidLineWidth() != 3)
-    {
+  {
     std::cerr << "ctkCollapsibleButton::setContentsLineWidth failed."
               << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   collapsibleButton.setButtonTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
   if (collapsibleButton.buttonTextAlignment() != (Qt::AlignRight | Qt::AlignVCenter))
-    {
+  {
     std::cerr << "ctkCollapsibleButton::setButtonTextAlignment failed."
               << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   collapsibleButton2->setIndicatorAlignment(Qt::AlignRight);
 
   if (collapsibleButton2->indicatorAlignment() != Qt::AlignRight)
-    {
+  {
     std::cerr << "ctkCollapsibleButton::setIndicatorAlignment failed."
               << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   if (argc < 2 || QString(argv[1]) != "-I" )
-    {
+  {
     QTimer::singleShot(200, &app, SLOT(quit()));
-    }
+  }
 
   return app.exec();
 }

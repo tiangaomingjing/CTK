@@ -32,6 +32,7 @@
 #include <vtkPiecewiseFunction.h>
 
 // STD includes
+#include <iostream>
 
 //-----------------------------------------------------------------------------
 int ctkVTKScalarsToColorsComboBoxTest1(int argc, char * argv [] )
@@ -66,7 +67,7 @@ int ctkVTKScalarsToColorsComboBoxTest1(int argc, char * argv [] )
       "\tCurrent count: " << scalarsToColorsComboBox.count() << "\n";
     return EXIT_FAILURE;
   }
-  scalarsToColorsComboBox.addScalarsToColors(CTK_NULLPTR, "(none)");
+  scalarsToColorsComboBox.addScalarsToColors(nullptr, "(none)");
 
   scalarsToColorsComboBox.show();
 

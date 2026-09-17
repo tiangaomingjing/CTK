@@ -46,21 +46,31 @@ int ctkDICOMModelTest2( int argc, char * argv [] )
 {
   QApplication app(argc, argv);
 
-  if (argc <= 2)
-    {
+  QStringList arguments = app.arguments();
+  QString testName = arguments.takeFirst();
+
+  bool interactive = arguments.removeOne("-I");
+
+  if (arguments.count() != 2)
+  {
     std::cerr << "Warning, no sql file given. Test stops" << std::endl;
-    std::cerr << "Usage: qctkDICOMModelTest1 <scratch.db> <dumpfile.sql>" << std::endl;
+    std::cerr << "Usage: " << qPrintable(testName)
+              << " <scratch.db> <dumpfile.sql>" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
+
+  QString databaseFile(arguments.at(0));
+  QString sqlFileName(arguments.at(1));
 
   try
   {
-    ctkDICOMDatabase myCTK( argv[1] );
+    ctkDICOMDatabase myCTK(databaseFile);
 
-    if (!myCTK.initializeDatabase(argv[2]))
+    if (!myCTK.initializeDatabase(sqlFileName.toUtf8()))
     {
-      std::cerr << "Error when initializing the data base: " << argv[2]
-          << " error: " << myCTK.lastError().toStdString();
+      std::cerr << "Error when initializing the data base: " << qPrintable(sqlFileName)
+                << " error: " << qPrintable(myCTK.lastError()) << std::endl;
+      return EXIT_FAILURE;
     }
 
     ctkDICOMModel model;
@@ -76,30 +86,27 @@ int ctkDICOMModelTest2( int argc, char * argv [] )
     QHeaderView* previousHeaderView = viewer.header();
     qDebug() << "previous: " << previousHeaderView->isHidden();
     ctkCheckableHeaderView* headerView = new ctkCheckableHeaderView(Qt::Horizontal, &viewer);
-#if QT_VERSION < QT_VERSION_CHECK(5,0,0)
-    headerView->setClickable(previousHeaderView->isClickable());
-    headerView->setMovable(previousHeaderView->isMovable());
-#else
     headerView->setSectionsClickable(previousHeaderView->sectionsClickable());
     headerView->setSectionsMovable(previousHeaderView->sectionsMovable());
-#endif
     headerView->setHighlightSections(previousHeaderView->highlightSections());
     headerView->checkableModelHelper()->setPropagateDepth(-1);
     headerView->checkableModelHelper()->setForceCheckability(true);
     viewer.setHeader(headerView);
-    model.setHeaderData(0, Qt::Horizontal, Qt::Checked, Qt::CheckStateRole);
+    model.setHeaderData(0, Qt::Horizontal, static_cast<int>(Qt::Checked), Qt::CheckStateRole);
     qDebug() << "new: " << headerView->isHidden();
     topLevel.show();
-    if (argc <= 3 || QString(argv[3]) != "-I")
-      {
+
+    if (!interactive)
+    {
       QTimer::singleShot(200, &app, SLOT(quit()));
-      }
+    }
+
     return app.exec();
   }
-  catch (std::exception e)
-    {
-    std::cerr << "Error when opening the data base file: " << argv[1]
-        << " error: " << e.what();
+  catch (const std::exception& e)
+  {
+    std::cerr << "Error when opening the data base file: " << qPrintable(databaseFile)
+              << " error: " << e.what() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 }

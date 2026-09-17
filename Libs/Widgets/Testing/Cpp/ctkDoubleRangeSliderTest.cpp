@@ -8,7 +8,7 @@
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
 
-      http://www.commontk.org/LICENSE
+      http://commontk.org/LICENSE
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,8 @@
 class ctkDoubleRangeSliderTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkDoubleRangeSliderTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
   void testUI();
 
@@ -45,11 +47,8 @@ void ctkDoubleRangeSliderTester::testUI()
 {
   ctkDoubleRangeSlider slider;
   slider.show();
-#if (QT_VERSION >= 0x50000)
-  QTest::qWaitForWindowActive(&slider);
-#else
-  QTest::qWaitForWindowShown(&slider);
-#endif
+  bool result = QTest::qWaitForWindowActive(&slider);
+  Q_UNUSED(result);
   // qApp->exec();
 }
 
@@ -128,4 +127,4 @@ void ctkDoubleRangeSliderTester::testSingleStep_data()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkDoubleRangeSliderTest)
-#include "moc_ctkDoubleRangeSliderTest.cpp"
+#include "ctkDoubleRangeSliderTest.moc"

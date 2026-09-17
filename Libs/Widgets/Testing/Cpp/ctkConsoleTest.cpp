@@ -32,6 +32,8 @@
 class ctkConsoleTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkConsoleTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
   void testShow();
 
@@ -44,11 +46,8 @@ void ctkConsoleTester::testShow()
 {
   ctkConsole console;
   console.show();
-#if (QT_VERSION >= 0x50000)
-  QTest::qWaitForWindowActive(&console);
-#else
-  QTest::qWaitForWindowShown(&console);
-#endif
+  bool result = QTest::qWaitForWindowActive(&console);
+  Q_UNUSED(result);
 }
 
 // ----------------------------------------------------------------------------
@@ -73,4 +72,4 @@ void ctkConsoleTester::testRunFile_data()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkConsoleTest)
-#include "moc_ctkConsoleTest.cpp"
+#include "ctkConsoleTest.moc"

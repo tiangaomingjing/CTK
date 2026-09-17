@@ -189,21 +189,33 @@ void ctkXnatSessionPrivate::checkSession() const
 void ctkXnatSessionPrivate::setSessionProperties()
 {
   sessionProperties.clear();
+
+  // XNAT 1.6 and earlier report the server version at /data/version.
   QUuid uuid = xnat->get("/data/version");
   QScopedPointer<qRestResult> restResult(xnat->takeResult(uuid));
+  QString version;
   if (restResult)
   {
-    QString version = restResult->result()["content"].toString();
-    if (version.isEmpty())
-    {
-      throw ctkXnatProtocolFailureException("No version information available.");
-    }
-    sessionProperties[SERVER_VERSION] = version;
+    version = restResult->result()["content"].toString();
   }
-  else
+  if (version.isEmpty())
   {
-    this->throwXnatException("Retrieving session properties failed.");
+    // XNAT 1.7 and later report the server version at /xapi/siteConfig/buildInfo.
+    uuid = xnat->get("/xapi/siteConfig/buildInfo");
+    restResult.reset(xnat->takeResult(uuid));
+    if (restResult)
+    {
+      version = restResult->result()["version"].toString();
+    }
   }
+  if (version.isEmpty())
+  {
+    // The server version is informational only, therefore failure to
+    // retrieve it must not prevent opening the session.
+    qWarning() << "Failed to retrieve XNAT server version.";
+    return;
+  }
+  sessionProperties[SERVER_VERSION] = version;
 }
 
 //----------------------------------------------------------------------------
@@ -224,7 +236,11 @@ QDateTime ctkXnatSessionPrivate::updateExpirationDate(qRestResult* restResult)
           unsigned long long startTime = expirationCookie[0].mid(1).toULongLong();
           if (startTime > 0)
           {
+#if (QT_VERSION < QT_VERSION_CHECK(5, 8, 0))
             expirationDate = QDateTime::fromTime_t(startTime / 1000);
+#else
+            expirationDate = QDateTime::fromSecsSinceEpoch(startTime / 1000);
+#endif
           }
           QByteArray timeSpan = expirationCookie[1];
           timeSpan.chop(1);
@@ -266,7 +282,11 @@ QList<ctkXnatObject*> ctkXnatSessionPrivate::results(qRestResult* restResult, QS
     // try to create an object based on the custom schema type first
     if (!customSchemaType.isEmpty())
     {
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+      typeId = QMetaType::fromName(qPrintable(customSchemaType)).id();
+#else
       typeId = QMetaType::type(qPrintable(customSchemaType));
+#endif
     }
 
     // Fall back. Create the default class according to the default schema type
@@ -276,7 +296,11 @@ QList<ctkXnatObject*> ctkXnatSessionPrivate::results(qRestResult* restResult, QS
       {
         qWarning() << QString("No ctkXnatObject sub-class registered for the schema %1. Falling back to the default class %2.").arg(customSchemaType).arg(schemaType);
       }
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+      typeId = QMetaType::fromName(qPrintable(schemaType)).id();
+#else
       typeId = QMetaType::type(qPrintable(schemaType));
+#endif
     }
 
     if (!typeId)
@@ -285,11 +309,7 @@ QList<ctkXnatObject*> ctkXnatSessionPrivate::results(qRestResult* restResult, QS
       continue;
     }
 
-#if (QT_VERSION < QT_VERSION_CHECK(5,0,0))
-    ctkXnatObject* object = reinterpret_cast<ctkXnatObject*>(QMetaType::construct(typeId));
-#else
     ctkXnatObject* object = reinterpret_cast<ctkXnatObject*>(QMetaType(typeId).create());
-#endif
     if (!customSchemaType.isEmpty())
     {
       // We might have created the default ctkXnatObject sub-class, but can still set
@@ -300,7 +320,7 @@ QList<ctkXnatObject*> ctkXnatSessionPrivate::results(qRestResult* restResult, QS
     // Fill in the properties
     QMapIterator<QString, QVariant> it(propertyMap);
     QString description;
-    
+
     while (it.hasNext())
     {
       it.next();
@@ -347,7 +367,7 @@ ctkXnatSession::ctkXnatSession(const ctkXnatLoginProfile& loginProfile)
   qRegisterMetaType<ctkXnatResource>(qPrintable(ctkXnatDefaultSchemaTypes::XSI_RESOURCE));
   qRegisterMetaType<ctkXnatAssessor>(qPrintable(ctkXnatDefaultSchemaTypes::XSI_ASSESSOR));
   qRegisterMetaType<ctkXnatFile>(qPrintable(ctkXnatDefaultSchemaTypes::XSI_FILE));
-  
+
   QString url = d->loginProfile.serverUrl().toString();
   d->xnat->setServerUrl(url);
 
@@ -427,7 +447,7 @@ QString ctkXnatSession::version() const
   }
   else
   {
-    return QString::null;
+    return QString();
   }
 }
 
@@ -693,11 +713,7 @@ void ctkXnatSession::upload(ctkXnatFile *xnatFile,
   {
     QCryptographicHash hash(QCryptographicHash::Md5);
 
-#if QT_VERSION >= QT_VERSION_CHECK(5,0,0)
     hash.addData(&localFile);
-#else
-    hash.addData(localFile.readAll());
-#endif
 
     QString md5ChecksumLocal(hash.result().toHex());
     // Retrieving the md5 checksum on the server and comparing

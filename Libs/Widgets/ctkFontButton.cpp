@@ -79,7 +79,7 @@ QString ctkFontButtonPrivate::fullNameWeight()const
     }
   */
   switch (this->Font.weight())
-    {
+  {
     case QFont::Light:
       return QString("Light");
     case QFont::Normal:
@@ -92,7 +92,7 @@ QString ctkFontButtonPrivate::fullNameWeight()const
       return QString("Black");
     default:
       return QString();
-    }
+  }
   return QString();
 }
 
@@ -105,11 +105,11 @@ void ctkFontButtonPrivate::updateText()
   text.replace("sss", QString("%1pt").arg(this->Font.pointSize()));
   text.replace("ss", QString("%1").arg(this->Font.pointSize()));
   text.replace("www", this->fullNameWeight());
-  text.replace("ww", QString("%1").arg(this->Font.weight()));
+  text.replace("ww", QString("%1").arg(static_cast<int>(this->Font.weight())));
   text.replace("biu", QString("%1%2%3")
-    .arg(this->Font.bold() ? 'b' : '-')
-    .arg(this->Font.italic() ? 'i' : '-')
-    .arg(this->Font.underline() ? 'u' : '-'));
+    .arg(QChar(this->Font.bold() ? 'b' : '-'))
+    .arg(QChar(this->Font.italic() ? 'i' : '-'))
+    .arg(QChar(this->Font.underline() ? 'u' : '-')));
   text.replace("bbb", this->Font.bold() ? "bold" : "");
   text.replace("bb", this->Font.bold() ? "b" : "");
   text.replace("iii", this->Font.italic() ? "italic" : "");
@@ -150,9 +150,9 @@ void ctkFontButton::setCurrentFont(const QFont& newFont)
   Q_D(ctkFontButton);
 
   if (d->Font == newFont)
-    {
+  {
     return;
-    }
+  }
 
   d->Font = newFont;
 
@@ -176,9 +176,9 @@ void ctkFontButton::browseFont()
   bool ok = false;
   QFont newFont = QFontDialog::getFont(&ok, d->Font, this);
   if (ok)
-    {
+  {
     this->setCurrentFont(newFont);
-    }
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -195,4 +195,3 @@ QString ctkFontButton::fontTextFormat()const
   Q_D(const ctkFontButton);
   return d->FontTextFormat;
 }
-

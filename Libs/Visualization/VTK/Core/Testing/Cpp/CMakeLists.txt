@@ -9,7 +9,7 @@ set(TEST_SOURCES
   ctkVTKObjectTest1.cpp
   )
 
-if(CTK_USE_CHARTS)
+if(CTK_LIB_Visualization/VTK/Widgets_USE_TRANSFER_FUNCTION_CHARTS)
   set(TEST_SOURCES
     vtkScalarsToColorsPreviewChartTest1.cpp
     ${TEST_SOURCES})
@@ -40,19 +40,6 @@ set(KIT_HELPER_SRCS
   ctkVTKObjectTestHelper.cpp
   )
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  QT5_WRAP_CPP(KIT_HELPER_SRCS ctkVTKObjectTestHelper.h)
-  QT5_GENERATE_MOCS(
-    ctkVTKConnectionTestObjectDelete.cpp
-    )
-  include_directories(${Qt5Widgets_INCLUDE_DIRS})
-else()
-  QT4_WRAP_CPP(KIT_HELPER_SRCS ctkVTKObjectTestHelper.h)
-  QT4_GENERATE_MOCS(
-    ctkVTKConnectionTestObjectDelete.cpp
-    )
-endif()
-
 #
 # Tests
 #
@@ -68,8 +55,18 @@ REMOVE (TestsToRun ${KIT}CppTests.cpp)
 
 set(LIBRARY_NAME ${PROJECT_NAME})
 
-add_executable(${KIT}CppTests ${Tests} ${KIT_HELPER_SRCS})
+ctk_add_executable_utf8(${KIT}CppTests ${Tests} ${KIT_HELPER_SRCS})
 target_link_libraries(${KIT}CppTests ${LIBRARY_NAME} ${CTK_BASE_LIBRARIES})
+
+find_package(Qt${CTK_QT_VERSION} COMPONENTS Widgets REQUIRED)
+target_link_libraries(${KIT}CppTests
+  Qt${CTK_QT_VERSION}::Widgets
+  )
+
+# Configure CMake Qt automatic code generation
+set_target_properties(${KIT}CppTests PROPERTIES
+  AUTOMOC ON
+  )
 
 #
 # Add Tests
@@ -86,4 +83,3 @@ if(EXISTS "${CTKData_DIR}")
   set(baseline_relative_location "Libs/Visualization/VTK/Core")
   SIMPLE_TEST_WITH_DATA( vtkLightBoxRendererManagerTest1 ${baseline_relative_location}/vtkLightBoxRendererManagerTest1.png)
 endif()
-

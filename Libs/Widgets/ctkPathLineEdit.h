@@ -48,27 +48,36 @@ MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 // Qt includes
 #include <QDir>
 #include <QWidget>
-class QComboBox;
+#include <QComboBox>
+#include <QCompleter>
+#include <QDebug>
+#include <QFileSystemModel>
+#include <QToolButton>
+
+class QRegularExpressionValidator;
+
 
 // CTK includes
 #include "ctkWidgetsExport.h"
-class ctkPathLineEditPrivate;
 
 /// \ingroup Widgets
 /// \brief Advanced line edit to select a file or directory.
 /// \sa ctkDirectoryButton, ctkPathListWidget
-///
+class ctkPathLineEditPrivate; //Forward declaration needed within file
 class CTK_WIDGETS_EXPORT ctkPathLineEdit: public QWidget
 {
   Q_OBJECT
-  Q_FLAGS(Filters)
-  Q_PROPERTY ( QString label READ label WRITE setLabel )
 
-  Q_PROPERTY ( Filters filters READ filters WRITE setFilters)
-  Q_PROPERTY ( QString currentPath READ currentPath WRITE setCurrentPath USER true )
+  Q_PROPERTY(QString label READ label WRITE setLabel)
+
+  Q_PROPERTY(Filters filters READ filters WRITE setFilters)
+  Q_FLAGS(Filters)
+
+  Q_PROPERTY(QString currentPath READ currentPath WRITE setCurrentPath USER true)
+
   /// Qt versions prior to 4.7.0 didn't expose QFileDialog::Options in the
   /// public API. We need to create a custom property that will be used when
-  /// instanciating a QFileDialog in ctkPathLineEdit::browse()
+  /// instantiating a QFileDialog in ctkPathLineEdit::browse()
 #ifdef USE_QFILEDIALOG_OPTIONS
   Q_PROPERTY(QFileDialog::Options options READ options WRITE setOptions)
 #else
@@ -100,7 +109,8 @@ class CTK_WIDGETS_EXPORT ctkPathLineEdit: public QWidget
 
   /// This property holds the policy describing how the size of the path line edit widget
   /// changes when the content changes.
-  /// The default value is AdjustToContentsOnFirstShow.
+  /// The default value is AdjustToMinimumContentsLength to prevent displaying
+  /// of a long path making the layout too wide.
   Q_PROPERTY(SizeAdjustPolicy sizeAdjustPolicy READ sizeAdjustPolicy WRITE setSizeAdjustPolicy)
 
   /// This property holds the minimum number of characters that should fit into
@@ -163,7 +173,7 @@ public:
     /// use this policy on large models.
     AdjustToMinimumContentsLength
   };
-
+  Q_ENUM(SizeAdjustPolicy)
   /** Default constructor
   */
   ctkPathLineEdit(QWidget *parent = 0);
@@ -224,10 +234,10 @@ public:
   void setSizeAdjustPolicy(SizeAdjustPolicy policy);
 
   int minimumContentsLength()const;
-  void setMinimumContentsLength(int lenght);
+  void setMinimumContentsLength(int length);
 
   /// Return the combo box internally used by the path line edit
-  QComboBox* comboBox() const;
+  Q_INVOKABLE QComboBox* comboBox() const;
 
   /// The width returned, in pixels, is the length of the file name (with no
   /// path) if any. Otherwise, it's enough for 15 to 20 characters.
@@ -247,7 +257,9 @@ Q_SIGNALS:
 public Q_SLOTS:
   void setCurrentPath(const QString& path);
 
-  /// Open a QFileDialog to select a file or directory and set current text to it
+  /// Open a QFileDialog to select a file or directory and set current text to it.
+  /// Type of dialog (file open, file save, select directory) is controlled by options flags
+  /// Files (chooses between file and directory dialog) and Writable (chooses between open and save).
   /// You would probably connect a browse push button like this:
   /// connect(myPushButton,SIGNAL(clicked()),myPathLineEdit,SLOT(browse()))
   /// As a conveniency, such button is provided by default via the browseButton
@@ -278,6 +290,92 @@ private:
 
   Q_PRIVATE_SLOT(d_ptr, void _q_recomputeCompleterPopupSize())
 };
+
+//-----------------------------------------------------------------------------
+/// Completer class with built-in file system model
+class ctkFileCompleter : public QCompleter {
+  Q_OBJECT
+public:
+  ctkFileCompleter(QObject* o, bool showFiles);
+
+  // Ensure auto-completed file always uses forward-slash as separator
+  QString pathFromIndex(const QModelIndex& idx) const override;
+
+  // Helper function for getting the current model casted to QFileSystemModel
+  QFileSystemModel* fileSystemModel() const;
+
+  // Adds path to the file system model.
+  // This also automatically adds all children to the model.
+  void addPathToIndex(const QString& path);
+
+  // Switch between showing files or folders only
+  void setShowFiles(bool show);
+  bool showFiles();
+
+  // Set name filter. If filters is empty then all folder/file names are displayed
+  // and the global shared file system models are used. If name filters are set then
+  // a custom custom file system is created for the widget.
+  void setNameFilters(const QStringList& filters);
+
+  // Since nameFilters() function may be relevant when more work will be done,
+  // it is commented to quiet the "-Wunused-function" warning.
+  //
+  // QStringList nameFilters() const;
+
+protected:
+  QFileSystemModel* CustomFileSystemModel;
+};
+
+//-----------------------------------------------------------------------------
+class ctkPathLineEditPrivate
+{
+  Q_DECLARE_PUBLIC(ctkPathLineEdit);
+
+protected:
+  ctkPathLineEdit* const q_ptr;
+
+public:
+  ctkPathLineEditPrivate(ctkPathLineEdit& object);
+  void init();
+  QSize recomputeSizeHint(QSize& sh)const;
+  void updateFilter();
+
+  void adjustPathLineEditSize();
+
+  void _q_recomputeCompleterPopupSize();
+
+  void createPathLineEditWidget(bool useComboBox);
+  QString settingKey()const;
+
+  QLineEdit*            LineEdit;
+  QComboBox*            ComboBox;
+  QToolButton*          BrowseButton;       //!< "..." button
+
+  int                   MinimumContentsLength;
+  ctkPathLineEdit::SizeAdjustPolicy SizeAdjustPolicy;
+
+  QString               Label;              //!< used in file dialogs
+  QStringList           NameFilters;        //!< Regular expression (in wildcard mode) used to help the user to complete the line
+  QDir::Filters         Filters;            //!< Type of path (file, dir...)
+#ifdef USE_QFILEDIALOG_OPTIONS
+  QFileDialog::Options DialogOptions;
+#else
+  ctkPathLineEdit::Options DialogOptions;
+#endif
+
+  bool                  HasValidInput;      //!< boolean that stores the old state of valid input
+  QString               SettingKey;
+
+  static QString        sCurrentDirectory;   //!< Content the last value of the current directory
+  static int            sMaxHistory;     //!< Size of the history, if the history is full and a new value is added, the oldest value is dropped
+
+  mutable QSize SizeHint;
+  mutable QSize MinimumSizeHint;
+
+  ctkFileCompleter* Completer;
+  QRegularExpressionValidator* Validator;
+};
+
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(ctkPathLineEdit::Filters)
 #ifndef USE_QFILEDIALOG_OPTIONS

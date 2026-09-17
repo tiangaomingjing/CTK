@@ -25,7 +25,7 @@
    All rights reserved.
 
    ParaView is a free software; you can redistribute it and/or modify it
-   under the terms of the ParaView license version 1.2. 
+   under the terms of the ParaView license version 1.2.
 
    See http://www.paraview.org/paraview/project/license.html for the full ParaView license.
    A copy of this license can be obtained by contacting
@@ -78,22 +78,36 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //----------------------------------------------------------------------------
 // ctkPythonConsoleCompleter
 
-//----------------------------------------------------------------------------
-class ctkPythonConsoleCompleter : public ctkConsoleCompleter
+class ctkPythonConsoleCompleterPrivate
 {
-public:
-  ctkPythonConsoleCompleter(ctkAbstractPythonManager& pythonManager);
+  Q_DECLARE_PUBLIC(ctkPythonConsoleCompleter);
+protected:
+  ctkPythonConsoleCompleter* const q_ptr;
 
-  virtual int cursorOffset(const QString& completion);
-  virtual void updateCompletionModel(const QString& completion);
+public:
+  ctkPythonConsoleCompleterPrivate(ctkPythonConsoleCompleter& o, ctkAbstractPythonManager& pythonManager)
+  : q_ptr(&o)
+  , PythonManager(pythonManager)
+  {
+  }
+
+  virtual ~ctkPythonConsoleCompleterPrivate()
+  {
+  }
+
   static QString searchUsableCharForCompletion(const QString& completion);
 
+  /// Sort Python attributes in the following groups (with case insensitive sorting within each group):
+  /// - Python and Qt attributes and methods (starts with lowercase letter)
+  /// - VTK methods + static classes and types (starts with uppercase letter, ends with parenthesis)
+  /// - constants (starts with uppercase letter, does not end with parenthesis)
+  /// - private attributes (starts with underscore)
+  static bool PythonAttributeLessThan(const QString& s1, const QString& s2);
 
-protected:
-  bool isInUserDefinedClass(const QString &pythonFunctionPath);
-  bool isUserDefinedFunction(const QString &pythonFunctionName);
-  bool isBuiltInFunction(const QString &pythonFunctionName);
-  int parameterCountUserDefinedClassFunction(const QString &pythonFunctionName);
+  bool isInUserDefinedClass(const QString& pythonFunctionPath);
+  bool isUserDefinedFunction(const QString& pythonFunctionName);
+  bool isBuiltInFunction(const QString& pythonFunctionName);
+  int parameterCountUserDefinedClassFunction(const QString& pythonFunctionName);
   int parameterCountBuiltInFunction(const QString& pythonFunctionName);
   int parameterCountUserDefinedFunction(const QString& pythonFunctionName);
   int parameterCountFromDocumentation(const QString& pythonFunctionPath);
@@ -103,171 +117,197 @@ protected:
 
 //----------------------------------------------------------------------------
 ctkPythonConsoleCompleter::ctkPythonConsoleCompleter(ctkAbstractPythonManager& pythonManager)
-  : PythonManager(pythonManager)
-  {
+  : d_ptr(new ctkPythonConsoleCompleterPrivate(*this, pythonManager))
+{
   this->setParent(&pythonManager);
-  }
+}
+
+//----------------------------------------------------------------------------
+ctkPythonConsoleCompleter::~ctkPythonConsoleCompleter()
+{
+}
+
 
 //----------------------------------------------------------------------------
 int ctkPythonConsoleCompleter::cursorOffset(const QString& completion)
 {
+  Q_D(ctkPythonConsoleCompleter);
   QString allTextFromShell = completion;
   int parameterCount = 0;
   int cursorOffset = 0;
   if (allTextFromShell.contains("()"))
-    {
+  {
     allTextFromShell.replace("()", "");
     // Search backward through the string for usable characters
     QString currentCompletionText;
     for (int i = allTextFromShell.length()-1; i >= 0; --i)
-      {
+    {
       QChar c = allTextFromShell.at(i);
       if (c.isLetterOrNumber() || c == '.' || c == '_')
-        {
+      {
         currentCompletionText.prepend(c);
-        }
-      else
-        {
-        break;
-        }
       }
+      else
+      {
+        break;
+      }
+    }
+    #if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+    QStringList lineSplit = currentCompletionText.split(".", Qt::KeepEmptyParts);
+    #else
     QStringList lineSplit = currentCompletionText.split(".", QString::KeepEmptyParts);
+    #endif
     QString functionName = lineSplit.at(lineSplit.length()-1);
     QStringList builtinFunctionPath = QStringList() << "__main__" << "__builtins__";
     QStringList userDefinedFunctionPath = QStringList() << "__main__";
-    if (this->isBuiltInFunction(functionName))
-      {
-      parameterCount = this->parameterCountBuiltInFunction(QStringList(builtinFunctionPath+lineSplit).join("."));
-      }
-    else if (this->isUserDefinedFunction(functionName))
-      {
-      parameterCount = this->parameterCountUserDefinedFunction(QStringList(userDefinedFunctionPath+lineSplit).join("."));
-      }
-    else if (this->isInUserDefinedClass(currentCompletionText))
-      {
+    if (d->isBuiltInFunction(functionName))
+    {
+      parameterCount = d->parameterCountBuiltInFunction(QStringList(builtinFunctionPath+lineSplit).join("."));
+    }
+    else if (d->isUserDefinedFunction(functionName))
+    {
+      parameterCount = d->parameterCountUserDefinedFunction(QStringList(userDefinedFunctionPath+lineSplit).join("."));
+    }
+    else if (d->isInUserDefinedClass(currentCompletionText))
+    {
       // "self" parameter can be ignored
-      parameterCount = this->parameterCountUserDefinedClassFunction(QStringList(userDefinedFunctionPath+lineSplit).join(".")) - 1;
-      }
+      parameterCount = d->parameterCountUserDefinedClassFunction(QStringList(userDefinedFunctionPath+lineSplit).join(".")) - 1;
+    }
     else
-      {
+    {
       QStringList variableNameAndFunctionList = userDefinedFunctionPath + lineSplit;
       QString variableNameAndFunction = variableNameAndFunctionList.join(".");
-      parameterCount = this->parameterCountFromDocumentation(variableNameAndFunction);
-      }
+      parameterCount = d->parameterCountFromDocumentation(variableNameAndFunction);
     }
+  }
   if (parameterCount > 0)
-    {
+  {
     cursorOffset = 1;
-    }
+  }
   return cursorOffset;
 }
 
 
 //---------------------------------------------------------------------------
-bool ctkPythonConsoleCompleter::isInUserDefinedClass(const QString &pythonFunctionPath)
+bool ctkPythonConsoleCompleterPrivate::isInUserDefinedClass(const QString &pythonFunctionPath)
 {
   return this->PythonManager.pythonAttributes(pythonFunctionPath).contains("__func__");
 }
 
 //---------------------------------------------------------------------------
-bool ctkPythonConsoleCompleter::isUserDefinedFunction(const QString &pythonFunctionName)
+bool ctkPythonConsoleCompleterPrivate::isUserDefinedFunction(const QString &pythonFunctionName)
 {
   return this->PythonManager.pythonAttributes(pythonFunctionName).contains("__call__");
 }
 
 //---------------------------------------------------------------------------
-bool ctkPythonConsoleCompleter::isBuiltInFunction(const QString &pythonFunctionName)
+bool ctkPythonConsoleCompleterPrivate::isBuiltInFunction(const QString &pythonFunctionName)
 {
   return this->PythonManager.pythonAttributes(pythonFunctionName, QLatin1String("__main__.__builtins__")).contains("__call__");
 }
 
 //---------------------------------------------------------------------------
-int ctkPythonConsoleCompleter::parameterCountBuiltInFunction(const QString& pythonFunctionName)
+int ctkPythonConsoleCompleterPrivate::parameterCountBuiltInFunction(const QString& pythonFunctionName)
 {
   int parameterCount = 0;
   PyObject* pFunction = this->PythonManager.pythonModule(pythonFunctionName);
-  if (pFunction && PyObject_HasAttrString(pFunction, "__doc__"))
+  if (pFunction)
+  {
+    if (PyObject_HasAttrString(pFunction, "__doc__"))
     {
-    PyObject* pDoc = PyObject_GetAttrString(pFunction, "__doc__");
-    QString docString = PyString_AsString(pDoc);
-    QString argumentExtract = docString.mid(docString.indexOf("(")+1, docString.indexOf(")") - docString.indexOf("(")-1);
-    QStringList arguments = argumentExtract.split(",", QString::SkipEmptyParts);
-    parameterCount = arguments.count();
-    Py_DECREF(pDoc);
-    Py_DECREF(pFunction);
+      PyObject* pDoc = PyObject_GetAttrString(pFunction, "__doc__");
+      if (PyUnicode_Check(pDoc))
+      {
+        QString docString = PyUnicode_AsUTF8(pDoc);
+        QString argumentExtract = docString.mid(docString.indexOf("(")+1, docString.indexOf(")") - docString.indexOf("(")-1);
+        #if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+        QStringList arguments = argumentExtract.split(",", Qt::SkipEmptyParts);
+        #else
+        QStringList arguments = argumentExtract.split(",", QString::SkipEmptyParts);
+        #endif
+        parameterCount = arguments.count();
+      }
+      Py_DECREF(pDoc);
     }
+    Py_DECREF(pFunction);
+  }
   return parameterCount;
 }
 
 //----------------------------------------------------------------------------
-int ctkPythonConsoleCompleter::parameterCountUserDefinedFunction(const QString& pythonFunctionName)
+int ctkPythonConsoleCompleterPrivate::parameterCountUserDefinedFunction(const QString& pythonFunctionName)
 {
   int parameterCount = 0;
   PyObject* pFunction = this->PythonManager.pythonModule(pythonFunctionName);
   if (PyCallable_Check(pFunction))
-    {
-    PyObject* fc = PyObject_GetAttrString(pFunction, "func_code");
+  {
+    PyObject* fc = PyObject_GetAttrString(pFunction, "__code__");
     if (fc)
-       {
+    {
       PyObject* ac = PyObject_GetAttrString(fc, "co_argcount");
       if (ac)
-        {
-        parameterCount = PyInt_AsLong(ac);
+      {
+        parameterCount = PyLong_AsLong(ac);
         Py_DECREF(ac);
-        }
+      }
       Py_DECREF(fc);
-       }
     }
+  }
   return parameterCount;
 }
 
 //----------------------------------------------------------------------------
-int ctkPythonConsoleCompleter::parameterCountUserDefinedClassFunction(const QString& pythonFunctionName)
+int ctkPythonConsoleCompleterPrivate::parameterCountUserDefinedClassFunction(const QString& pythonFunctionName)
 {
   int parameterCount = 0;
   PyObject* pFunction = this->PythonManager.pythonObject(pythonFunctionName);
   if (PyCallable_Check(pFunction))
-    {
-    PyObject* fc = PyObject_GetAttrString(pFunction, "func_code");
+  {
+    PyObject* fc = PyObject_GetAttrString(pFunction, "__code__");
     if (fc)
-      {
+    {
       PyObject* ac = PyObject_GetAttrString(fc, "co_argcount");
       if (ac)
-        {
-        parameterCount = PyInt_AsLong(ac);
+      {
+        parameterCount = PyLong_AsLong(ac);
         Py_DECREF(ac);
-        }
-      Py_DECREF(fc);
       }
+      Py_DECREF(fc);
     }
+  }
   return parameterCount;
 }
 
 //----------------------------------------------------------------------------
-int ctkPythonConsoleCompleter::parameterCountFromDocumentation(const QString& pythonFunctionPath)
+int ctkPythonConsoleCompleterPrivate::parameterCountFromDocumentation(const QString& pythonFunctionPath)
 {
   int parameterCount = 0;
   PyObject* pFunction = this->PythonManager.pythonObject(pythonFunctionPath);
   if (pFunction)
-    {
+  {
     if (PyObject_HasAttrString(pFunction, "__call__"))
-      {
+    {
       PyObject* pDoc = PyObject_GetAttrString(pFunction, "__doc__");
-      if (PyString_Check(pDoc))
-        {
-        QString docString = PyString_AsString(pDoc);
+      if (PyUnicode_Check(pDoc))
+      {
+        QString docString = PyUnicode_AsUTF8(pDoc);
         QString argumentExtract = docString.mid(docString.indexOf("(")+1, docString.indexOf(")") - docString.indexOf("(")-1);
+        #if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+        QStringList arguments = argumentExtract.split(",", Qt::SkipEmptyParts);
+        #else
         QStringList arguments = argumentExtract.split(",", QString::SkipEmptyParts);
+        #endif
         parameterCount = arguments.count();
-        }
       }
-    Py_DECREF(pFunction);
+      Py_DECREF(pDoc);
     }
+    Py_DECREF(pFunction);
+  }
   return parameterCount;
 }
 
 //----------------------------------------------------------------------------
-QString ctkPythonConsoleCompleter::searchUsableCharForCompletion(const QString& completion)
+QString ctkPythonConsoleCompleterPrivate::searchUsableCharForCompletion(const QString& completion)
 {
   bool betweenSingleQuotes = false;
   bool betweenDoubleQuotes = false;
@@ -275,90 +315,138 @@ QString ctkPythonConsoleCompleter::searchUsableCharForCompletion(const QString& 
   // Search backward through the string for usable characters
   QString textToComplete;
   for (int i = completion.length()-1; i >= 0; --i)
-    {
+  {
     QChar c = completion.at(i);
     if (c == '\'' && !betweenDoubleQuotes)
-      {
+    {
       betweenSingleQuotes = !betweenSingleQuotes;
-      }
+    }
     if (c == '"' && !betweenSingleQuotes)
-      {
+    {
       betweenDoubleQuotes = !betweenDoubleQuotes;
-      }
+    }
     // Stop the completion if c is not a letter,number,.,_,(,) and outside parenthesis
     if (c.isLetterOrNumber() || c == '.' || c == '_' || c == '(' || c == ')'
         || numberOfParenthesisClosed)
-      {
-      // Keep adding caractere to the completion if
+    {
+      // Keep adding characters to the completion if
       // the number of '(' is always <= to the number of ')'
       // note that we must not count parenthesis if they are between quote...
       if (!betweenSingleQuotes && !betweenDoubleQuotes)
-        {
+      {
         if (c == '(')
-          {
+        {
           if (numberOfParenthesisClosed>0)
-            {
+          {
             numberOfParenthesisClosed--;
-            }
+          }
           else
             break; // stop to prepend
-          }
-        if (c == ')')
-          {
-          numberOfParenthesisClosed++;
-          }
         }
-      textToComplete.prepend(c);
+        if (c == ')')
+        {
+          numberOfParenthesisClosed++;
+        }
       }
+      textToComplete.prepend(c);
+    }
     else
-      {
+    {
       break;
+    }
+  }
+  return textToComplete;
+}
+
+//----------------------------------------------------------------------------
+bool ctkPythonConsoleCompleterPrivate::PythonAttributeLessThan(const QString& s1, const QString& s2)
+{
+  if (!s1.isEmpty() && !s2.isEmpty())
+  {
+    // Move Python private attributes to the back (start with underscore)
+    if (s1[0] == QChar('_') && s2[0] != QChar('_'))
+    {
+      return false;
+    }
+    if (s1[0] != QChar('_') && s2[0] == QChar('_'))
+    {
+      return true;
+    }
+    // Move Python and Qt attributes and methods to the front (start with lowercase)
+    if (s1[0].isLower() && !s2[0].isLower())
+    {
+      return true;
+    }
+    if (!s1[0].isLower() && s2[0].isLower())
+    {
+      return false;
+    }
+    // Move VTK methods and internal classes (start with uppercase and end with parentheses)
+    // above constants  (start with uppercase and does not end with parentheses)
+    if (s1[0].isUpper() && s2[0].isUpper())
+    {
+      if (s1.endsWith("()") && !s2.endsWith("()"))
+      {
+        return true;
+      }
+      if (!s1.endsWith("()") && s2.endsWith("()"))
+      {
+        return false;
       }
     }
-  return textToComplete;
+  }
+
+  // use case insensitive sorting
+  return s1.toLower() < s2.toLower();
 }
 
 //----------------------------------------------------------------------------
 void ctkPythonConsoleCompleter::updateCompletionModel(const QString& completion)
 {
+  Q_D(ctkPythonConsoleCompleter);
   // Start by clearing the model
   this->setModel(0);
 
   // Don't try to complete the empty string
   if (completion.isEmpty())
-    {
+  {
     return;
-    }
+  }
 
   bool appendParenthesis = true;
   // Search backward through the string for usable characters
-  QString textToComplete = searchUsableCharForCompletion(completion);
+  QString textToComplete = ctkPythonConsoleCompleterPrivate::searchUsableCharForCompletion(completion);
 
   // Split the string at the last dot, if one exists
   QString lookup;
   QString compareText = textToComplete;
   int dot = compareText.lastIndexOf('.');
   if (dot != -1)
-    {
+  {
     lookup = compareText.mid(0, dot);
     compareText = compareText.mid(dot+1);
-    }
+  }
 
   // Lookup python names
   QStringList attrs;
   if (!lookup.isEmpty() || !compareText.isEmpty())
-    {
+  {
     QString module = "__main__";
-    attrs = this->PythonManager.pythonAttributes(lookup, module.toLatin1(), appendParenthesis);
+    attrs = d->PythonManager.pythonAttributes(lookup, module.toLatin1(), appendParenthesis);
     module = "__main__.__builtins__";
-    attrs << this->PythonManager.pythonAttributes(lookup, module.toLatin1(),
+    attrs << d->PythonManager.pythonAttributes(lookup, module.toLatin1(),
                                                   appendParenthesis);
     attrs.removeDuplicates();
-    }
+#if QT_VERSION >= QT_VERSION_CHECK(5,2,0)
+    std::sort(attrs.begin(), attrs.end(), ctkPythonConsoleCompleterPrivate::PythonAttributeLessThan);
+#else
+    qSort(attrs.begin(), attrs.end(), ctkPythonConsoleCompleterPrivate::PythonAttributeLessThan);
+#endif
+  }
 
   // Initialize the completion model
   if (!attrs.isEmpty())
-    {
+  {
     this->setCompletionMode(QCompleter::PopupCompletion);
     this->setModel(new QStringListModel(attrs, this));
     this->setCaseSensitivity(Qt::CaseInsensitive);
@@ -368,56 +456,60 @@ void ctkPythonConsoleCompleter::updateCompletionModel(const QString& completion)
     // choices matches one of the preference list, it will be selected.
     QModelIndex preferredIndex = this->completionModel()->index(0, 0);
     int dotCount = completion.count('.');
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+    if (dotCount == 0 || completion.at(completion.size() - 1) == '.')
+#else
     if (dotCount == 0 || completion.at(completion.count() - 1) == '.')
-      {
+#endif
+    {
       foreach(const QString& pref, this->AutocompletePreferenceList)
-        {
+      {
         //qDebug() << "pref" << pref;
         int dotPref = pref.count('.');
         // Skip if there are dots in pref and if the completion has already more dots
         // than the pref
         if ((dotPref != 0) && (dotCount > dotPref))
-          {
+        {
           continue;
-          }
+        }
         // Extract string before the last dot
         int lastDot = pref.lastIndexOf('.');
         QString prefBeforeLastDot;
         if (lastDot != -1)
-          {
+        {
           prefBeforeLastDot = pref.left(lastDot);
-          }
+        }
         //qDebug() << "prefBeforeLastDot" << prefBeforeLastDot;
         if (!prefBeforeLastDot.isEmpty() && QString::compare(prefBeforeLastDot, lookup) != 0)
-          {
+        {
           continue;
-          }
+        }
         QString prefAfterLastDot = pref;
         if (lastDot != -1 )
-          {
+        {
           prefAfterLastDot = pref.right(pref.size() - lastDot - 1);
-          }
+        }
         //qDebug() << "prefAfterLastDot" << prefAfterLastDot;
         QModelIndexList list = this->completionModel()->match(
               this->completionModel()->index(0, 0), Qt::DisplayRole, QVariant(prefAfterLastDot));
         if (list.count() > 0)
-          {
+        {
           preferredIndex = list.first();
           break;
-          }
         }
       }
+    }
 
     this->popup()->setCurrentIndex(preferredIndex);
-    }
+  }
 }
 
 //----------------------------------------------------------------------------
 // ctkPythonConsolePrivate
 
 //----------------------------------------------------------------------------
-class ctkPythonConsolePrivate : public ctkConsolePrivate
-{
+class ctkPythonConsolePrivate : public ctkConsolePrivate {
+  Q_OBJECT
   Q_DECLARE_PUBLIC(ctkPythonConsole);
 public:
   ctkPythonConsolePrivate(ctkPythonConsole& object);
@@ -468,9 +560,9 @@ void ctkPythonConsolePrivate::initializeInteractiveConsole()
   this->InteractiveConsole = PyDict_GetItemString(
     global_dict, "__ctkConsole");
   if (!this->InteractiveConsole)
-    {
+  {
     qCritical("Failed to locate the InteractiveConsole object.");
-    }
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -484,34 +576,27 @@ bool ctkPythonConsolePrivate::push(const QString& code)
   // The embedded python interpreter cannot handle DOS line-endings, see
   // http://sourceforge.net/tracker/?group_id=5470&atid=105470&func=detail&aid=1167922
   buffer.remove('\r');
-
+  PyErr_Clear(); // make sure we are not in an error state before we execute the command
   PyObject *res = PyObject_CallMethod(this->InteractiveConsole,
                                       const_cast<char*>("push"),
                                       const_cast<char*>("z"),
-                                      buffer.toLatin1().data());
+                                      buffer.toUtf8().data());
   if (res)
-    {
+  {
     int status = 0;
     if (PyArg_Parse(res, "i", &status))
-      {
+    {
       ret_value = (status > 0);
-      }
-    Py_DECREF(res);
     }
+    Py_DECREF(res);
+  }
+  else
+  {
+    // error occurred
+    PyErr_Clear();
+  }
   return ret_value;
 }
-
-////----------------------------------------------------------------------------
-//void ctkPythonConsolePrivate::resetInputBuffer()
-//{
-//  if (this->InteractiveConsole)
-//    {
-//    //this->MakeCurrent();
-//    const char* code = "__ctkConsole.resetbuffer()\n";
-//    PyRun_SimpleString(code);
-//    //this->ReleaseControl();
-//    }
-//}
 
 //----------------------------------------------------------------------------
 void ctkPythonConsolePrivate::printWelcomeMessage()
@@ -553,10 +638,10 @@ void ctkPythonConsole::initialize(ctkAbstractPythonManager* newPythonManager)
   Q_D(ctkPythonConsole);
 
   if (d->PythonManager)
-    {
+  {
     qWarning() << "ctkPythonConsole already initialized !";
     return;
-    }
+  }
 
   // The call to mainContext() ensures that python has been initialized.
   Q_ASSERT(newPythonManager);
@@ -571,9 +656,9 @@ void ctkPythonConsole::initialize(ctkAbstractPythonManager* newPythonManager)
   d->initializeInteractiveConsole();
 
   this->connect(PythonQt::self(), SIGNAL(pythonStdOut(QString)),
-                d, SLOT(printOutputMessage(QString)));
+                this, SLOT(printOutputMessage(QString)));
   this->connect(PythonQt::self(), SIGNAL(pythonStdErr(QString)),
-                d, SLOT(printErrorMessage(QString)));
+                this, SLOT(printErrorMessage(QString)));
 
   PythonQt::self()->setRedirectStdInCallback(
         ctkConsole::stdInRedirectCallBack, reinterpret_cast<void*>(this));
@@ -592,46 +677,32 @@ void ctkPythonConsole::initialize(ctkAbstractPythonManager* newPythonManager)
   this->setDisabled(false);
 }
 
-////----------------------------------------------------------------------------
-//void ctkPythonConsole::executeScript(const QString& script)
-//{
-//  Q_D(ctkPythonConsole);
-//  Q_UNUSED(script);
-
-//  d->printOutputMessage("\n");
-//  emit this->executing(true);
-////   d->Interpreter->RunSimpleString(
-////     script.toLatin1().data());
-//  emit this->executing(false);
-//  d->promptForInput();
-//}
-
 //----------------------------------------------------------------------------
 QString ctkPythonConsole::ps1() const
 {
   PyObject * ps1 = PySys_GetObject(const_cast<char*>("ps1"));
-  const char * ps1_str = PyString_AsString(ps1);
+  const char * ps1_str = PyUnicode_AsUTF8(ps1);
   return QLatin1String(ps1_str);
 }
 
 //----------------------------------------------------------------------------
 void ctkPythonConsole::setPs1(const QString& newPs1)
 {
-  PySys_SetObject(const_cast<char*>("ps1"), PyString_FromString(newPs1.toLatin1().data()));
+  PySys_SetObject(const_cast<char*>("ps1"), PyUnicode_FromString(newPs1.toLatin1().data()));
 }
 
 //----------------------------------------------------------------------------
 QString ctkPythonConsole::ps2() const
 {
   PyObject * ps2 = PySys_GetObject(const_cast<char*>("ps2"));
-  const char * ps2_str = PyString_AsString(ps2);
+  const char * ps2_str = PyUnicode_AsUTF8(ps2);
   return QLatin1String(ps2_str);
 }
 
 //----------------------------------------------------------------------------
 void ctkPythonConsole::setPs2(const QString& newPs2)
 {
-  PySys_SetObject(const_cast<char*>("ps2"), PyString_FromString(newPs2.toLatin1().data()));
+  PySys_SetObject(const_cast<char*>("ps2"), PyUnicode_FromString(newPs2.toLatin1().data()));
 }
 
 //----------------------------------------------------------------------------
@@ -639,6 +710,13 @@ void ctkPythonConsole::executeCommand(const QString& command)
 {
   Q_D(ctkPythonConsole);
   d->MultilineStatement = d->push(command);
+}
+
+//----------------------------------------------------------------------------
+void ctkPythonConsole::executeString(const QString& commands)
+{
+  Q_D(ctkPythonConsole);
+  d->PythonManager->executeString(commands);
 }
 
 //----------------------------------------------------------------------------
@@ -651,3 +729,4 @@ void ctkPythonConsole::reset()
   this->Superclass::reset();
 }
 
+#include "ctkPythonConsole.moc"

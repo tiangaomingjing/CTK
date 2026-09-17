@@ -13,6 +13,10 @@ ExternalProject_Include_Dependencies(${proj}
   USE_SYSTEM_VAR ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj}
   )
 
+# Let the user to chose whether to use libs installed in the system
+option(${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj} "Use installed ${proj} library in the system" OFF)
+mark_as_advanced(${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
+
 if(${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
   unset(ITK_DIR CACHE)
   find_package(ITK REQUIRED NO_MODULE)
@@ -25,10 +29,15 @@ endif()
 
 if(NOT DEFINED ITK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
 
-  set(revision_tag "v3.20.1")
+  if("${CMAKE_CXX_STANDARD}" STREQUAL "98")
+    set(revision_tag "v4.13.3")
+  else()
+    set(revision_tag "v5.4.4")
+  endif()
   if(${proj}_REVISION_TAG)
     set(revision_tag ${${proj}_REVISION_TAG})
   endif()
+  ExternalProject_Message(${proj} "${proj}[revision_tag:${revision_tag}]")
 
   set(location_args )
   if(${proj}_URL)
@@ -37,14 +46,21 @@ if(NOT DEFINED ITK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
     set(location_args GIT_REPOSITORY ${${proj}_GIT_REPOSITORY}
                       GIT_TAG ${revision_tag})
   else()
-    set(location_args GIT_REPOSITORY "${git_protocol}://itk.org/ITK.git"
+    set(location_args GIT_REPOSITORY "${EP_GIT_PROTOCOL}://github.com/InsightSoftwareConsortium/ITK"
                       GIT_TAG ${revision_tag})
   endif()
 
-  set(ep_project_include_arg)
-  if(CTEST_USE_LAUNCHERS)
-    set(ep_project_include_arg
-      "-DCMAKE_PROJECT_ITK_INCLUDE:FILEPATH=${CMAKE_ROOT}/Modules/CTestUseLaunchers.cmake")
+  # On macOS, Apple's linker warns about duplicate -lm entries that arise from
+  # ITK's transitive dependency chains. The duplicates are harmless (the linker
+  # deduplicates them) but produce ~70 warnings per build. Suppress them at the
+  # linker level since the fix belongs upstream in ITK's exported targets.
+  set(_itk_extra_linker_flags)
+  if(APPLE)
+    set(_itk_extra_linker_flags
+      -DCMAKE_SHARED_LINKER_FLAGS:STRING=-Wl,-no_warn_duplicate_libraries
+      -DCMAKE_EXE_LINKER_FLAGS:STRING=-Wl,-no_warn_duplicate_libraries
+      -DCMAKE_MODULE_LINKER_FLAGS:STRING=-Wl,-no_warn_duplicate_libraries
+    )
   endif()
 
   ExternalProject_Add(${proj}
@@ -56,20 +72,34 @@ if(NOT DEFINED ITK_DIR AND NOT ${CMAKE_PROJECT_NAME}_USE_SYSTEM_${proj})
     INSTALL_COMMAND ""
     CMAKE_CACHE_ARGS
       ${ep_common_cache_args}
-      ${ep_project_include_arg}
+      ${_itk_extra_linker_flags}
       -DBUILD_EXAMPLES:BOOL=OFF
       -DBUILD_SHARED_LIBS:BOOL=ON
-      -DITK_USE_REVIEW:BOOL=ON
-      -DITK_USE_REVIEW_STATISTICS:BOOL=ON
-      -DITK_USE_OPTIMIZED_REGISTRATION_METHODS:BOOL=ON
-      -DITK_USE_PORTABLE_ROUND:BOOL=ON
-      -DITK_USE_CENTERED_PIXEL_COORDINATES_CONSISTENTLY:BOOL=ON
-      -DITK_USE_TRANSFORM_IO_FACTORIES:BOOL=ON
       -DITK_LEGACY_REMOVE:BOOL=ON
     DEPENDS
       ${${proj}_DEPENDENCIES}
     )
   set(ITK_DIR ${CMAKE_BINARY_DIR}/${proj}-build)
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to build tree
+
+  set(_lib_subdir lib)
+  if(WIN32)
+    set(_lib_subdir bin)
+  endif()
+
+  # library paths
+  set(${proj}_LIBRARY_PATHS_LAUNCHER_BUILD ${ITK_DIR}/${_lib_subdir}/<CMAKE_CFG_INTDIR>)
+  mark_as_superbuild(
+    VARS ${proj}_LIBRARY_PATHS_LAUNCHER_BUILD
+    LABELS "LIBRARY_PATHS_LAUNCHER_BUILD"
+    )
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to install tree
+
+  # NA
 
 else()
   ExternalProject_Add_Empty(${proj} DEPENDS ${${proj}_DEPENDENCIES})

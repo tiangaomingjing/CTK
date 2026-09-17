@@ -52,13 +52,13 @@ ctkWorkflowWidgetStepPrivate::~ctkWorkflowWidgetStepPrivate()
 }
 
 //-----------------------------------------------------------------------------
-void ctkWorkflowWidgetStepPrivate::invokeShowUserInterfaceCommandInternal()const
+void ctkWorkflowWidgetStepPrivate::invokeShowUserInterfaceCommandInternal()
 {
   emit invokeShowUserInterfaceCommand();
 }
 
 //-----------------------------------------------------------------------------
-void ctkWorkflowWidgetStepPrivate::showUserInterfaceCompleteInternal()const
+void ctkWorkflowWidgetStepPrivate::showUserInterfaceCompleteInternal()
 {
   emit showUserInterfaceComplete();
 }
@@ -71,13 +71,13 @@ void ctkWorkflowWidgetStepPrivate::showUserInterface()
 }
 
 //-----------------------------------------------------------------------------
-void ctkWorkflowWidgetStepPrivate::invokeCreateUserInterfaceCommandInternal()const
+void ctkWorkflowWidgetStepPrivate::invokeCreateUserInterfaceCommandInternal()
 {
   emit invokeCreateUserInterfaceCommand();
 }
 
 //-----------------------------------------------------------------------------
-void ctkWorkflowWidgetStepPrivate::createUserInterfaceCompleteInternal()const
+void ctkWorkflowWidgetStepPrivate::createUserInterfaceCompleteInternal()
 {
   emit createUserInterfaceComplete();
 }
@@ -177,58 +177,58 @@ void ctkWorkflowWidgetStep::showUserInterface()
 
   // use the user's showUserInterfaceCommand if given
   if (d->hasShowUserInterfaceCommand)
-    {
+  {
     this->invokeShowUserInterfaceCommand();
     return;
-    }
+  }
 
   // otherwise we provide an implementation here
   if (this->workflow()->verbose())
-    {
+  {
     qDebug() << QString("showUserInterface - showing %1").arg(this->name());
-    }
+  }
 
   // create the user interface if this is the first time we're showing this step
   if (!d->created)
-    {
+  {
     if (d->hasCreateUserInterfaceCommand)
-      {
+    {
       this->invokeCreateUserInterfaceCommand();
-      }
-    else
-      {
-      this->createUserInterface();
-      }
-    d->created = true;
     }
+    else
+    {
+      this->createUserInterface();
+    }
+    d->created = true;
+  }
 
-  emit showUserInterfaceComplete();
+  showUserInterfaceComplete();
 }
 
 //-----------------------------------------------------------------------------
-void ctkWorkflowWidgetStep::invokeShowUserInterfaceCommand()const
+void ctkWorkflowWidgetStep::invokeShowUserInterfaceCommand()
 {
-  Q_D(const ctkWorkflowWidgetStep);
+  Q_D(ctkWorkflowWidgetStep);
   d->invokeShowUserInterfaceCommandInternal();
 }
 
 //-----------------------------------------------------------------------------
-void ctkWorkflowWidgetStep::showUserInterfaceComplete()const
+void ctkWorkflowWidgetStep::showUserInterfaceComplete()
 {
-  Q_D(const ctkWorkflowWidgetStep);
+  Q_D(ctkWorkflowWidgetStep);
   d->showUserInterfaceCompleteInternal();
 }
 
 //-----------------------------------------------------------------------------
-void ctkWorkflowWidgetStep::invokeCreateUserInterfaceCommand()const
+void ctkWorkflowWidgetStep::invokeCreateUserInterfaceCommand()
 {
-  Q_D(const ctkWorkflowWidgetStep);
+  Q_D(ctkWorkflowWidgetStep);
   d->invokeCreateUserInterfaceCommandInternal();
 }
 
 //-----------------------------------------------------------------------------
-void ctkWorkflowWidgetStep::createUserInterfaceComplete()const
+void ctkWorkflowWidgetStep::createUserInterfaceComplete()
 {
-  Q_D(const ctkWorkflowWidgetStep);
+  Q_D(ctkWorkflowWidgetStep);
   d->createUserInterfaceCompleteInternal();
 }

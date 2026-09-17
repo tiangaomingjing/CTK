@@ -6,7 +6,7 @@
 #! \ingroup CMakeUtilities
 function(ctkFunctionExtractOptionNameAndValue my_opt var_opt_name var_opt_value)
 
- # Make sure option is correctly formated
+ # Make sure option is correctly formatted
   if(NOT "${my_opt}" MATCHES "^[- :/A-Za-z0-9._]+:(ON|OFF)$")
     message(FATAL_ERROR "Option ${my_opt} is incorrect. Options should be specified using the following format OPT1:[ON|OFF]. For example OPT1:OFF or OPT2:ON")
   endif()
@@ -32,11 +32,11 @@ if(MACRO_TESTING)
   #
   set(test1 "john:ON")
   ctkFunctionExtractOptionNameAndValue(${test1} test1_name test1_value)
-  
+
   if(NOT test1_name STREQUAL "john")
     message(FATAL_ERROR "test1_name:${test1_name} - Expected:john")
   endif()
-  
+
   if(NOT test1_value STREQUAL "ON")
     message(FATAL_ERROR "test1_value:${test1_value} - Expected:ON")
   endif()
@@ -46,13 +46,13 @@ if(MACRO_TESTING)
   #
   set(test2 "doe/john:OFF")
   ctkFunctionExtractOptionNameAndValue(${test2} test2_name test2_value)
-  
+
   if(NOT test2_name STREQUAL "doe/john")
     message(FATAL_ERROR "test1_name:${test2_name} - Expected:doe/john")
   endif()
-  
+
   if(NOT test2_value STREQUAL "OFF")
     message(FATAL_ERROR "test2_value:${test2_value} - Expected:OFF")
   endif()
-  
+
 endif()

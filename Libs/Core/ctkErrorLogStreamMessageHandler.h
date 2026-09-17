@@ -32,10 +32,11 @@ class ctkErrorLogStreamMessageHandlerPrivate;
 class CTK_CORE_EXPORT ctkErrorLogStreamMessageHandler
   : public ctkErrorLogAbstractMessageHandler
 {
+  Q_OBJECT
 public:
   typedef ctkErrorLogAbstractMessageHandler Superclass;
 
-  ctkErrorLogStreamMessageHandler();
+  ctkErrorLogStreamMessageHandler(QObject* parent = nullptr);
   virtual ~ctkErrorLogStreamMessageHandler();
 
   static QString HandlerName;
@@ -52,4 +53,3 @@ private:
 };
 
 #endif
-

@@ -37,6 +37,7 @@
 
 // CTK DICOM Core
 #include "ctkDICOMObjectModel.h"
+#include "ctkDICOMItem.h"
 
 //------------------------------------------------------------------------------
 class ctkDICOMObjectModelPrivate
@@ -49,11 +50,11 @@ protected:
 public:
   ctkDICOMObjectModelPrivate(ctkDICOMObjectModel&);
   virtual ~ctkDICOMObjectModelPrivate();
-  
+
   void init();
-  void itemInsert( DcmItem *dataset, QStandardItem *parent);
-  void seqInsert( DcmSequenceOfItems *dataset, QStandardItem *parent);
-  QString getTagValue( DcmElement *dcmElem);
+  void itemInsert(ctkDICOMItem* dicomItem, DcmItem *dataset, QStandardItem *parent);
+  void seqInsert(ctkDICOMItem* dicomItem, DcmSequenceOfItems *dataset, QStandardItem *parent);
+  QString getTagValue(ctkDICOMItem* dicomItem, DcmElement *dcmElem);
   QStandardItem* populateModelRow(const QString& tagName,const QString& tagHexName,
   const QString& tagValue, const QString& VRName,
   const QString& elementLengthQString, QStandardItem *parent);
@@ -77,26 +78,26 @@ void ctkDICOMObjectModelPrivate::init()
 {
   Q_Q(ctkDICOMObjectModel);
   QStringList horizontalHeaderLabels;
-  horizontalHeaderLabels.append( QString("Tag"));
-  horizontalHeaderLabels.append( QString("Attribute"));
-  horizontalHeaderLabels.append( QString("Value"));
-  horizontalHeaderLabels.append( QString("VR"));
-  horizontalHeaderLabels.append( QString("Length"));
+  horizontalHeaderLabels.append(ctkDICOMObjectModel::tr("Tag"));
+  horizontalHeaderLabels.append(ctkDICOMObjectModel::tr("Attribute"));
+  horizontalHeaderLabels.append(ctkDICOMObjectModel::tr("Value"));
+  horizontalHeaderLabels.append(ctkDICOMObjectModel::tr("VR"));
+  horizontalHeaderLabels.append(ctkDICOMObjectModel::tr("Length"));
   q->setHorizontalHeaderLabels(horizontalHeaderLabels);
 }
 
 //------------------------------------------------------------------------------
-void ctkDICOMObjectModelPrivate::itemInsert( DcmItem *dataset, QStandardItem *parent)
+void ctkDICOMObjectModelPrivate::itemInsert(ctkDICOMItem* dicomItem, DcmItem *dataset, QStandardItem *parent)
 {
   DcmStack stack;
   dataset->nextObject( stack, OFTrue);
   for( ; stack.top(); dataset->nextObject( stack, OFFalse))
-    {
+  {
     DcmObject *dO =  stack.top();
     // put in the visit node function
     QString tagValue = "";
     DcmTag tag = dO->getTag();
-	  // std::cout<<tag;
+    //
     QString tagName = tag.getTagName();
     //
     DcmTagKey tagX = tag.getXTag();
@@ -113,42 +114,42 @@ void ctkDICOMObjectModelPrivate::itemInsert( DcmItem *dataset, QStandardItem *pa
     DcmTag tagKey = tag.getXTag();
     if( tagKey == DCM_SequenceDelimitationItem
         || tagKey == DCM_ItemDelimitationItem
-        || "Item" == tagName)
-      {
+        || tagName == /*no tr*/"Item")
+    {
       return;
-      }
+    }
 
     DcmElement *dcmElem = dynamic_cast<DcmElement *> (dO);
-    tagValue = getTagValue(dcmElem);
+    tagValue = getTagValue(dicomItem, dcmElem);
 
     // Populate QStandardModel with current DICOM element tag name and value
     QStandardItem *tagItem = populateModelRow(tagName,tagHexName,tagValue,VRName,elementLengthQString,parent);
 
     // Check if the DICOM object is a SQ Data element and extract the nested DICOM objects
     if( dcmElem && !dcmElem->isLeaf())
-      {
+    {
       // now dcmElem points to a sequence of items
-      ctkDICOMObjectModelPrivate::seqInsert( dynamic_cast<DcmSequenceOfItems*> (dcmElem), tagItem);
-      }
+      ctkDICOMObjectModelPrivate::seqInsert(dicomItem, dynamic_cast<DcmSequenceOfItems*> (dcmElem), tagItem);
+    }
   }
 }
 
 //------------------------------------------------------------------------------
-void ctkDICOMObjectModelPrivate::seqInsert( DcmSequenceOfItems *dataset, QStandardItem *parent)
+void ctkDICOMObjectModelPrivate::seqInsert(ctkDICOMItem* dicomItem, DcmSequenceOfItems *dataset, QStandardItem *parent)
 {
   DcmObject *dO = dataset->nextInContainer(NULL);
 
   for( ; dO; dO = dataset->nextInContainer(dO))
-    {
+  {
     DcmElement *dcmElem = dynamic_cast<DcmElement *> (dO);
     QString tagValue = "";
     DcmTag tag = dO->getTag();
     DcmTag tagKey = tag.getXTag();
     if( tagKey == DCM_SequenceDelimitationItem
         || tagKey == DCM_ItemDelimitationItem)
-      {
+    {
       return;
-      }
+    }
 
     QString tagName = tag.getTagName();
     DcmTagKey tagX = tag.getXTag();
@@ -162,27 +163,26 @@ void ctkDICOMObjectModelPrivate::seqInsert( DcmSequenceOfItems *dataset, QStanda
     QString elementLengthQString = QString::number(elementLength);
 
     if( dcmElem)
-      {
-      tagValue = getTagValue(dcmElem);
-      }
+    {
+      tagValue = getTagValue(dicomItem, dcmElem);
+    }
 
     QStandardItem *tagItem = populateModelRow(tagName,tagHexName,tagValue,VRName,elementLengthQString,parent);
 
    if( dcmElem && !dcmElem->isLeaf())
-      {
-      ctkDICOMObjectModelPrivate::seqInsert( dynamic_cast<DcmSequenceOfItems*> (dcmElem), tagItem);
-      }
-    else if( tag.getXTag() == DCM_Item)
-      {
-      itemInsert( dynamic_cast<DcmItem*> (dO), tagItem);
-      }
+   {
+      ctkDICOMObjectModelPrivate::seqInsert(dicomItem, dynamic_cast<DcmSequenceOfItems*> (dcmElem), tagItem);
    }
+    else if( tag.getXTag() == DCM_Item)
+    {
+      itemInsert(dicomItem, dynamic_cast<DcmItem*> (dO), tagItem);
+    }
+  }
 }
 
 //------------------------------------------------------------------------------
-QString ctkDICOMObjectModelPrivate::getTagValue( DcmElement *dcmElem)
+QString ctkDICOMObjectModelPrivate::getTagValue(ctkDICOMItem* dicomItem, DcmElement *dcmElem)
 {
-  QString tagValue = "";
   std::ostringstream value;
   OFString part;
   std::string sep;
@@ -190,26 +190,26 @@ QString ctkDICOMObjectModelPrivate::getTagValue( DcmElement *dcmElem)
   int pos;
 
   if( mult>1)
-    {
+  {
     value << "[" << mult << "] ";
-    }
+  }
 
   for( pos=0; pos < mult; pos++)
-    {
+  {
     value << sep;
     OFCondition status = dcmElem->getOFString( part, pos);
     if( status.good())
-      {
+    {
       value << part.c_str();
       sep = ", ";
-      }
     }
+  }
     if( pos < mult-1)
-      {
+    {
       value << " ...";
-      }
-  tagValue = value.str().c_str();
+    }
 
+  QString tagValue = dicomItem->Decode(dcmElem->getTag(), value.str().c_str());
   return tagValue;
 }
 
@@ -263,19 +263,25 @@ void ctkDICOMObjectModel::setFile(const QString &fileName)
 {
   Q_D(ctkDICOMObjectModel);
 
-  OFCondition status = d->fileFormat.loadFile( fileName.toLatin1().data());
+  OFCondition status = d->fileFormat.loadFile( fileName.toUtf8().data());
   if( !status.good() )
-    {
+  {
     // TODO: Through an error message.
-    }
+  }
 
   DcmDataset *dataset = d->fileFormat.getDataset();
+
+  ctkDICOMItem* dicomItem = new ctkDICOMItem;
+  dicomItem->InitializeFromItem(dataset);
+
   d->rootItem = this->invisibleRootItem();
 
   if(d->rootItem->hasChildren())
-    {
+  {
     d->rootItem->removeRows(0, d->rootItem->rowCount());
-    }
+  }
 
-  d->itemInsert( dataset, d->rootItem);
+  d->itemInsert(dicomItem, dataset, d->rootItem);
+
+  delete dicomItem;
 }

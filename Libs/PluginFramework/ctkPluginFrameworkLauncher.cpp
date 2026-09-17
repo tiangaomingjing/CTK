@@ -140,7 +140,7 @@ public:
   ctkProperties loadProperties(const QUrl& location)
   {
     ctkProperties result;
-    if (!location.isValid() || !QFileInfo(location.toLocalFile()).exists())
+    if (!location.isValid() || !QFileInfo::exists(location.toLocalFile()))
     {
       return result;
     }
@@ -158,7 +158,11 @@ public:
   {
     for (ctkProperties::iterator iter = result.begin(); iter != result.end(); ++iter)
     {
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+      if (iter.value().typeId() == QMetaType::QString)
+#else
       if (iter.value().type() == QVariant::String)
+#endif
       {
         iter.value() = substituteVars(iter.value().toString());
       }
@@ -170,7 +174,7 @@ public:
   QString substituteVars(const QString& path)
   {
     QString buf;
-    bool varStarted = false; // indicates we are processing a var subtitute
+    bool varStarted = false; // indicates we are processing a var substitute
     QString var; // the current var key
     for (QString::const_iterator iter = path.begin(); iter != path.end(); ++iter)
     {
@@ -302,7 +306,11 @@ public:
     }
 
     QStringList installEntries;
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+    if (pluginsProp.typeId() == QMetaType::QStringList)
+#else
     if (pluginsProp.type() == QVariant::StringList)
+#endif
     {
       installEntries = pluginsProp.toStringList();
     }
@@ -449,7 +457,7 @@ QVariant ctkPluginFrameworkLauncher::run(QRunnable* endSplashHandler, const QVar
   if (ctkPluginFrameworkProperties::getProperty(PROP_EXITCODE).isNull())
   {
     ctkPluginFrameworkProperties::setProperty(PROP_EXITCODE, "13");
-    ctkPluginFrameworkProperties::setProperty(PROP_EXITDATA, QString("An error has occured. See the console output and log file for details."));
+    ctkPluginFrameworkProperties::setProperty(PROP_EXITDATA, QString("An error has occurred. See the console output and log file for details."));
   }
   return QVariant();
 }
@@ -520,12 +528,12 @@ ctkPluginContext* ctkPluginFrameworkLauncher::startup(QRunnable* endSplashHandle
   d->loadBasicPlugins();
 
   d->running = true;
-  
+
   if (endSplashHandler != NULL)
   {
     endSplashHandler->run();
   }
-  
+
   return d->fwFactory->getFramework()->getPluginContext();
 }
 
@@ -808,4 +816,3 @@ QStringList ctkPluginFrameworkLauncher::getPluginSymbolicNames(const QString& se
 
   return result;
 }
-

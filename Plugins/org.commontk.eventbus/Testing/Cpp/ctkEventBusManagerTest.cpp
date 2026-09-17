@@ -28,7 +28,7 @@ public:
     /// constructor.
     testObjectCustom();
 
-    /// Return tha var's value.
+    /// Return the var's value.
     int var() {return m_Var;}
 
     /// register a custom callback
@@ -84,7 +84,7 @@ public:
     /// Create and initialize client
     /*virtual*/ void createClient(QString hostName, unsigned int port);
 
-    /// Return the string variable initializated and updated from the data pipe.
+    /// Return the string variable initialized and updated from the data pipe.
     /*virtual*/ void createServer(unsigned int port);
 
     /// Allow to send a network request.
@@ -282,7 +282,7 @@ void ctkEventBusManagerTest::eventBusRegistrationNotificationTest() {
     QVERIFY(status == ObjTestSender->var());
     delete ObjTestSender;
     ctkEventBusManager::instance()->removeSignal(ObjTestSender, setValueID);
-}
+ }
 
 void ctkEventBusManagerTest::eventBusWithReturnArgumentTest() {
     testObjectCustom *ObjTestSender = new testObjectCustom();

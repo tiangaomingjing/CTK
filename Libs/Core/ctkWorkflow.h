@@ -32,6 +32,10 @@ class ctkWorkflowStep;
 class ctkWorkflowPrivate;
 class QAbstractState;
 
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+Q_MOC_INCLUDE("ctkWorkflowStep.h") // Ensure moc sees ctkWorkflowStep for meta-type generation (needed for stricter Qt 6.4+)
+#endif
+
 /// \ingroup Core
 /// \brief ctkWorkflow is the basis for a workflow engine, i.e. a state
 /// machine with enhancements to support ctkWorkflowStep.
@@ -39,7 +43,6 @@ class QAbstractState;
 class CTK_CORE_EXPORT ctkWorkflow : public QObject
 {
   Q_OBJECT
-  Q_ENUMS(TransitionDirectionality)
   Q_PROPERTY(bool isRunning READ isRunning DESIGNABLE false)
   Q_PROPERTY(bool goBackToOriginStepUponSuccess READ goBackToOriginStepUponSuccess WRITE setGoBackToOriginStepUponSuccess)
   Q_PROPERTY(bool verbose READ verbose WRITE setVerbose)
@@ -77,6 +80,7 @@ public:
     Forward,
     Backward
   };
+  Q_ENUM(TransitionDirectionality)
 
   /// \brief Creates a transition between two steps, and adds the two steps to the workflow if they
   /// have not been previously added. (Cannot add two steps with the same id).
@@ -130,7 +134,7 @@ public:
   /// If no step is given, then the workflow's current step will be used.
   Q_INVOKABLE bool canGoForward(ctkWorkflowStep* step=0)const;
 
-  /// Returns whether or not we can go backward: i.e. there exists a step that directly preceeds the
+  /// Returns whether or not we can go backward: i.e. there exists a step that directly precedes the
   /// given step.
   ///
   /// If no step is given, then the workflow's current step will be used.
@@ -153,7 +157,7 @@ public:
   /// If no step is given, then the workflow's current step will be used.
   Q_INVOKABLE QList<ctkWorkflowStep*> forwardSteps(ctkWorkflowStep* step=0)const;
 
-  /// Get the steps that directly preceed the given step.
+  /// Get the steps that directly precede the given step.
   ///
   /// More specifically, the returned list of steps will be the origin steps for which
   /// addTransition() has been called with the given step as the destination step and directionality
@@ -252,4 +256,3 @@ private:
 };
 
 #endif
-

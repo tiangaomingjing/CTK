@@ -41,33 +41,38 @@ bool ctkTreeComboBoxEventTranslator::translateEvent(QObject *Object,
   Q_UNUSED(Error);
   ctkTreeComboBox* treeCombo = NULL;
   for(QObject* test = Object; treeCombo == NULL && test != NULL; test = test->parent())
-    {
+  {
     treeCombo = qobject_cast<ctkTreeComboBox*>(test);
-    }
+  }
 
   if(!treeCombo)
-    {
+  {
     return false;
-    }
+  }
 
   if(Event->type() == QEvent::Enter && Object == treeCombo)
-    {
+  {
     if(this->CurrentObject != Object)
-      {
+    {
       if(this->CurrentObject)
-        {
+      {
         disconnect(this->CurrentObject, 0, this, 0);
-        }
+      }
       this->CurrentObject = Object;
 //      connect(treeCombo, SIGNAL(popupShow()), this, SLOT(onPopupShow()));
 //      connect(treeCombo, SIGNAL(popupHide()), this, SLOT(onPopupHide()));
       connect(treeCombo, SIGNAL(destroyed(QObject*)),
               this, SLOT(onDestroyed(QObject*)));
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+      connect(treeCombo, &QComboBox::currentTextChanged,
+              this, &ctkTreeComboBoxEventTranslator::onCurrentIndexChanged);
+#else
       connect(treeCombo, SIGNAL(currentIndexChanged(const QString&)),
               this, SLOT(onCurrentIndexChanged(const QString&)));
+#endif
       return true;
-      }
     }
+  }
 
   return true;
 }
@@ -96,4 +101,3 @@ void ctkTreeComboBoxEventTranslator::onCurrentIndexChanged(const QString& text)
 //{
 //  emit recordEvent(this->CurrentObject, "hidepopup", "");
 //}
-

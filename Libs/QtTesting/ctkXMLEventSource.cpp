@@ -25,11 +25,14 @@
 #include <QFile>
 #include <QMap>
 #include <QMessageBox>
-#include <QtXmlPatterns/QXmlSchema>
-#include <QtXmlPatterns/QXmlSchemaValidator>
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+# include <QtXmlPatterns/QXmlSchema>
+# include <QtXmlPatterns/QXmlSchemaValidator>
+#endif
 #include <QVariant>
 
 // CTKQtTesting includes
+#include "ctkQtTestingUtility.h"
 #include "ctkXMLEventSource.h"
 
 //-----------------------------------------------------------------------------
@@ -72,39 +75,42 @@ void ctkXMLEventSource::setContent(const QString& xmlfilename)
 
   QFile xml(xmlfilename);
   if (!xml.open(QIODevice::ReadOnly))
-    {
+  {
     qCritical() << "Failed to load " << xmlfilename;
     return;
-    }
+  }
 
-  // Check if the xml file is valid
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+  // Check if the xml file is valid (Qt5 only -- QXmlSchema/QXmlSchemaValidator
+  // are from QtXmlPatterns which is not available in Qt 6)
   QXmlSchema xmlSchema;
   if (!xmlSchema.load(QUrl::fromLocalFile(":/XML/XMLDescription.xsd")) ||
       !xmlSchema.isValid())
-    {
+  {
     qCritical() << "Xml cannot be check.";
     return;
-    }
+  }
 
   QXmlSchemaValidator validator(xmlSchema);
   if(!validator.validate(&xml, QUrl::fromLocalFile(xml.fileName())))
-    {
+  {
     qCritical() << xmlfilename << "invalid xml file for qtTesting !";
     return;
-    }
+  }
+#endif
 
   xml.reset();
   QByteArray data = xml.readAll();
   this->XMLStream = new QXmlStreamReader(data);
 
   if(this->settingsRecorded())
-    {
+  {
     this->OldSettings = this->recoverSettingsFromXML();
     if(!this->settingsUpToData())
-      {
+    {
       this->restoreApplicationSettings();
-      }
     }
+  }
 
   return;
 }
@@ -114,38 +120,34 @@ int ctkXMLEventSource::getNextEvent(QString& widget, QString& command,
   QString& arguments, int& eventType)
 {
   if (!this->XMLStream)
-    {
+  {
     return EXIT_FAILURE;
-    }
+  }
   if (this->XMLStream->atEnd())
-    {
+  {
     return DONE;
-    }
+  }
   while (!this->XMLStream->atEnd())
-    {
+  {
     QXmlStreamReader::TokenType token = this->XMLStream->readNext();
     if (token == QXmlStreamReader::StartElement)
-      {
+    {
       if (this->XMLStream->name() == "event")
-        {
+      {
         break;
-        }
       }
     }
+  }
   if (this->XMLStream->atEnd())
-    {
+  {
     return DONE;
-    }
+  }
   const QXmlStreamAttributes attributes = this->XMLStream->attributes();
   widget = attributes.value("widget").toString();
   command = attributes.value("command").toString();
   arguments = attributes.value("arguments").toString();
-  eventType = attributes.hasAttribute("eventType") ?
-#if QT_VERSION < 0x50101
-    this->XMLStream->attributes().value("eventType").toString().toInt() :
-#else
-    this->XMLStream->attributes().value("eventType").toInt() :
-#endif
+  eventType = attributes.hasAttribute("type") ?
+    ctkQtTestingUtility::eventTypeFromString(this->XMLStream->attributes().value("type").toString()) :
     pqEventTypes::ACTION_EVENT;
   return SUCCESS;
 }
@@ -154,9 +156,9 @@ int ctkXMLEventSource::getNextEvent(QString& widget, QString& command,
 bool ctkXMLEventSource::settingsRecorded()
 {
   while(this->XMLStream->name() != "settings" && this->XMLStream->name() != "events")
-    {
+  {
     this->XMLStream->readNext();
-    }
+  }
   return (this->XMLStream->name() == "settings") ? true : false;
 }
 
@@ -173,13 +175,13 @@ bool ctkXMLEventSource::settingsUpToData()
 
   QMap<QObject*, QStringList>::iterator iter;
   for(iter = states.begin() ; iter!=states.end() ; ++iter)
-    {
+  {
     foreach(QString property, iter.value())
-      {
+    {
       result &= (this->OldSettings.value(QString("appsetting_%1").arg(property)) ==
                 iter.key()->property(property.toLatin1()).toString());
-      }
     }
+  }
 
   return result;
 }
@@ -194,16 +196,16 @@ bool ctkXMLEventSource::restoreApplicationSettings()
   qDebug() << "restoreApplicationSetting" << states;
 
   if (!this->Automatic)
-    {
+  {
     if (QMessageBox::No == QMessageBox::warning(0, tr("Playback ..."),
-                                                tr("The settings are differents from the record Settings.\n"
+                                                tr("The settings are different from the record Settings.\n"
                                                    "Do you want to restore the settings?"),
                                                 QMessageBox::Yes | QMessageBox::No,
                                                 QMessageBox::Yes))
-      {
+    {
       return false;
-      }
     }
+  }
 
   result = window->restoreState(
               QByteArray::fromHex(QByteArray(this->OldSettings.value("state").toLocal8Bit().constData())));
@@ -212,14 +214,14 @@ bool ctkXMLEventSource::restoreApplicationSettings()
 
   QMap<QObject*, QStringList>::iterator iter;
   for(iter = states.begin() ; iter!=states.end() ; ++iter)
-    {
+  {
     foreach(QString property, iter.value())
-      {
+    {
       iter.key()->setProperty(property.toLatin1(),
                               QVariant(this->OldSettings.value(
                               QString("appsetting_%1").arg(property))));
-      }
     }
+  }
 
 
   return result;
@@ -232,21 +234,21 @@ QMap<QString, QString> ctkXMLEventSource::recoverSettingsFromXML()
   QMap<QString, QString> settings;
   while (this->XMLStream->tokenType() != QXmlStreamReader::EndElement ||
          this->XMLStream->name() != "settings")
-    {
+  {
     this->XMLStream->readNext();
     if (!this->XMLStream->name().isEmpty() &&
         this->XMLStream->tokenType() == QXmlStreamReader::StartElement)
-      {
+    {
       QString key = this->XMLStream->name().toString();
       // There might be multiple appsetting elements, ensure key is unique
       if (this->XMLStream->name().toString() == "appsetting")
-        {
+      {
         key += "_" + this->XMLStream->attributes().value("command").toString();
-        }
+      }
       settings[key].append(
                       this->XMLStream->attributes().value("arguments").toString());
-      }
     }
+  }
   return settings;
 }
 
@@ -255,12 +257,12 @@ QMainWindow* ctkXMLEventSource::mainWindow()
 {
   QMainWindow* window = NULL;
   foreach(QWidget * widget, QApplication::topLevelWidgets())
-    {
+  {
     window = qobject_cast<QMainWindow*>(widget);
     if (window)
-      {
+    {
       return window;
-      }
     }
+  }
   return 0;
 }

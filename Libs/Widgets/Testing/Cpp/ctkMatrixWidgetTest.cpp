@@ -31,6 +31,8 @@
 class ctkMatrixWidgetTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkMatrixWidgetTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
   void testUI();
 
@@ -45,11 +47,8 @@ void ctkMatrixWidgetTester::testUI()
   matrix.setMaximum(100.);
 
   matrix.show();
-#if (QT_VERSION >= 0x50000)
-  QTest::qWaitForWindowActive(&matrix);
-#else
-  QTest::qWaitForWindowShown(&matrix);
-#endif
+  bool result = QTest::qWaitForWindowActive(&matrix);
+  Q_UNUSED(result);
   //qApp->exec();
 }
 
@@ -64,11 +63,8 @@ void ctkMatrixWidgetTester::testDecimals()
 
   matrix.show();
 
-#if (QT_VERSION >= 0x50000)
-  QTest::qWaitForWindowActive(&matrix);
-#else
-  QTest::qWaitForWindowShown(&matrix);
-#endif
+  bool result = QTest::qWaitForWindowActive(&matrix);
+  Q_UNUSED(result);
   //qApp->exec();
 
   QCOMPARE(matrix.value(0, 0), 1.000000001);
@@ -76,6 +72,4 @@ void ctkMatrixWidgetTester::testDecimals()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkMatrixWidgetTest)
-#include "moc_ctkMatrixWidgetTest.cpp"
-
-
+#include "ctkMatrixWidgetTest.moc"

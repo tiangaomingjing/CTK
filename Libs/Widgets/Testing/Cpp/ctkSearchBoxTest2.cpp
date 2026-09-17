@@ -23,6 +23,7 @@
 #include <QDebug>
 #include <QLabel>
 #include <QListView>
+#include <QRegularExpression>
 #include <QSortFilterProxyModel>
 #include <QStringListModel>
 #include <QTimer>
@@ -48,16 +49,19 @@ int ctkSearchBoxTest2(int argc, char* argv[])
 
   search3.setText("phone");
 
-  QRegExp regExp(search3.text(),Qt::CaseInsensitive, QRegExp::Wildcard);
+  QRegularExpression regExp(
+      QRegularExpression::wildcardToRegularExpression(search3.text()),
+      QRegularExpression::CaseInsensitiveOption
+      );
 
   //QStringList testFilter = stringList.filter(search3.text());
   QStringList testFilter = stringList.filter(regExp);
   qDebug() << "Result of Test Filter : " << testFilter;
 
   if (testFilter.size() >= stringList.size())
-    {
+  {
     qDebug() << "Line : " << __LINE__<< " error with the filter : " << search3.text();
-    }
+  }
 
   QStringListModel listModel(stringList);
 
@@ -74,10 +78,9 @@ int ctkSearchBoxTest2(int argc, char* argv[])
   listView.show();
 
   if (argc < 2 || QString(argv[1]) != "-I" )
-    {
+  {
     QTimer::singleShot(200, &app, SLOT(quit()));
-    }
+  }
 
   return app.exec();
 }
-

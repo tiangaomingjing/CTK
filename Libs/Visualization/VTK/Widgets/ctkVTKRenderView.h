@@ -37,7 +37,6 @@ class CTK_VISUALIZATION_VTK_WIDGETS_EXPORT ctkVTKRenderView : public ctkVTKAbstr
              WRITE setOrientationWidgetVisible)
   Q_PROPERTY(double zoomFactor READ zoomFactor WRITE setZoomFactor)
   Q_PROPERTY(double pitchRollYawIncrement READ pitchRollYawIncrement WRITE setPitchRollYawIncrement)
-  Q_ENUMS(RotateDirection)
   Q_PROPERTY(RotateDirection pitchDirection READ pitchDirection WRITE setPitchDirection)
   Q_PROPERTY(RotateDirection rollDirection READ rollDirection WRITE setRollDirection)
   Q_PROPERTY(RotateDirection yawDirection READ yawDirection WRITE setYawDirection)
@@ -51,6 +50,7 @@ class CTK_VISUALIZATION_VTK_WIDGETS_EXPORT ctkVTKRenderView : public ctkVTKAbstr
 public:
 
   enum RotateDirection { PitchUp, PitchDown, RollLeft, RollRight, YawLeft, YawRight };
+  Q_ENUM(RotateDirection)
 
   typedef ctkVTKAbstractView Superclass;
   explicit ctkVTKRenderView(QWidget* parent = 0);
@@ -77,7 +77,7 @@ public Q_SLOTS:
   /// \sa setPitchRollYawIncrement setYawDirection
   void yaw();
 
-  /// Enable or Disbled the animated spin of the view
+  /// Enable or Disable the animated spin of the view
   void setSpinEnabled(bool enabled);
 
   /// Set number of degrees in spin increment
@@ -88,7 +88,7 @@ public Q_SLOTS:
   /// \sa setSpinIncrement setRockIncrement
   void setAnimationIntervalMs(int ms);
 
-  /// Enable or Disbled the animated rock of the view
+  /// Enable or Disable the animated rock of the view
   void setRockEnabled(bool enabled);
 
   /// Set length of a complete rock period (in number of animation steps)
@@ -120,9 +120,14 @@ public Q_SLOTS:
 
   /// \brief Change camera to look from a given axis to the focal point
   /// Translate/Rotate the camera to look from a given axis
-  /// The Field of View (fov) controls how far from the focal point the
-  /// camera must be (final_pos = focal_point + 3*fov).
-  void lookFromAxis(const ctkAxesWidget::Axis& axis, double fov = 10.);
+  void lookFromAxis(const ctkAxesWidget::Axis& axis);
+
+  /// \deprecated
+  /// \brief Change camera to look from a given axis to the focal point.
+  /// Translate/Rotate the camera to look from a given axis.
+  /// \param fov is not used (it is kept for backward compatibility of the API)
+  /// \sa lookFromAxis(const ctkAxesWidget::Axis&)
+  void lookFromAxis(const ctkAxesWidget::Axis& axis, double fov);
 
 public:
 
@@ -140,7 +145,7 @@ public:
 
   /// Set window interactor
   /// Reimplemented to propagate interaction to Orientation widget
-  virtual void setInteractor(vtkRenderWindowInteractor* interactor);
+  void setInteractor(vtkRenderWindowInteractor* interactor) override;
 
   /// Return pitch, roll or yaw increment (in degree)
   double pitchRollYawIncrement()const;
@@ -180,6 +185,9 @@ public:
 
   /// Return zoom factor
   double zoomFactor()const;
+
+protected:
+  ctkVTKRenderView(ctkVTKRenderViewPrivate* pimpl, QWidget* parent);
 
 private:
   Q_DECLARE_PRIVATE(ctkVTKRenderView);

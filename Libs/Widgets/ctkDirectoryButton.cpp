@@ -22,13 +22,13 @@
 #include <QDebug>
 #include <QFileSystemModel>
 #include <QHBoxLayout>
-#include <QPushButton>
 #include <QSortFilterProxyModel>
 #include <QStyle>
 
 // CTK includes
 #include "ctkDirectoryButton.h"
 #include "ctkFileDialog.h"
+#include "ctkPushButton.h"
 
 //-----------------------------------------------------------------------------
 class ctkDirectoryButtonPrivate
@@ -44,7 +44,7 @@ public:
   void updateDisplayText();
 
   QDir         Directory;
-  QPushButton* PushButton;
+  ctkPushButton* PushButton;
   QString      DialogCaption;
   QString      DisplayText;
 #ifdef USE_QFILEDIALOG_OPTIONS
@@ -74,13 +74,15 @@ ctkDirectoryButtonPrivate::ctkDirectoryButtonPrivate(ctkDirectoryButton& object)
 void ctkDirectoryButtonPrivate::init()
 {
   Q_Q(ctkDirectoryButton);
-  this->PushButton = new QPushButton(q);
+  this->PushButton = new ctkPushButton(q);
+  this->PushButton->setElideMode(Qt::ElideMiddle);  // truncate the middle of the path if does not fit
+  this->PushButton->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed, QSizePolicy::PushButton));
   QObject::connect(this->PushButton, SIGNAL(clicked()), q, SLOT(browse()));
   QHBoxLayout* l = new QHBoxLayout(q);
   l->addWidget(this->PushButton);
   l->setContentsMargins(0,0,0,0);
   q->setLayout(l);
-  q->setSizePolicy(QSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed, QSizePolicy::ButtonBox));
+  q->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed, QSizePolicy::ButtonBox));
 }
 
 //-----------------------------------------------------------------------------
@@ -88,10 +90,10 @@ void ctkDirectoryButtonPrivate::updateDisplayText()
 {
   QString buttonText = this->DisplayText;
   if (buttonText.isNull())
-    {
+  {
     buttonText = this->DisplayAbsolutePath ?
       this->Directory.absolutePath() : this->Directory.path();
-    }
+  }
   this->PushButton->setText(buttonText);
 }
 
@@ -114,7 +116,7 @@ ctkDirectoryButton::ctkDirectoryButton(const QString& dir,
 {
   Q_D(ctkDirectoryButton);
   d->init();
-  d->Directory = QDir(dir);
+  d->Directory.setPath(dir);
   d->PushButton->setText(d->DisplayAbsolutePath ? d->Directory.absolutePath() : d->Directory.path());
   d->PushButton->setIcon(this->style()->standardIcon(QStyle::SP_DirIcon));
 }
@@ -127,7 +129,7 @@ ctkDirectoryButton::ctkDirectoryButton(
 {
   Q_D(ctkDirectoryButton);
   d->init();
-  d->Directory = QDir(dir);
+  d->Directory.setPath(dir);
   d->PushButton->setText(d->DisplayAbsolutePath ? d->Directory.absolutePath() : d->Directory.path());
   d->PushButton->setIcon(icon);
 }
@@ -144,14 +146,14 @@ void ctkDirectoryButton::setDirectory(const QString& dir)
   QDir newDirectory(dir);
 
   if (d->Directory == newDirectory)
-    {
+  {
     emit directorySelected(d->DisplayAbsolutePath ?
                            newDirectory.absolutePath() :
                            newDirectory.path());
     return;
-    }
+  }
 
-  d->Directory = newDirectory;
+  d->Directory.setPath(newDirectory.absolutePath());
   d->updateDisplayText();
 
   emit directorySelected(d->DisplayAbsolutePath ?
@@ -201,7 +203,7 @@ const QString& ctkDirectoryButton::text()const
 void ctkDirectoryButton::setIcon(const QIcon& newIcon)
 {
   Q_D(const ctkDirectoryButton);
-  return d->PushButton->setIcon(newIcon);
+  d->PushButton->setIcon(newIcon);
 }
 
 //-----------------------------------------------------------------------------
@@ -247,12 +249,11 @@ void ctkDirectoryButton::setAcceptMode(QFileDialog::AcceptMode mode)
   d->AcceptMode = mode;
 }
 
-//-----------------------------------------------------------------------------
-void ctkDirectoryButton::browse()
-{
+namespace {
   // See https://bugreports.qt-project.org/browse/QTBUG-10244
   class ExcludeReadOnlyFilterProxyModel : public QSortFilterProxyModel
   {
+    Q_OBJECT
   public:
     ExcludeReadOnlyFilterProxyModel(QPalette palette, QObject *parent)
       : QSortFilterProxyModel(parent)
@@ -265,14 +266,18 @@ void ctkDirectoryButton::browse()
         this->sourceModel()->data(this->mapToSource(index),
                                   QFileSystemModel::FilePathRole).toString();
       if (!QFileInfo(filePath).isWritable())
-        {
-        // Double clickable (to open) but can't be "choosen".
+      {
+        // Double clickable (to open) but can't be "chosen".
         return Qt::ItemIsSelectable;
-        }
+      }
       return this->QSortFilterProxyModel::flags(index);
     }
     QPalette Palette;
   };
+}
+//-----------------------------------------------------------------------------
+QString ctkDirectoryButton::browse()
+{
 
   Q_D(ctkDirectoryButton);
   // Use a ctkFileDialog (vs QFileDialog) for the AcceptSave mode so it does not
@@ -286,26 +291,63 @@ void ctkDirectoryButton::browse()
     fileDialog->setOptions(QFlags<QFileDialog::Option>(int(d->DialogOptions)));
   #endif
     fileDialog->setAcceptMode(d->AcceptMode);
-    fileDialog->setFileMode(QFileDialog::DirectoryOnly);
+    fileDialog->setFileMode(QFileDialog::Directory);
+    fileDialog->setOption(QFileDialog::ShowDirsOnly, true);
 
   if (d->AcceptMode == QFileDialog::AcceptSave)
-    {
+  {
     // Gray out the non-writable folders. They are still openable with double click,
     // but they can't be selected because they don't have the ItemIsEnabled
     // flag and because ctkFileDialog would not let it to be selected.
     fileDialog->setProxyModel(
       new ExcludeReadOnlyFilterProxyModel(this->palette(), fileDialog.data()));
-    }
+  }
 
   QString dir;
   if (fileDialog->exec())
-    {
+  {
     dir = fileDialog->selectedFiles().at(0);
-    }
+  }
   // An empty directory means either that the user cancelled the dialog or the selected directory is readonly
   if (dir.isEmpty())
-    {
-    return;
-    }
+  {
+    return "";
+  }
   this->setDirectory(dir);
+  return dir;
 }
+
+//-----------------------------------------------------------------------------
+void ctkDirectoryButton::setElideMode(Qt::TextElideMode newElideMode)
+{
+  Q_D(ctkDirectoryButton);
+  d->PushButton->setElideMode(newElideMode);
+
+  // Allow horizontal shrinking of the button if and only if elide is enabled.
+  // The internal pushbutton is not accessible from outside, therefore we must
+  // adjust the size policy internally.
+
+  QSizePolicy sizePolicy = d->PushButton->sizePolicy();
+  if (newElideMode == Qt::ElideNone)
+  {
+    sizePolicy.setHorizontalPolicy(QSizePolicy::Policy(sizePolicy.horizontalPolicy() & ~QSizePolicy::ShrinkFlag));
+  }
+  else
+  {
+    sizePolicy.setHorizontalPolicy(QSizePolicy::Policy(sizePolicy.horizontalPolicy() | QSizePolicy::ShrinkFlag));
+  }
+
+  d->PushButton->setSizePolicy(sizePolicy);
+
+  this->update();
+  this->updateGeometry();
+}
+
+//-----------------------------------------------------------------------------
+Qt::TextElideMode ctkDirectoryButton::elideMode()const
+{
+  Q_D(const ctkDirectoryButton);
+  return d->PushButton->elideMode();
+}
+
+#include "ctkDirectoryButton.moc"

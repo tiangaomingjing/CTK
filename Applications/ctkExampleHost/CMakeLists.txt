@@ -9,11 +9,6 @@ set(KIT_SRCS
   ctkHostAppExampleWidget.cpp
 )
 
-# Headers that should run through moc
-set(KIT_MOC_SRCS
-  ctkHostAppExampleWidget.h
-)
-
 # UI files
 set(KIT_UI_FORMS
   ctkExampleHostMainWindow.ui
@@ -29,14 +24,11 @@ set(KIT_resources
 # The following macro will read the target libraries from the file 'target_libraries.cmake'
 ctkFunctionGetTargetLibraries(KIT_target_libraries)
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  list(APPEND KIT_target_libraries Qt5::Widgets)
-endif()
+list(APPEND KIT_target_libraries Qt${CTK_QT_VERSION}::Widgets)
 
 ctkMacroBuildApp(
   NAME ${PROJECT_NAME}
   SRCS ${KIT_SRCS}
-  MOC_SRCS ${KIT_MOC_SRCS}
   UI_FORMS ${KIT_UI_FORMS}
   TARGET_LIBRARIES ${KIT_target_libraries}
   RESOURCES ${KIT_resources}

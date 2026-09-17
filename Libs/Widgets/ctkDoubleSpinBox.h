@@ -39,18 +39,17 @@ class ctkDoubleSpinBoxPrivate;
 class ctkValueProxy;
 
 /// \brief Custom SpinBox
-/// The ctkDoubleSpinBox internaly uses a QDoubleSpinBox while it retain controls
+/// The ctkDoubleSpinBox internally uses a QDoubleSpinBox while it retain controls
 /// over it.
 /// \sa ctkDoubleSlider, ctkSliderWidget, ctkRangeSlider
 class CTK_WIDGETS_EXPORT ctkDoubleSpinBox : public QWidget
 {
   Q_OBJECT
-  Q_ENUMS(SetMode)
   Q_FLAGS(DecimalsOption DecimalsOptions)
-  Q_ENUMS(SizeHintPolicy)
 
   Q_PROPERTY(Qt::Alignment alignment READ alignment WRITE setAlignment)
   Q_PROPERTY(bool frame READ hasFrame WRITE setFrame)
+  Q_PROPERTY(bool readOnly READ isReadOnly WRITE setReadOnly)
   Q_PROPERTY(QString prefix READ prefix WRITE setPrefix)
   Q_PROPERTY(QString suffix READ suffix WRITE setSuffix)
   Q_PROPERTY(QString cleanText READ cleanText)
@@ -88,6 +87,9 @@ class CTK_WIDGETS_EXPORT ctkDoubleSpinBox : public QWidget
   /// SizeHintByMinMax by default
   /// SizeHintPolicy, sizeHintPolicy(), setSizeHintPolicy()
   Q_PROPERTY(SizeHintPolicy sizeHintPolicy READ sizeHintPolicy WRITE setSizeHintPolicy)
+  /// This property is true while the spinbox is setting a value.
+  /// \sa isSettingValue()
+  Q_PROPERTY(bool isSettingValue READ isSettingValue)
 
 public:
 
@@ -96,22 +98,23 @@ public:
   /// No check is made and the given parameters is directly set
   /// on the internal QDoubleSpinBox.
   /// SetIfDifferent:
-  /// Default mode, the given parameter is checked agains the
+  /// Default mode, the given parameter is checked against the
   /// current internal value and only set if they are different.
   /// For double, the comparison is based on the input parameters rounded
   /// with the current number of decimals (see round()).
   /// \sa setMode(), setSetMode(), round()
   enum SetMode
-    {
+  {
     SetAlways,
     SetIfDifferent,
-    };
+  };
+  Q_ENUM(SetMode)
 
   /// DecimalsOption enums the input style of the spinbox decimals.
   /// Default option is DecimalsByShortcuts.
   /// \sa decimals(), currentDecimals()
   enum DecimalsOption
-    {
+  {
     /// Behaves just like a QDoubleSpinBox. The maximum number of decimals
     /// allowed is given by decimals().
     FixedDecimals = 0x000,
@@ -148,14 +151,15 @@ public:
     /// (e.g. "0." )
     /// \sa decimals
     DecimalPointAlwaysVisible = 0x080
-    };
+  };
   Q_DECLARE_FLAGS(DecimalsOptions, DecimalsOption)
 
   enum SizeHintPolicy
-    {
+  {
     SizeHintByMinMax,
     SizeHintByValue
-    };
+  };
+  Q_ENUM(SizeHintPolicy)
 
   typedef QWidget Superclass;
 
@@ -188,13 +192,19 @@ public:
   /// \sa value()
   QString cleanText() const;
 
-  /// Set/Get the spinbox alignement
+  /// Set/Get the spinbox alignment
   Qt::Alignment alignment () const;
   void setAlignment (Qt::Alignment flag);
 
   /// Set/Get the frame
   void setFrame(bool frame);
   bool hasFrame() const;
+
+  /// Returns true if the widget is read-only. Read-only widgets only display values,
+  /// the values cannot be modified using the graphical user interface, and
+  /// spinbox is not displayed.
+  /// \sa setReadOnly
+  bool isReadOnly() const;
 
   /// Add/Get a prefix to the displayed value. For example, one might want to
   /// add the $ sign.
@@ -270,7 +280,7 @@ public:
   /// displayed value from the value retrieved by the value property.
   /// For example, the value proxy can allow one to display celsius in the
   /// spinbox while the value retrieved from the value property and signals
-  /// are in farenheit.
+  /// are in fahrenheit.
   /// To remove the proxy, simply install a new empty proxy. The proxy
   /// installation/removal is silent.
   /// \sa installValueProxy(), valueProxy()
@@ -284,12 +294,20 @@ public:
   /// \sa sizeHintPolicy
   virtual QSize minimumSizeHint()const;
 
+  /// Return true if the spinbox is in the progress of setting a value.
+  ///
+  /// Setting of value is performed in two steps: first the value is set in the spinbox
+  /// and then the valueChanged and decimalsChanged signals are emitted.
+  /// During this entire time, isSettingValue() returns true, because in some cases
+  /// it is important to know which of the sibling widgets initiated an update.
+  bool isSettingValue()const;
+
 public Q_SLOTS:
   /// Set the value of the spinbox following the current mode.
   /// \sa setMode(), value(), setValueIfDifferent(), setValueAlways()
   void setValue(double value);
 
-  /// Set the value of the spinbox followin the SetIfDifferent mode.
+  /// Set the value of the spinbox following the SetIfDifferent mode.
   /// \sa value(), setValue(), setMode(), setValueAlways()
   void setValueIfDifferent(double value);
 
@@ -306,8 +324,14 @@ public Q_SLOTS:
   /// \sa decimals
   void setDecimals(int decimal);
 
+  /// Set the widget to be read-only. Read-only widgets only display values,
+  /// the values cannot be modified using the graphical user interface, and
+  /// spinbox is not displayed.
+  /// \sa isReadOnly
+  void setReadOnly(bool readOnly);
+
 Q_SIGNALS:
-  /// Emitted everytime the spinbox value is modified
+  /// Emitted every time the spinbox value is modified
   /// \sa QDoubleSpinBox::valueChanged()
   void valueChanged(double);
   void valueChanged(const QString &);

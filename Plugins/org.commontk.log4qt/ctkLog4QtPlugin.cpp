@@ -32,7 +32,7 @@ ctkLog4QtPlugin::ctkLog4QtPlugin()
 
 ctkLog4QtPlugin::~ctkLog4QtPlugin()
 {
-  
+
 }
 
 void ctkLog4QtPlugin::start(ctkPluginContext* context)
@@ -55,7 +55,3 @@ ctkPluginContext* ctkLog4QtPlugin::getPluginContext() const
 {
   return context;
 }
-
-Q_EXPORT_PLUGIN2(org_commontk_log4qt, ctkLog4QtPlugin)
-
-

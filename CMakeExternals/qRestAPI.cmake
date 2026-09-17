@@ -24,7 +24,7 @@ endif()
 
 if(NOT DEFINED ${proj}_DIR)
 
-  set(revision_tag "c5e4c2a7d5")
+  set(revision_tag "ddc0cfcc220d0ccd02b4afdd699d1e780dac3fa3")
   if(${proj}_REVISION_TAG)
     set(revision_tag ${${proj}_REVISION_TAG})
   endif()
@@ -36,16 +36,12 @@ if(NOT DEFINED ${proj}_DIR)
     set(location_args GIT_REPOSITORY ${${proj}_GIT_REPOSITORY}
                       GIT_TAG ${revision_tag})
   else()
-    set(location_args GIT_REPOSITORY "${git_protocol}://github.com/commontk/qRestAPI.git"
+    set(location_args GIT_REPOSITORY "https://github.com/commontk/qRestAPI.git"
                       GIT_TAG ${revision_tag})
   endif()
 
   set(ep_cache_args)
-  if(CTK_QT_VERSION VERSION_LESS "5")
-    list(APPEND ep_cache_args
-      -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE}
-      )
-  else()
+  if(CTK_QT_VERSION VERSION_EQUAL "5")
     list(APPEND ep_cache_args
       -DQt5_DIR:PATH=${Qt5_DIR}
       )
@@ -55,6 +51,12 @@ if(NOT DEFINED ${proj}_DIR)
         -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
         )
     endif()
+  elseif(CTK_QT_VERSION VERSION_EQUAL "6")
+    list(APPEND ep_cache_args
+      -DQt6_DIR:PATH=${Qt6_DIR}
+      )
+  else()
+    message(FATAL_ERROR "Support for Qt${CTK_QT_VERSION} is not implemented")
   endif()
 
   ExternalProject_Add(${proj}
@@ -72,6 +74,21 @@ if(NOT DEFINED ${proj}_DIR)
       ${${proj}_DEPENDENCIES}
     )
   set(qRestAPI_DIR ${CMAKE_CURRENT_BINARY_DIR}/${proj}-build)
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to build tree
+
+  # library paths
+  set(${proj}_LIBRARY_PATHS_LAUNCHER_BUILD ${qRestAPI_DIR}/<CMAKE_CFG_INTDIR>)
+  mark_as_superbuild(
+    VARS ${proj}_LIBRARY_PATHS_LAUNCHER_BUILD
+    LABELS "LIBRARY_PATHS_LAUNCHER_BUILD"
+    )
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to install tree
+
+  # NA
 
 else()
   ExternalProject_Add_Empty(${proj} DEPENDS ${${proj}_DEPENDENCIES})

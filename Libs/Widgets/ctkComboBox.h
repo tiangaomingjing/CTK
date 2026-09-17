@@ -55,7 +55,6 @@ class CTK_WIDGETS_EXPORT ctkComboBox : public QComboBox
   /// Current item's user data as string (Qt::UserRole role)
   Q_PROPERTY(QString currentUserDataAsString READ currentUserDataAsString WRITE setCurrentUserDataAsString)
 
-  Q_ENUMS(ScrollEffect);
 public:
   /// Constructor, build a ctkComboBox that behaves like QComboBox.
   explicit ctkComboBox(QWidget* parent = 0);
@@ -69,7 +68,7 @@ public:
   void setDefaultIcon(const QIcon&);
   QIcon defaultIcon()const;
 
-  /// Force the display of the text/icon at all time (not only when the 
+  /// Force the display of the text/icon at all time (not only when the
   /// current index is invalid). False by default.
   void forceDefault(bool forceDefault);
   bool isDefaultForced()const;
@@ -93,6 +92,7 @@ public:
     /// a visible vertical scrollbar.
     ScrollWithNoVScrollBar
   };
+  Q_ENUM(ScrollEffect);
   /// Return the scrollWheelEffect property value.
   /// \sa scrollEffect
   ScrollEffect scrollWheelEffect()const;
@@ -117,6 +117,10 @@ protected:
   virtual void paintEvent(QPaintEvent* event);
   virtual void changeEvent(QEvent* event);
   virtual void wheelEvent(QWheelEvent* event);
+  virtual void keyReleaseEvent(QKeyEvent* event);
+
+Q_SIGNALS:
+  void returnRelease();
 
 protected:
   QScopedPointer<ctkComboBoxPrivate> d_ptr;

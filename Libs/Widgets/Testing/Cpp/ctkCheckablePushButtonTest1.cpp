@@ -39,21 +39,22 @@ int ctkCheckablePushButtonTest1(int argc, char * argv [] )
   QApplication app(argc, argv);
 
   QWidget topLevel;
-  ctkCheckablePushButton button1(QObject::tr("My very long text on button"));
-  ctkCheckablePushButton button2(QObject::tr("Button2"));
-  ctkCheckablePushButton button3(QObject::tr("Button3"));
-  ctkCheckablePushButton button4(QObject::tr("Button4"));
-  ctkCheckablePushButton button5(QObject::tr("Button5"));
-  ctkCheckablePushButton button6(QObject::tr("Button6"));
-  ctkCheckablePushButton button7(QObject::tr("Checkable PushButton"));
-  ctkCheckablePushButton button8(QObject::tr("Connected, Not User Checkable"));
-  ctkCheckablePushButton button9(QObject::tr("Connected, Not User Checkable"));
-  ctkCheckablePushButton button10(QObject::tr("Not Connected, User Checkable"));
-  ctkCheckablePushButton button11(QObject::tr("Not Connected, User Checkable"));
-  ctkCheckablePushButton button12(QObject::tr("Checkbox Not User Checkable\nButton Checkable"));
-  ctkCheckablePushButton button13(QObject::tr("Checkbox and Button User Checkable"));
-  ctkCheckablePushButton button14(QObject::tr("Checkable PushButton with menu"));
-  ctkCheckablePushButton button15(QObject::tr("Checkable PushButton with icon"));
+  ctkCheckablePushButton button1("My very long text on button");
+  ctkCheckablePushButton button2("Button2");
+  ctkCheckablePushButton button3("Button3");
+  ctkCheckablePushButton button4("Button4");
+  ctkCheckablePushButton button5("Button5");
+  ctkCheckablePushButton button6("Button6");
+  ctkCheckablePushButton button7("Checkable PushButton");
+  ctkCheckablePushButton button8("Connected, Not User Checkable");
+  ctkCheckablePushButton button9("Connected, Not User Checkable");
+  ctkCheckablePushButton button10("Not Connected, User Checkable");
+  ctkCheckablePushButton button11("Not Connected, User Checkable");
+  ctkCheckablePushButton button12("Checkbox Not User Checkable\nButton Checkable");
+  ctkCheckablePushButton button13("Checkbox and Button User Checkable");
+  ctkCheckablePushButton button14("Checkable PushButton with menu");
+  ctkCheckablePushButton button15("Checkable PushButton with icon");
+  ctkCheckablePushButton button16("Check box controls button toggle state");
 
   QVBoxLayout *layout= new QVBoxLayout;
   layout->addWidget(&button1);
@@ -71,41 +72,42 @@ int ctkCheckablePushButtonTest1(int argc, char * argv [] )
   layout->addWidget(&button13);
   layout->addWidget(&button14);
   layout->addWidget(&button15);
+  layout->addWidget(&button16);
   topLevel.setLayout(layout);
 
   topLevel.show();
   button1.setButtonTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
   if (button1.buttonTextAlignment() != (Qt::AlignRight | Qt::AlignVCenter))
-    {
+  {
     std::cerr << "ctkCheckablePushButton::setButtonTextAlignment failed."
               << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   button2.setIndicatorAlignment(Qt::AlignRight);
 
   if (button2.indicatorAlignment() != Qt::AlignRight)
-    {
+  {
     std::cerr << "ctkCheckablePushButton::setIndicatorAlignment failed."
               << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   button3.setButtonTextAlignment(Qt::AlignCenter);
   button3.setIndicatorAlignment(Qt::AlignCenter);
   button3.setCheckable(true);
-  
+
   button4.setCheckable(true);
   button4.toggle();
-  
+
   button5.setButtonTextAlignment(Qt::AlignCenter);
   button5.setIndicatorAlignment(Qt::AlignRight);
-  
+
   button6.setIndicatorAlignment(Qt::AlignTop);
   button7.setButtonTextAlignment(Qt::AlignCenter);
   button7.setIndicatorAlignment(Qt::AlignLeft);
-  
+
   // Connected to button, not user checkable:
   button8.setCheckBoxUserCheckable(false);
   button8.setCheckState(Qt::Checked);
@@ -125,6 +127,12 @@ int ctkCheckablePushButtonTest1(int argc, char * argv [] )
   button13.setCheckBoxUserCheckable(true);
   button13.setCheckable(true);
 
+  // Checkbox control button toggle state
+  button16.setCheckable(true);
+  button16.setCheckBoxUserCheckable(true);
+  button16.setCheckBoxControlsButton(true);
+  button16.setCheckBoxControlsButtonToggleState(true);
+
   QMenu menu(&button14);
   menu.addAction("menu action");
   button14.setMenu(&menu);
@@ -133,9 +141,9 @@ int ctkCheckablePushButtonTest1(int argc, char * argv [] )
   button15.setIcon(button15.style()->standardIcon(QStyle::SP_ComputerIcon));
 
   if (argc < 2 || QString(argv[1]) != "-I" )
-    {
+  {
     QTimer::singleShot(200, &app, SLOT(quit()));
-    }
+  }
 
   return app.exec();
 }

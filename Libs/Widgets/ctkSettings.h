@@ -26,7 +26,7 @@
    All rights reserved.
 
    ParaView is a free software; you can redistribute it and/or modify it
-   under the terms of the ParaView license version 1.2. 
+   under the terms of the ParaView license version 1.2.
 
    See http://www.paraview.org/paraview/project/license.html for the full ParaView license.
    A copy of this license can be obtained by contacting
@@ -56,19 +56,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __ctkSettings_h
 #define __ctkSettings_h
 
-// Qt includes
-#include <QSettings>
-
 // CTK includes
 #include "ctkWidgetsExport.h"
+#include "ctkCoreSettings.h"
 
 class QDialog;
 class QMainWindow;
 
 /// \ingroup Widgets
-/// ctkSettings is a QSettings that additionally can save and restore the 
+/// ctkSettings is a QSettings that additionally can save and restore the
 /// state (position/size) of QMainWindow and QDialogs.
-class CTK_WIDGETS_EXPORT ctkSettings : public QSettings
+class CTK_WIDGETS_EXPORT ctkSettings : public ctkCoreSettings
 {
   Q_OBJECT
 
@@ -105,12 +103,12 @@ public:
   /// Restore the position, size and layout of the QMainWindow
   /// for a given key
   Q_INVOKABLE void restoreState(const QString& key, QMainWindow& window);
-  
+
   /// Saves the position, size and layout of the QMainWindow
   /// for a given key
   Q_INVOKABLE void restoreState(const QString& key, QDialog& dialog);
 
-  /// Calling this method will cause the modified signal to be emited.
+  /// Calling this method will cause the modified signal to be emitted.
   Q_INVOKABLE void alertSettingsModified();
 
 Q_SIGNALS:

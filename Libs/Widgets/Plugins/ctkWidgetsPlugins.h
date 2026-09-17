@@ -23,11 +23,7 @@
 
 // Qt includes
 #include <QtGlobal>
-#ifndef HAVE_QT5
-#include <QDesignerCustomWidgetCollectionInterface>
-#else
 #include <QtUiPlugin/QDesignerCustomWidgetCollectionInterface>
-#endif
 
 // CTK includes
 #include "ctkWidgetsPluginsExport.h"
@@ -51,6 +47,7 @@
 #include "ctkExpandableWidgetPlugin.h"
 #include "ctkFittedTextBrowserPlugin.h"
 #include "ctkFontButtonPlugin.h"
+#include "ctkLanguageComboBoxPlugin.h"
 #include "ctkMaterialPropertyPreviewLabelPlugin.h"
 #include "ctkMaterialPropertyWidgetPlugin.h"
 #include "ctkMatrixWidgetPlugin.h"
@@ -67,6 +64,7 @@
 #include "ctkSettingsPanelPlugin.h"
 #include "ctkSettingsDialogPlugin.h"
 #include "ctkSliderWidgetPlugin.h"
+#include "ctkSplitterPlugin.h"
 #include "ctkThumbnailLabelPlugin.h"
 #include "ctkTransferFunctionViewPlugin.h"
 #include "ctkTreeComboBoxPlugin.h"
@@ -80,12 +78,10 @@ class CTK_WIDGETS_PLUGINS_EXPORT ctkWidgetsPlugins
 {
   Q_OBJECT
   Q_INTERFACES(QDesignerCustomWidgetCollectionInterface)
-#ifdef HAVE_QT5
   Q_PLUGIN_METADATA(IID "org.commontk.Widgets")
-#endif
 public:
   QList<QDesignerCustomWidgetInterface*> customWidgets() const
-    {
+  {
     QList<QDesignerCustomWidgetInterface *> plugins;
     plugins << new ctkActionsWidgetPlugin
             << new ctkAxesWidgetPlugin
@@ -107,6 +103,7 @@ public:
             << new ctkExpandableWidgetPlugin
             << new ctkFittedTextBrowserPlugin
             << new ctkFontButtonPlugin
+            << new ctkLanguageComboBoxPlugin
             << new ctkMaterialPropertyPreviewLabelPlugin
             << new ctkMaterialPropertyWidgetPlugin
             << new ctkMatrixWidgetPlugin
@@ -123,13 +120,14 @@ public:
             << new ctkSettingsPanelPlugin
             << new ctkSettingsDialogPlugin
             << new ctkSliderWidgetPlugin
+            << new ctkSplitterPlugin
             << new ctkThumbnailLabelPlugin
             << new ctkTransferFunctionViewPlugin
             << new ctkTreeComboBoxPlugin
             << new ctkWorkflowButtonBoxWidgetPlugin
             << new ctkWorkflowWidgetStepPlugin;
     return plugins;
-    }
+  }
 };
 
 #endif

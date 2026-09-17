@@ -39,7 +39,7 @@ class CTK_VISUALIZATION_VTK_WIDGETS_EXPORT ctkVTKVolumePropertyWidget
   Q_OBJECT
   QVTK_OBJECT
   ///
-  /// Control wether a range slider widget is used to edit the opacity
+  /// Control whether a range slider widget is used to edit the opacity
   /// function instead of a chart editor. False by default
   Q_PROPERTY(bool thresholdEnabled READ isThresholdEnabled WRITE setThresholdEnabled NOTIFY thresholdEnabledChanged)
 
@@ -47,6 +47,12 @@ class CTK_VISUALIZATION_VTK_WIDGETS_EXPORT ctkVTKVolumePropertyWidget
   /// Show or hide the opacity threshold slider toggle button.
   /// True by default.
   Q_PROPERTY(bool thresholdToggleVisibility READ isThresholdToggleVisible WRITE setThresholdToggleVisible)
+
+  ///
+  /// The current component of the volume property.
+  /// Represents the index of a component in the volume property, starting from 0.
+  /// Must be a integer between 0 <= index < VTK_MAX_VRCOMP. Defaults to 0 (first component).
+  Q_PROPERTY(int currentComponent READ currentComponent WRITE setCurrentComponent)
 
 public:
   ctkVTKVolumePropertyWidget(QWidget* parent = 0);
@@ -59,19 +65,42 @@ public:
   bool isThresholdToggleVisible()const;
   void setThresholdToggleVisible(bool showToggle);
 
+  /// Get intensity bounds of the chart.
   void chartsBounds(double bounds[4])const;
+  /// Get intensity bounds of the chart.
+  Q_INVOKABLE QList<double> chartsBounds()const;
+  /// Get intensity extents of the chart.
   void chartsExtent(double extent[4])const;
+  /// Get intensity extents of the chart.
+  Q_INVOKABLE QList<double> chartsExtent()const;
+
+  /// Get gradient bounds of the chart.
+  void chartsGradientBounds(double bounds[4])const;
+  /// Get gradient bounds of the chart.
+  Q_INVOKABLE QList<double> chartsGradientBounds()const;
+  /// Get gradient  extents of the chart.
+  void chartsGradientExtent(double extent[4])const;
+  /// Get gradient extents of the chart.
+  Q_INVOKABLE QList<double> chartsGradientExtent()const;
+
+  int currentComponent() const;
 
 public Q_SLOTS:
   void setVolumeProperty(vtkVolumeProperty* volumeProperty);
 
-  /// Move all the control points of the opacity, colors and gradient
-  /// of a give offset.
+  /// Move all the control points of the opacity and colors
+  /// by a given offset.
   /// \sa vtkControlPoints::movePoints()
   void moveAllPoints(double xOffset, double yOffset = 0.,
                      bool dontSpreadFirstAndLast = false);
 
-  /// Spread all the control points of the opacity, colors and gradient
+  /// Move all the control points of the gradient opacity transfer function
+  /// by a given offset.
+  /// \sa vtkControlPoints::movePoints()
+  void moveAllGradientPoints(double xOffset, double yOffset = 0.,
+    bool dontSpreadFirstAndLast = false);
+
+  /// Spread all the control points of the opacity and colors
   /// by a given offset.
   /// A value >0 will space the control points, a value <0. will contract
   /// them.
@@ -79,7 +108,25 @@ public Q_SLOTS:
   void spreadAllPoints(double factor = 1.,
                        bool dontSpreadFirstAndLast = false);
 
+  /// Spread all the control points of the gradient opacity transfer function
+  /// by a given offset.
+  /// A value >0 will space the control points, a value <0. will contract
+  /// them.
+  /// \sa vtkControlPoints::spreadPoints()
+  void spreadAllGradientPoints(double factor = 1.,
+                       bool dontSpreadFirstAndLast = false);
+
   void setThresholdEnabled(bool enable);
+
+  /// Set charts intensity extent
+  void setChartsExtent(double extent[2]);
+  void setChartsExtent(double min, double max);
+
+  /// Set charts gradient extent
+  void setChartsGradientExtent(double extent[2]);
+  void setChartsGradientExtent(double min, double max);
+
+  void setCurrentComponent(int component);
 
 Q_SIGNALS:
   void thresholdEnabledChanged(bool enable);

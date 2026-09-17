@@ -12,11 +12,6 @@ set(KIT_SRCS
   ctkAbstractPythonManager.h
   )
 
-# Headers that should run through moc
-set(KIT_MOC_SRCS
-  ctkAbstractPythonManager.h
-  )
-
 # UI files
 set(KIT_UI_FORMS
 )
@@ -28,7 +23,7 @@ set(KIT_resources
 #
 # Configure file describing which Qt modules are wrapped
 #
-set(QT_PYTHON_WRAPPED_LIBRARIES_LIST Core Gui Widgets Network OpenGL Sql Svg UiTools WebKit WebKitWidgets Xml XmlPatterns)
+set(QT_PYTHON_WRAPPED_LIBRARIES_LIST Core Gui Widgets Multimedia Network OpenGL Sql Svg UiTools WebKit WebKitWidgets Xml XmlPatterns)
 foreach(qtlib ${QT_PYTHON_WRAPPED_LIBRARIES_LIST})
   string(TOUPPER ${qtlib} qtlib)
   set(CTK_PYTHONQT_WRAP_QT${qtlib} ${CTK_LIB_Scripting/Python/Core_PYTHONQT_WRAP_QT${qtlib}})
@@ -41,13 +36,13 @@ configure_file(
 
 # Target libraries - See CMake/ctkFunctionGetTargetLibraries.cmake
 # The following macro will read the target libraries from the file 'target_libraries.cmake'
+ctkFunctionExtractOptimizedLibrary(PYTHON_LIBRARIES PYTHON_LIBRARY)
 ctkFunctionGetTargetLibraries(KIT_target_libraries)
 
 ctkMacroBuildLib(
   NAME ${PROJECT_NAME}
   EXPORT_DIRECTIVE ${KIT_export_directive}
   SRCS ${KIT_SRCS}
-  MOC_SRCS ${KIT_MOC_SRCS}
   UI_FORMS ${KIT_UI_FORMS}
   TARGET_LIBRARIES ${KIT_target_libraries}
   RESOURCES ${KIT_resources}

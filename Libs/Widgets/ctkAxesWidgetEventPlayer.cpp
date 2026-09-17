@@ -23,7 +23,7 @@
 #include <QDebug>
 #include <QKeyEvent>
 #include <QMouseEvent>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QWidget>
 
 // CTK includes
@@ -46,31 +46,31 @@ bool ctkAxesWidgetEventPlayer::playEvent(QObject *Object,
   Q_UNUSED(Error);
   ctkAxesWidget* widget = qobject_cast<ctkAxesWidget*>(Object);
   if(widget)
-    {
+  {
     if (Command == "mousePress" || Command == "mouseRelease")
+    {
+      static const QRegularExpression mouseRegExp("\\(([^,]*),([^,]*),([^,]),([^,]),([^,]*)\\)");
+      QRegularExpressionMatch mouseMatch = mouseRegExp.match(Arguments);
+      if (mouseMatch.hasMatch())
       {
-      QRegExp mouseRegExp("\\(([^,]*),([^,]*),([^,]),([^,]),([^,]*)\\)");
-      if (mouseRegExp.indexIn(Arguments)!= -1)
-        {
-        QVariant v = mouseRegExp.cap(1);
+        QVariant v = mouseMatch.captured(1);
         int x = static_cast<int>(v.toDouble() * widget->size().width());
-        v = mouseRegExp.cap(2);
+        v = mouseMatch.captured(2);
         int y = static_cast<int>(v.toDouble() * widget->size().height());
-        v = mouseRegExp.cap(4);
+        v = mouseMatch.captured(4);
         Qt::MouseButtons buttons = static_cast<Qt::MouseButton>(v.toInt());
-        v = mouseRegExp.cap(5);
+        v = mouseMatch.captured(5);
         Qt::KeyboardModifiers keym = static_cast<Qt::KeyboardModifier>(v.toInt());
-        v = mouseRegExp.cap(3);
+        v = mouseMatch.captured(3);
 
         Qt::MouseButton button = static_cast<Qt::MouseButton>(v.toInt());
         QEvent::Type type = (Command == "mousePress")?
                             QEvent::MouseButtonPress : QEvent::MouseButtonRelease;
         QMouseEvent e(type, QPoint(x,y), button, buttons, keym);
         QCoreApplication::sendEvent(Object, &e);
-        }
-      return true;
       }
+      return true;
     }
+  }
   return false;
 }
-

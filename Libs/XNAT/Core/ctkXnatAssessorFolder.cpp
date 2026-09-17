@@ -47,9 +47,9 @@ public:
 
 //----------------------------------------------------------------------------
 ctkXnatAssessorFolder::ctkXnatAssessorFolder(ctkXnatObject* parent)
-  : ctkXnatObject(*new ctkXnatAssessorFolderPrivate(), parent, QString::null)
+  : ctkXnatObject(*new ctkXnatAssessorFolderPrivate(), parent, QString())
 {
-  
+
   this->setProperty(ID, "assessors");
   this->setProperty(LABEL, "Assessments");
 }
@@ -95,7 +95,7 @@ void ctkXnatAssessorFolder::fetchImpl()
 
   foreach (ctkXnatObject* assessor, assessors)
   {
-    
+
     this->add(assessor);
   }
 }

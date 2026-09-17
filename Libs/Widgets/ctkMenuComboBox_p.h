@@ -38,7 +38,7 @@ public:
   /// Superclass typedef
   typedef QComboBox Superclass;
 
-  ctkMenuComboBoxInternal();
+  ctkMenuComboBoxInternal(QWidget* parent = nullptr);
   virtual ~ctkMenuComboBoxInternal();
   virtual void showPopup();
 
@@ -71,7 +71,9 @@ public:
   void addMenuToCompleter(QMenu* menu);
   void addActionToCompleter(QAction* action);
 
-  void removeActionToCompleter(QAction* action);
+  void removeAction(QAction* action);
+  void removeMenuFromCompleter(QMenu* menu);
+  void removeActionFromCompleter(QAction* action);
 
 public Q_SLOTS:
   void setComboBoxEditable(bool editable = true);
@@ -87,9 +89,8 @@ protected:
 
   ctkMenuComboBoxInternal*    MenuComboBox;
   ctkCompleter*               SearchCompleter;
-  QPointer<QMenu>             Menu;
+  QPointer<QMenu>             CompleterMenu;
   QToolButton*                SearchButton;
 };
 
 #endif
-

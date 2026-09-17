@@ -34,6 +34,7 @@
 #include <vtkRendererCollection.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkTextProperty.h>
+#include <vtkVersion.h>
 
 //--------------------------------------------------------------------------
 static ctkLogger logger("org.commontk.visualization.vtk.widgets.ctkVTKAbstractView");
@@ -48,7 +49,7 @@ int ctkVTKAbstractViewPrivate::MultiSamples = 0;  // Default for static var
 ctkVTKAbstractViewPrivate::ctkVTKAbstractViewPrivate(ctkVTKAbstractView& object)
   : q_ptr(&object)
 {
-#if CTK_USE_QVTKOPENGLWIDGET
+#ifdef CTK_USE_QVTKOPENGLWIDGET
   this->RenderWindow = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
 #else
   this->RenderWindow = vtkSmartPointer<vtkRenderWindow>::New();
@@ -56,10 +57,15 @@ ctkVTKAbstractViewPrivate::ctkVTKAbstractViewPrivate(ctkVTKAbstractView& object)
   this->CornerAnnotation = vtkSmartPointer<vtkCornerAnnotation>::New();
   this->RequestTimer = 0;
   this->RenderEnabled = true;
+  this->MaximumUpdateRate = 60.0;
   this->FPSVisible = false;
   this->FPSTimer = 0;
   this->FPS = 0;
+  this->PauseRenderCount = 0;
 }
+
+// --------------------------------------------------------------------------
+ctkVTKAbstractViewPrivate::~ctkVTKAbstractViewPrivate() = default;
 
 // --------------------------------------------------------------------------
 void ctkVTKAbstractViewPrivate::init()
@@ -67,24 +73,21 @@ void ctkVTKAbstractViewPrivate::init()
   Q_Q(ctkVTKAbstractView);
 
   this->setParent(q);
-
-#if CTK_USE_QVTKOPENGLWIDGET
-  this->VTKWidget = new QVTKOpenGLWidget;
+  this->VTKWidget = new ctkVTKOpenGLNativeWidget;
+#ifdef CTK_USE_QVTKOPENGLWIDGET
   this->VTKWidget->setEnableHiDPI(true);
   QObject::connect(this->VTKWidget, SIGNAL(resized()),
                    q, SLOT(forceRender()));
-#else
-  this->VTKWidget = new QVTKWidget;
 #endif
   q->setLayout(new QVBoxLayout);
-  q->layout()->setMargin(0);
+  q->layout()->setContentsMargins(QMargins());
   q->layout()->setSpacing(0);
   q->layout()->addWidget(this->VTKWidget);
 
   this->RequestTimer = new QTimer(q);
   this->RequestTimer->setSingleShot(true);
   QObject::connect(this->RequestTimer, SIGNAL(timeout()),
-                   q, SLOT(forceRender()));
+                   q, SLOT(requestRender()));
 
   this->FPSTimer = new QTimer(q);
   this->FPSTimer->setInterval(1000);
@@ -114,12 +117,12 @@ void ctkVTKAbstractViewPrivate::setupRendering()
   this->RenderWindow->SetAlphaBitPlanes(1);
   int nSamples = ctkVTKAbstractView::multiSamples();
   if (nSamples < 0)
-    {
+  {
     nSamples = vtkOpenGLRenderWindow::GetGlobalMaximumNumberOfMultiSamples();
-    }
+  }
   this->RenderWindow->SetMultiSamples(nSamples);
   this->RenderWindow->StereoCapableWindowOn();
-  this->VTKWidget->SetRenderWindow(this->RenderWindow);
+  this->VTKWidget->setRenderWindow(this->RenderWindow);
 }
 
 //---------------------------------------------------------------------------
@@ -132,9 +135,9 @@ QList<vtkRenderer*> ctkVTKAbstractViewPrivate::renderers()const
   rendererCollection->InitTraversal(rendererIterator);
   vtkRenderer *renderer;
   while ( (renderer= rendererCollection->GetNextRenderer(rendererIterator)) )
-    {
+  {
     rendererList << renderer;
-    }
+  }
   return rendererList;
 }
 
@@ -181,40 +184,48 @@ void ctkVTKAbstractView::scheduleRender()
   //             .arg(d->RequestTime.elapsed()));
 
   if (!d->RenderEnabled)
-    {
+  {
     return;
-    }
+  }
 
-  double msecsBeforeRender = 100. / d->RenderWindow->GetDesiredUpdateRate();
+  double msecsBeforeRender = 0;
+  // If the MaximumUpdateRate is set to 0 then it indicates that rendering is done next time
+  // the application is idle.
+  if (d->MaximumUpdateRate > 0.0)
+  {
+    msecsBeforeRender = 1000. / d->MaximumUpdateRate;
+  }
   if(d->VTKWidget->testAttribute(Qt::WA_WState_InPaintEvent))
-    {
+  {
     // If the request comes from the system (widget exposed, resized...), the
     // render must be done immediately.
-    this->forceRender();
-    }
+    this->requestRender();
+  }
   else if (!d->RequestTime.isValid())
-    {
-    // If the DesiredUpdateRate is in "still mode", the requested framerate
-    // is fake, it is just a way to allocate as much time as possible for the
-    // rendering, it doesn't really mean that rendering must occur only once
-    // every couple seconds. It just means it should be done when there is
-    // time to do it. A timer of 0, kind of mean a rendering is done next time
-    // it is idle.
-    if (msecsBeforeRender > 10000)
-      {
-      msecsBeforeRender = 0;
-      }
+  {
     d->RequestTime.start();
     d->RequestTimer->start(static_cast<int>(msecsBeforeRender));
-    }
+  }
   else if (d->RequestTime.elapsed() > msecsBeforeRender)
-    {
+  {
     // The rendering hasn't still be done, but msecsBeforeRender milliseconds
     // have already been elapsed, it is likely that RequestTimer has already
     // timed out, but the event queue hasn't been processed yet, rendering is
     // done now to ensure the desired framerate is respected.
-    this->forceRender();
-    }
+    this->requestRender();
+  }
+}
+
+//----------------------------------------------------------------------------
+void ctkVTKAbstractView::requestRender()
+{
+  Q_D(const ctkVTKAbstractView);
+
+  if (this->isRenderPaused())
+  {
+    return;
+  }
+  this->forceRender();
 }
 
 //----------------------------------------------------------------------------
@@ -224,25 +235,82 @@ void ctkVTKAbstractView::forceRender()
 
   if (this->sender() == d->RequestTimer  &&
       !d->RequestTime.isValid())
-    {
+  {
     // The slot associated to the timeout signal is now called, however the
     // render has already been executed meanwhile. There is no need to do it
     // again.
     return;
-    }
+  }
 
   // The timer can be stopped if it hasn't timed out yet.
   d->RequestTimer->stop();
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 14, 0))
+  d->RequestTime.invalidate();
+#else
   d->RequestTime = QTime();
+#endif
 
   //logger.trace(QString("forceRender - RenderEnabled: %1")
   //             .arg(d->RenderEnabled ? "true" : "false"));
 
   if (!d->RenderEnabled || !this->isVisible())
-    {
+  {
     return;
-    }
+  }
   d->RenderWindow->Render();
+  this->update();
+}
+
+//----------------------------------------------------------------------------
+bool ctkVTKAbstractView::isRenderPaused()const
+{
+  Q_D(const ctkVTKAbstractView);
+  return d->PauseRenderCount > 0;
+}
+
+//----------------------------------------------------------------------------
+int ctkVTKAbstractView::pauseRender()
+{
+  Q_D(ctkVTKAbstractView);
+  ++d->PauseRenderCount;
+  return d->PauseRenderCount;
+}
+
+//----------------------------------------------------------------------------
+int ctkVTKAbstractView::resumeRender()
+{
+  Q_D(ctkVTKAbstractView);
+  if (d->PauseRenderCount > 0)
+  {
+    --d->PauseRenderCount;
+  }
+  else
+  {
+    qWarning() << Q_FUNC_INFO << "Cannot resume rendering, pause render count is already 0!";
+  }
+
+  // If the rendering is not paused and has been scheduled, call scheduleRender
+  if (!this->isRenderPaused() && d->RequestTimer && d->RequestTime.isValid())
+  {
+    this->scheduleRender();
+  }
+  return d->PauseRenderCount;
+}
+
+//----------------------------------------------------------------------------
+int ctkVTKAbstractView::setRenderPaused(bool pause)
+{
+  Q_D(const ctkVTKAbstractView);
+
+  if (pause)
+  {
+    this->pauseRender();
+  }
+  else
+  {
+    this->resumeRender();
+  }
+  return d->PauseRenderCount;
 }
 
 //----------------------------------------------------------------------------
@@ -281,14 +349,14 @@ void ctkVTKAbstractView::setCornerAnnotationText(const QString& text)
 {
   Q_D(ctkVTKAbstractView);
   d->CornerAnnotation->ClearAllTexts();
-  d->CornerAnnotation->SetText(2, text.toLatin1());
+  d->CornerAnnotation->SetText(2, text.toUtf8());
 }
 
 //----------------------------------------------------------------------------
 QString ctkVTKAbstractView::cornerAnnotationText() const
 {
   Q_D(const ctkVTKAbstractView);
-  return QLatin1String(d->CornerAnnotation->GetText(2));
+  return QString::fromUtf8(d->CornerAnnotation->GetText(2));
 }
 
 //----------------------------------------------------------------------------
@@ -299,11 +367,7 @@ vtkCornerAnnotation* ctkVTKAbstractView::cornerAnnotation() const
 }
 
 //----------------------------------------------------------------------------
-#if CTK_USE_QVTKOPENGLWIDGET
-QVTKOpenGLWidget * ctkVTKAbstractView::VTKWidget() const
-#else
-QVTKWidget * ctkVTKAbstractView::VTKWidget() const
-#endif
+ctkVTKOpenGLNativeWidget * ctkVTKAbstractView::VTKWidget() const
 {
   Q_D(const ctkVTKAbstractView);
   return d->VTKWidget;
@@ -349,9 +413,9 @@ void ctkVTKAbstractView::setBackgroundColor(const QColor& newBackgroundColor)
   color[1] = newBackgroundColor.greenF();
   color[2] = newBackgroundColor.blueF();
   foreach(vtkRenderer* renderer, d->renderers())
-    {
+  {
     renderer->SetBackground(color);
-    }
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -374,9 +438,9 @@ void ctkVTKAbstractView::setBackgroundColor2(const QColor& newBackgroundColor)
   color[1] = newBackgroundColor.greenF();
   color[2] = newBackgroundColor.blueF();
   foreach(vtkRenderer* renderer, d->renderers())
-    {
+  {
     renderer->SetBackground2(color);
-    }
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -395,9 +459,9 @@ void ctkVTKAbstractView::setGradientBackground(bool enable)
 {
   Q_D(ctkVTKAbstractView);
   foreach(vtkRenderer* renderer, d->renderers())
-    {
+  {
     renderer->SetGradientBackground(enable);
-    }
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -413,24 +477,24 @@ void ctkVTKAbstractView::setFPSVisible(bool show)
 {
   Q_D(ctkVTKAbstractView);
   if (d->FPSVisible == show)
-    {
+  {
     return;
-    }
+  }
   d->FPSVisible = show;
   vtkRenderer* renderer = d->firstRenderer();
   if (d->FPSVisible)
-    {
+  {
     d->FPSTimer->start();
     qvtkConnect(renderer,
                 vtkCommand::EndEvent, this, SLOT(onRender()));
-    }
+  }
   else
-    {
+  {
     d->FPSTimer->stop();
     qvtkDisconnect(renderer,
                    vtkCommand::EndEvent, this, SLOT(onRender()));
     d->CornerAnnotation->SetText(1, "");
-    }
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -455,7 +519,7 @@ void ctkVTKAbstractView::updateFPS()
   double lastRenderTime = renderer ? renderer->GetLastRenderTimeInSeconds() : 0.;
   QString fpsString = tr("FPS: %1(%2s)").arg(d->FPS).arg(lastRenderTime);
   d->FPS = 0;
-  d->CornerAnnotation->SetText(1, fpsString.toLatin1());
+  d->CornerAnnotation->SetText(1, fpsString.toUtf8());
 }
 
 //----------------------------------------------------------------------------
@@ -472,17 +536,20 @@ void ctkVTKAbstractView::setUseDepthPeeling(bool useDepthPeeling)
   Q_D(ctkVTKAbstractView);
   vtkRenderer* renderer = d->firstRenderer();
   if (!renderer)
-    {
+  {
     return;
-    }
+  }
   this->renderWindow()->SetAlphaBitPlanes( useDepthPeeling ? 1 : 0);
   int nSamples = ctkVTKAbstractView::multiSamples();
   if (nSamples < 0)
-    {
+  {
     nSamples = vtkOpenGLRenderWindow::GetGlobalMaximumNumberOfMultiSamples();
-    }
+  }
   this->renderWindow()->SetMultiSamples(useDepthPeeling ? 0 : nSamples);
   renderer->SetUseDepthPeeling(useDepthPeeling ? 1 : 0);
+#ifdef CTK_USE_QVTKOPENGLWIDGET
+  renderer->SetUseDepthPeelingForVolumes(useDepthPeeling);
+#endif
 }
 
 //----------------------------------------------------------------------------
@@ -495,4 +562,18 @@ int ctkVTKAbstractView::multiSamples()
 void ctkVTKAbstractView::setMultiSamples(int number)
 {
   ctkVTKAbstractViewPrivate::MultiSamples = number;
+}
+
+//----------------------------------------------------------------------------
+double ctkVTKAbstractView::maximumUpdateRate()const
+{
+  Q_D(const ctkVTKAbstractView);
+  return d->MaximumUpdateRate;
+}
+
+//----------------------------------------------------------------------------
+void ctkVTKAbstractView::setMaximumUpdateRate(double fps)
+{
+  Q_D(ctkVTKAbstractView);
+  d->MaximumUpdateRate = fps;
 }

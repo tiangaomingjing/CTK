@@ -21,19 +21,19 @@
 #ifndef __ctkDICOMQueryRetrieveWidget_h
 #define __ctkDICOMQueryRetrieveWidget_h
 
-#include "ctkDICOMWidgetsExport.h"
-
-// Qt includes 
+// Qt includes
 #include <QWidget>
 #include <QItemSelection>
 #include <QMap>
 #include <QVariant>
 #include <QString>
 
-class ctkDICOMTableManager;
-// CTK includes
+// ctkDICOMCore includes
 #include <ctkDICOMDatabase.h>
 
+// ctkDICOMWidgets includes
+#include <ctkDICOMTableManager.h>
+#include "ctkDICOMWidgetsExport.h"
 class ctkDICOMQueryRetrieveWidgetPrivate;
 
 /// \ingroup DICOM_Widgets
@@ -69,6 +69,8 @@ Q_SIGNALS:
   void canceled();
 
 protected Q_SLOTS:
+  void onQuerySectionToggled(bool);
+  void onRetrieveSectionToggled(bool);
   void onQueryProgressChanged(int value);
   void updateRetrieveProgress(int value);
 

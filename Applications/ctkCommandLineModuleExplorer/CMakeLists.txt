@@ -21,20 +21,6 @@ set(KIT_SRCS
   ctkCmdLineModuleExplorerUtils.cpp
 )
 
-# Headers that should run through moc
-set(KIT_MOC_SRCS
-  ctkCmdLineModuleExplorerDirectorySettings.h
-  ctkCmdLineModuleExplorerGeneralModuleSettings.h
-  ctkCmdLineModuleExplorerMainWindow.h
-  ctkCmdLineModuleExplorerModulesSettings.h
-  ctkCmdLineModuleExplorerOutputText.h
-  ctkCmdLineModuleExplorerProgressListWidget.h
-  ctkCmdLineModuleExplorerProgressWidget.h
-  ctkCmdLineModuleExplorerShowXmlAction.h
-  ctkCmdLineModuleExplorerTabList.h
-  ctkCmdLineModuleExplorerTreeWidget.h
-)
-
 # UI files
 set(KIT_UI_FORMS
   ctkCmdLineModuleExplorerDirectorySettings.ui
@@ -49,11 +35,6 @@ set(KIT_resources
   resources/ctkCmdLineModuleExplorer.qrc
 )
 
-if(CTK_QT_VERSION VERSION_LESS "5")
-  set(QT_USE_QTUITOOLS 1)
-  include(${QT_USE_FILE})
-endif()
-
 # Target libraries - See CMake/ctkFunctionGetTargetLibraries.cmake
 # The following macro will read the target libraries from the file 'target_libraries.cmake'
 ctkFunctionGetTargetLibraries(KIT_target_libraries)
@@ -61,7 +42,6 @@ ctkFunctionGetTargetLibraries(KIT_target_libraries)
 ctkMacroBuildApp(
   NAME ${PROJECT_NAME}
   SRCS ${KIT_SRCS}
-  MOC_SRCS ${KIT_MOC_SRCS}
   UI_FORMS ${KIT_UI_FORMS}
   TARGET_LIBRARIES ${KIT_target_libraries}
   RESOURCES ${KIT_resources}

@@ -1,0 +1,639 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ctkDICOMVisualBrowserWidget</class>
+ <widget class="QWidget" name="ctkDICOMVisualBrowserWidget">
+  <property name="windowModality">
+   <enum>Qt::WindowModal</enum>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1057</width>
+    <height>1135</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>400</width>
+    <height>0</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Select data to load</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="ctkDICOMWidget.qrc">
+    <normaloff>:/Icons/patient.svg</normaloff>:/Icons/patient.svg</iconset>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QFrame" name="DatabaseDirectoryProblemFrame">
+     <property name="styleSheet">
+      <string notr="true">color: rgb(0, 0, 0);background-color: rgb(245, 245, 170);</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Box</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QLabel" name="DatabaseDirectoryProblemLabel">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Warning</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="UpdateDatabaseButton">
+        <property name="text">
+         <string>Update database</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="CreateNewDatabaseButton">
+        <property name="text">
+         <string>Create new database</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="SelectDatabaseDirectoryButton">
+        <property name="text">
+         <string>Select database folder</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="topHorizontalLayout">
+     <item>
+      <widget class="ctkCollapsibleGroupBox" name="SearchPatientsCollapsibleGroupBox">
+       <property name="title">
+        <string>Filtering</string>
+       </property>
+       <property name="collapsed">
+        <bool>false</bool>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <property name="leftMargin">
+         <number>2</number>
+        </property>
+        <property name="topMargin">
+         <number>2</number>
+        </property>
+        <property name="rightMargin">
+         <number>2</number>
+        </property>
+        <property name="bottomMargin">
+         <number>2</number>
+        </property>
+        <property name="spacing">
+         <number>2</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="ctkSearchBox" name="FilteringPatientIDSearchBox">
+          <property name="toolTip">
+           <string>Filter by patient ID</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          </property>
+          <property name="placeholderText">
+           <string> MRN...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="ctkSearchBox" name="FilteringPatientNameSearchBox">
+          <property name="toolTip">
+           <string>Filter by patient name</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          </property>
+          <property name="placeholderText">
+           <string> Name...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="FilteringModalityLabel">
+          <property name="text">
+           <string>Modality:</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QLabel" name="FilteringDateLabel">
+          <property name="text">
+           <string>Date:</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="ctkSearchBox" name="FilteringStudyDescriptionSearchBox">
+          <property name="toolTip">
+           <string>Filter by study description</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          </property>
+          <property name="placeholderText">
+           <string> Study Description...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="ctkSearchBox" name="FilteringSeriesDescriptionSearchBox">
+          <property name="toolTip">
+           <string>Filter by series description</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          </property>
+          <property name="placeholderText">
+           <string> Series Description ...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="ctkCheckableComboBox" name="FilteringModalityCheckableComboBox">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Filter by modality</string>
+          </property>
+          <property name="currentText">
+           <string/>
+          </property>
+          <property name="currentIndex">
+           <number>-1</number>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::AdjustToContents</enum>
+          </property>
+          <property name="frame">
+           <bool>true</bool>
+          </property>
+          <property name="modelColumn">
+           <number>0</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="ctkComboBox" name="FilteringDateComboBox">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Filter by date</string>
+          </property>
+          <item>
+           <property name="text">
+            <string>Any</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Today</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Yesterday</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Last week</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Last month</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Last year</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Custom...</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="ctkCollapsibleGroupBox" name="ActionsCollapsibleGroupBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="title">
+        <string>Actions</string>
+       </property>
+       <property name="collapsed">
+        <bool>false</bool>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_3">
+        <property name="leftMargin">
+         <number>2</number>
+        </property>
+        <property name="topMargin">
+         <number>2</number>
+        </property>
+        <property name="rightMargin">
+         <number>2</number>
+        </property>
+        <property name="bottomMargin">
+         <number>2</number>
+        </property>
+        <property name="spacing">
+         <number>2</number>
+        </property>
+        <item row="0" column="0" rowspan="2">
+         <widget class="ctkPushButton" name="SearchPushButton">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>68</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>68</height>
+           </size>
+          </property>
+          <property name="toolTip">
+           <string>Query and retrieve. If filters are set, a patient query will be sent to the DICOM servers.
+If no filters are set, a study query for the currently selected patient in the local database
+(or the first patient if none is selected) will be sent to the DICOM servers.</string>
+          </property>
+          <property name="text">
+           <string>Query </string>
+          </property>
+          <property name="icon">
+           <iconset resource="ctkDICOMWidget.qrc">
+            <normaloff>:/Icons/query.svg</normaloff>:/Icons/query.svg</iconset>
+          </property>
+          <property name="iconSize">
+           <size>
+            <width>48</width>
+            <height>48</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="ctkPushButton" name="ClosePushButton">
+          <property name="minimumSize">
+           <size>
+            <width>1</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="text">
+           <string> Close</string>
+          </property>
+          <property name="icon">
+           <iconset resource="ctkDICOMWidget.qrc">
+            <normaloff>:/Icons/cancel.svg</normaloff>:/Icons/cancel.svg</iconset>
+          </property>
+          <property name="iconSize">
+           <size>
+            <width>24</width>
+            <height>24</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="ctkPushButton" name="ImportPushButton">
+          <property name="minimumSize">
+           <size>
+            <width>1</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="text">
+           <string> Import </string>
+          </property>
+          <property name="icon">
+           <iconset resource="ctkDICOMWidget.qrc">
+            <normaloff>:/Icons/import.svg</normaloff>:/Icons/import.svg</iconset>
+          </property>
+          <property name="iconSize">
+           <size>
+            <width>24</width>
+            <height>24</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0" colspan="2">
+         <widget class="ctkDynamicSpacer" name="ActionsDynamicSpacer"/>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="ctkPushButton" name="WarningPushButton">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="focusPolicy">
+      <enum>Qt::StrongFocus</enum>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="ctkDICOMWidget.qrc">
+       <normaloff>:/Icons/warning.svg</normaloff>:/Icons/warning.svg</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>48</width>
+       <height>48</height>
+      </size>
+     </property>
+     <property name="checkable">
+      <bool>false</bool>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+     <property name="flat">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Fixed</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>10</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="ctkSplitter" name="splitter">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="opaqueResize">
+      <bool>true</bool>
+     </property>
+     <widget class="ctkDICOMPatientView" name="PatientView">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+     <widget class="ctkCollapsibleGroupBox" name="AdvancedCollapsibleGroupBox">
+      <property name="title">
+       <string>Advanced</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_13">
+       <item>
+        <widget class="ctkCollapsibleGroupBox" name="JobsCollapsibleGroupBox">
+         <property name="title">
+          <string>Jobs   </string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_9">
+          <property name="spacing">
+           <number>2</number>
+          </property>
+          <property name="leftMargin">
+           <number>2</number>
+          </property>
+          <property name="topMargin">
+           <number>2</number>
+          </property>
+          <property name="rightMargin">
+           <number>2</number>
+          </property>
+          <property name="bottomMargin">
+           <number>2</number>
+          </property>
+          <item>
+           <widget class="ctkDICOMJobListWidget" name="JobListWidget"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="ctkCollapsibleGroupBox" name="ServersSettingsCollapsibleGroupBox">
+         <property name="title">
+          <string>Settings</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_12">
+          <property name="spacing">
+           <number>2</number>
+          </property>
+          <property name="leftMargin">
+           <number>2</number>
+          </property>
+          <property name="topMargin">
+           <number>2</number>
+          </property>
+          <property name="rightMargin">
+           <number>2</number>
+          </property>
+          <property name="bottomMargin">
+           <number>2</number>
+          </property>
+          <item>
+           <widget class="ctkDICOMServerNodeWidget2" name="ServerNodeWidget"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="ProgressFrame">
+     <property name="frameShape">
+      <enum>QFrame::Box</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="1">
+       <widget class="QProgressBar" name="ProgressBar">
+        <property name="value">
+         <number>0</number>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="ProgressLabel">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>200</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Progress</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0" colspan="3">
+       <widget class="QLineEdit" name="ProgressDetailLineEdit">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="maxLength">
+         <number>300</number>
+        </property>
+        <property name="frame">
+         <bool>false</bool>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="ProgressCancelButton">
+        <property name="text">
+         <string>Cancel</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ctkDICOMJobListWidget</class>
+   <extends>QWidget</extends>
+   <header>ctkDICOMJobListWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkDICOMServerNodeWidget2</class>
+   <extends>QWidget</extends>
+   <header>ctkDICOMServerNodeWidget2.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkCheckableComboBox</class>
+   <extends>QComboBox</extends>
+   <header>ctkCheckableComboBox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>ctkCollapsibleGroupBox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkComboBox</class>
+   <extends>QComboBox</extends>
+   <header>ctkComboBox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkDynamicSpacer</class>
+   <extends>QWidget</extends>
+   <header>ctkDynamicSpacer.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkPushButton</class>
+   <extends>QPushButton</extends>
+   <header>ctkPushButton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkSearchBox</class>
+   <extends>QLineEdit</extends>
+   <header>ctkSearchBox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkDICOMPatientView</class>
+   <extends>QListView</extends>
+   <header>ctkDICOMPatientView.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkSplitter</class>
+   <extends>QSplitter</extends>
+   <header>ctkSplitter.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="ctkDICOMWidget.qrc"/>
+ </resources>
+ <connections/>
+</ui>

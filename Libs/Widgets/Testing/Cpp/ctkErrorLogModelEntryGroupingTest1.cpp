@@ -44,7 +44,7 @@ int ctkErrorLogModelEntryGroupingTest1(int argc, char * argv [])
   QString errorMsg;
 
   try
-    {
+  {
     modelTester.setModel(&model);
 
     // --------------------------------------------------------------------------
@@ -58,19 +58,19 @@ int ctkErrorLogModelEntryGroupingTest1(int argc, char * argv [])
     model.setLogEntryGrouping(true);
 
     QString qtMessage0("This is a qDebug message - 1");
-    qDebug().nospace() << qPrintable(qtMessage0);
+    qDebug().nospace() << qUtf8Printable(qtMessage0);
 
     QString qtMessage0b("This is a qDebug message - 2");
-    qDebug().nospace() << qPrintable(qtMessage0b);
+    qDebug().nospace() << qUtf8Printable(qtMessage0b);
 
     QString qtMessage1("This is a qWarning message");
-    qWarning().nospace() << qPrintable(qtMessage1);
+    qWarning().nospace() << qUtf8Printable(qtMessage1);
 
     QString qtMessage2("This is a qCritical message - 1");
-    qCritical().nospace() << qPrintable(qtMessage2);
+    qCritical().nospace() << qUtf8Printable(qtMessage2);
 
     QString qtMessage2b("This is a qCritical message - 2");
-    qCritical().nospace() << qPrintable(qtMessage2b);
+    qCritical().nospace() << qUtf8Printable(qtMessage2b);
 
     // Give enough time to the ErrorLogModel to consider the queued messages.
     processEvents(1000);
@@ -82,29 +82,29 @@ int ctkErrorLogModelEntryGroupingTest1(int argc, char * argv [])
 
     errorMsg = checkRowCount(__LINE__, model.rowCount(), /* expected = */ expectedQtMessages.count());
     if (!errorMsg.isEmpty())
-      {
+    {
       model.disableAllMsgHandler();
       printErrorMessage(errorMsg);
       printTextMessages(model);
       return EXIT_FAILURE;
-      }
+    }
 
     errorMsg = checkTextMessages(__LINE__, model, expectedQtMessages);
     if (!errorMsg.isEmpty())
-      {
+    {
       model.disableAllMsgHandler();
       printErrorMessage(errorMsg);
       printTextMessages(model);
       return EXIT_FAILURE;
-      }
-
     }
+
+  }
   catch (const char* error)
-    {
+  {
     model.disableAllMsgHandler();
     std::cerr << error << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   return EXIT_SUCCESS;
 }

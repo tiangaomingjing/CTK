@@ -20,7 +20,7 @@
 =============================================================================*/
 
 // Qt includes
-#include <QtPlugin>
+#include <QtGlobal>
 #include <QRect>
 #include <QDebug>
 #include <QPushButton>
@@ -45,22 +45,14 @@
 // DCMTK includes
 #include <dcmtk/dcmimgle/dcmimage.h>
 
-#if (QT_VERSION < QT_VERSION_CHECK(5,0,0))
-#include <QDesktopServices>
-#else
 #include <QStandardPaths>
-#endif
 
 //----------------------------------------------------------------------------
 ctkCommandLineModuleAppLogic::ctkCommandLineModuleAppLogic(const QString & modulelocation)
   : ctkDicomAbstractApp(ctkCommandLineModuleAppPlugin::getPluginContext()),
     AppWidget(0),
     ModuleLocation(modulelocation),
-    #if (QT_VERSION < QT_VERSION_CHECK(5,0,0))
-    ModuleManager(ctkCmdLineModuleManager::WEAK_VALIDATION, QDesktopServices::storageLocation(QDesktopServices::CacheLocation)),
-    #else
     ModuleManager(ctkCmdLineModuleManager::WEAK_VALIDATION, QStandardPaths::writableLocation(QStandardPaths::CacheLocation)),
-    #endif
     ModuleFrontend(0)
 {
   connect(this, SIGNAL(startProgress()), this, SLOT(onStartProgress()), Qt::QueuedConnection);
@@ -128,19 +120,19 @@ void ctkCommandLineModuleAppLogic::do_something()
   connect(ui.LoadDataButton, SIGNAL(clicked()), this, SLOT(onLoadDataClicked()));
   connect(ui.CreateSecondaryCaptureButton, SIGNAL(clicked()), this, SLOT(onCreateSecondaryCapture()));
   try
-    {
+  {
     QRect preferred(50,50,100,100);
     qDebug() << "  Asking:getAvailableScreen";
     QRect rect = getHostInterface()->getAvailableScreen(preferred);
     qDebug() << "  got sth:" << rect.top();
     this->AppWidget->move(rect.topLeft());
     this->AppWidget->resize(rect.size());
-    }
+  }
   catch (const ctkRuntimeException& e)
-    {
+  {
     qCritical() << e.what();
     return;
-    }
+  }
   this->AppWidget->show();
 }
 
@@ -218,13 +210,13 @@ void ctkCommandLineModuleAppLogic::onDataAvailable()
   QString s;
   const ctkDicomAppHosting::AvailableData& data = getIncomingAvailableData();
   if(this->AppWidget == 0)
-    {
+  {
     qCritical() << "Button is null!";
     return;
-    }
+  }
   s = "Received notifyDataAvailable with patients.count()= " + QString().setNum(data.patients.count());
   if(data.patients.count()>0)
-    {
+  {
     s=s+" name:"+data.patients.begin()->name+" studies.count(): "+QString().setNum(data.patients.begin()->studies.count());
     if(data.patients.begin()->studies.count()>0)
     {
@@ -276,7 +268,7 @@ void ctkCommandLineModuleAppLogic::onLoadDataClicked()
     if(QFileInfo(filename).exists())
     {
       try {
-        DicomImage dcmtkImage(filename.toLatin1().data());
+        DicomImage dcmtkImage(filename.toUtf8().data());
         ctkDICOMImage ctkImage(&dcmtkImage);
 
         QPixmap pixmap = QPixmap::fromImage(ctkImage.frame(0),Qt::AvoidDither);
@@ -304,8 +296,13 @@ void ctkCommandLineModuleAppLogic::onLoadDataClicked()
 
 void ctkCommandLineModuleAppLogic::onCreateSecondaryCapture()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+  QPixmap pixmap = ui.PlaceHolderForImage->pixmap(Qt::ReturnByValue);
+  if (!pixmap.isNull())
+#else
   const QPixmap* pixmap = ui.PlaceHolderForImage->pixmap();
   if(pixmap!=NULL)
+#endif
   {
     QString templatefilename = QDir(OutputLocation).absolutePath();
     if(templatefilename.isEmpty()==false) templatefilename.append('/');
@@ -325,7 +322,11 @@ void ctkCommandLineModuleAppLogic::onCreateSecondaryCapture()
       outputtmp.close();
     }
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    pixmap.save(inputFileName);
+#else
     pixmap->save(inputFileName);
+#endif
 
     ModuleFrontend->setValue("fileVar", inputFileName);
     ModuleFrontend->setValue("dirVar", outputFileName);

@@ -34,48 +34,42 @@ class Spy : public QObject
   Q_OBJECT
 
 public:
-  explicit Spy()
-    {
+  explicit Spy(QObject* parent = nullptr) : QObject(parent)
+  {
     AcknowledgedSignals = 0;
-    }
+  }
 
   void getSpyReport(QString coordinatesString)
-    {
+  {
     QCOMPARE(AcknowledgedSignals, 1);
     AcknowledgedSignals = 0;
 
     QStringList coordinatesList = coordinatesString.split(',');
     QCOMPARE(coordinatesList.count(), this->Coordinates.size());
     for (int i = 0; i < this->Coordinates.size(); ++i)
-      {
+    {
       QCOMPARE(this->Coordinates[i], coordinatesList[i].toDouble());
-      }
+    }
     this->Coordinates.clear();
-    };
+  };
 
 public slots:
   void onCoordinatesChanged(double* coordinates)
-    {
+{
     ctkCoordinatesWidget* coordWidget =
       qobject_cast<ctkCoordinatesWidget*>(this->sender());
     QVERIFY(coordWidget != 0);
     for (int i = 0; i < coordWidget->dimension(); ++i)
-      {
+    {
       this->Coordinates.append(coordinates[i]);
-      }
-    ++AcknowledgedSignals;
     }
+    ++AcknowledgedSignals;
+}
 
 public:
   QList<double> Coordinates;
   int AcknowledgedSignals;
 };
-
-// ----------------------------------------------------------------------------
-QString coordinatesFromValue(double val)
-{
-  return QString("%1,%1,%1").arg(val);
-}
 
 } // end namespace
 
@@ -83,6 +77,8 @@ QString coordinatesFromValue(double val)
 class ctkCoordinatesWidgetValueProxyTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkCoordinatesWidgetValueProxyTester(QObject* parent = nullptr) : QObject(parent) {}
 private slots:
 
   void testSetValue();
@@ -233,4 +229,4 @@ void ctkCoordinatesWidgetValueProxyTester::testPrecision_data()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkCoordinatesWidgetValueProxyTest)
-#include "moc_ctkCoordinatesWidgetValueProxyTest.cpp"
+#include "ctkCoordinatesWidgetValueProxyTest.moc"

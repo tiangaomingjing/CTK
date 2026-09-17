@@ -74,8 +74,9 @@ public:
     ValidationFailedTransition
   };
 
-  ctkWorkflowIntrastepTransition(IntrastepTransitionType newTransitionType)
-    : TransitionType(newTransitionType){}
+  ctkWorkflowIntrastepTransition(IntrastepTransitionType newTransitionType,
+                                  QState* sourceState = nullptr)
+    : QAbstractTransition(sourceState), TransitionType(newTransitionType){}
 
   IntrastepTransitionType transitionType() {return this->TransitionType;}
 
@@ -84,9 +85,9 @@ protected:
   {
     // check the event type
     if (e->type() != ctkWorkflowIntrastepTransitionEvent::getWorkflowIntrastepTransitionEventType())
-      {
+    {
       return false;
-      }
+    }
 
     // check the event value (i.e. the TransitionType)
     ctkWorkflowIntrastepTransitionEvent* workflowEvent = static_cast<ctkWorkflowIntrastepTransitionEvent*>(e);
@@ -132,8 +133,6 @@ struct CTK_CORE_EXPORT ctkWorkflowInterstepTransitionEvent : public QEvent
 class CTK_CORE_EXPORT ctkWorkflowInterstepTransition : public QAbstractTransition
 {
   Q_OBJECT
-  Q_ENUMS(InterstepTransitionType)
-
 public:
 
   enum InterstepTransitionType
@@ -144,11 +143,13 @@ public:
     StoppingWorkflow,
     TransitionToPreviousStartingStepAfterSuccessfulGoToFinishStep
   };
-
-  ctkWorkflowInterstepTransition(InterstepTransitionType newTransitionType)
-    : TransitionType(newTransitionType){}
-  ctkWorkflowInterstepTransition(InterstepTransitionType newTransitionType, const QString& newId)
-    : TransitionType(newTransitionType),
+  Q_ENUM(InterstepTransitionType)
+  ctkWorkflowInterstepTransition(InterstepTransitionType newTransitionType,
+                                  QState* sourceState = nullptr)
+    : QAbstractTransition(sourceState), TransitionType(newTransitionType){}
+  ctkWorkflowInterstepTransition(InterstepTransitionType newTransitionType, const QString& newId,
+                                  QState* sourceState = nullptr)
+    : QAbstractTransition(sourceState), TransitionType(newTransitionType),
     Id(newId) {}
 
   InterstepTransitionType transitionType() {return this->TransitionType;}
@@ -159,15 +160,15 @@ protected:
   {
     // check the event type
     if (e->type() != ctkWorkflowInterstepTransitionEvent::getWorkflowInterstepTransitionEventType())
-      {
+    {
       return false;
-      }
+    }
 
     // check the event value (i.e. the TransitionType)
     ctkWorkflowInterstepTransitionEvent* workflowEvent = static_cast<ctkWorkflowInterstepTransitionEvent*>(e);
 
     return (this->TransitionType == workflowEvent->EventTransitionType
-            && this->Id == workflowEvent->EventId); 
+            && this->Id == workflowEvent->EventId);
   }
 
   void onTransition(QEvent*){}

@@ -22,6 +22,7 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
+#include <QRegularExpression>
 #include <QTemporaryFile>
 
 // CTK includes
@@ -63,11 +64,13 @@ public:
   void exerciseITKDebugMacro(const QString& text)
   {
     itkDebugMacro( << qPrintable(text));
+    Q_UNUSED(text);
   }
 
   void exerciseITKWarningMacro(const QString& text)
   {
     itkWarningMacro( << qPrintable(text));
+    Q_UNUSED(text);
   }
 };
 
@@ -84,7 +87,11 @@ int ctkITKErrorLogModelFileLoggingTest1(int argc, char * argv [])
   // Create log file
   QTemporaryFile logFile(QDir::tempPath() + "/ctkITKErrorLogModelFileLoggingTest1.XXXXXX");
   logFile.setAutoRemove(false);
-  logFile.open();
+  if (!logFile.open())
+  {
+    qWarning() << "Failed to open temporary log file";
+    return EXIT_FAILURE;
+  }
   logFile.close();
   QString logFilePath = logFile.fileName();
 
@@ -115,14 +122,15 @@ int ctkITKErrorLogModelFileLoggingTest1(int argc, char * argv [])
         "\\(.+ctkITKErrorLogModelFileLoggingTest1\\.cpp\\:%2\\) \\- %3$");
 
   int entryIndex = 0;
-  QRegExp regexp(expectedLogEntryPatternTemplate.arg("WARNING").arg(70).arg("This is a ITK warning message"));
-  if (!regexp.exactMatch(logLines.at(entryIndex)))
-    {
+  static const QRegularExpression regexp(expectedLogEntryPatternTemplate.arg(
+    QLatin1String("WARNING"), QString::number(72), QLatin1String("This is a ITK warning message")));
+  if (!regexp.match(logLines.at(entryIndex)).hasMatch())
+  {
     printErrorMessage(
-          QString("Line %1 - Log entry %2 does NOT math expected regular expression.\n\tLogEntry: %3\n\tRegExp: %4").
-              arg(__LINE__).arg(entryIndex).arg(logLines.at(entryIndex)).arg(regexp.pattern()));
+          QString("Line %1 - Log entry %2 does NOT match expected regular expression.\n\tLogEntry: %3\n\tRegExp: %4").
+              arg(QString::number(__LINE__), QString::number(entryIndex), logLines.at(entryIndex), regexp.pattern()));
     return EXIT_FAILURE;
-    }
+  }
 
   return EXIT_SUCCESS;
 }

@@ -143,7 +143,7 @@ int main(int argc, char** argv)
   else if (args.contains("string"))
   {
     QByteArray byteArray;
-    byteArray.append(args["string"].toString());
+    byteArray.append(args["string"].toString().toUtf8());
     QBuffer buffer(&byteArray);
     buffer.open(QIODevice::ReadOnly);
 
@@ -165,7 +165,7 @@ int main(int argc, char** argv)
     out << "  <title>ctkCommandLineModuleExplorer</title>\n";
     out << "  <description><![CDATA[Used to check the validity of CLI XML descriptors.]]></description>\n";
     out << "  <version>0.0.1</version>\n";
-    out << "  <documentation-url>http://www.commontk.org</documentation-url>\n";
+    out << "  <documentation-url>http://commontk.org</documentation-url>\n";
     out << "  <license>Apache 2</license>\n";
     out << "  <contributor>Various</contributor>\n";
     out << "  <acknowledgements><![CDATA[]]></acknowledgements>\n";

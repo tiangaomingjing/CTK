@@ -21,6 +21,7 @@
 // Qt includes
 #include <QApplication>
 #include <QDir>
+#include <QTemporaryDir>
 #include <QTimer>
 
 // CTK includes
@@ -44,56 +45,73 @@ int ctkScreenshotDialogTest1(int argc, char * argv [] )
       screenshotDialog.baseFileName() != "Untitled" ||
       !screenshotDialog.directory().isEmpty() ||
       screenshotDialog.delay() != 0)
-    {
+  {
     std::cerr << "ctkScreenshotDialog, bad default values: "
                 << screenshotDialog.widgetToGrab() << " "
                 << qPrintable(screenshotDialog.baseFileName()) << " "
                 << qPrintable(screenshotDialog.directory()) << " "
                 <<  screenshotDialog.delay() << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   screenshotDialog.setWidgetToGrab(&topLevel);
   if (screenshotDialog.widgetToGrab() != &topLevel)
-    {
+  {
     std::cerr << "ctkScreenshotDialog::setWidgetToGrab failed: "
               << screenshotDialog.widgetToGrab() << " instead of  "
               << &topLevel << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   screenshotDialog.setBaseFileName("screenshot");
   if (screenshotDialog.baseFileName() != "screenshot")
-    {
+  {
     std::cerr << "ctkScreenshotDialog::setBaseFileName failed: "
               << qPrintable(screenshotDialog.baseFileName()) << " instead of "
               << "\"screenshot\"." << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   screenshotDialog.setDirectory("..");
   if (screenshotDialog.directory() != "..")
-    {
+  {
     std::cerr << "ctkScreenshotDialog::setDirectory failed: "
               << qPrintable(screenshotDialog.directory()) << " instead of "
               << ".." << std::endl;
     return EXIT_FAILURE;
-    }
+  }
+
+  // Use a temporary directory for the actual screenshot to avoid overwrite
+  // confirmation dialogs that would block as a nested modal dialog.
+  QTemporaryDir tempDir;
+  if (!tempDir.isValid())
+  {
+    std::cerr << "Failed to create temporary directory." << std::endl;
+    return EXIT_FAILURE;
+  }
+  screenshotDialog.setDirectory(tempDir.path());
 
   screenshotDialog.setDelay(1);
   if (screenshotDialog.delay() != 1)
-    {
+  {
     std::cerr << "ctkScreenshotDialog::setDelay failed: "
               << screenshotDialog.delay() << " instead of 2." << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   topLevel.show();
 
   if (argc < 2 || QString(argv[1]) != "-I" )
-    {
-    QTimer::singleShot(1400, &app, SLOT(quit()));
-    }
+  {
+    // Close the modal dialog after the screenshot is taken.
+    // QApplication::quit() does not close modal dialogs in Qt6,
+    // so we close the dialog directly.
+    QTimer* closeTimer = new QTimer(&screenshotDialog);
+    closeTimer->setSingleShot(true);
+    closeTimer->setInterval(1400);
+    QObject::connect(closeTimer, &QTimer::timeout, &screenshotDialog, &QDialog::reject);
+    closeTimer->start();
+  }
 
   screenshotDialog.saveScreenshot(); // 1000msecs should be enough
   return screenshotDialog.exec();

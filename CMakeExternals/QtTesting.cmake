@@ -24,10 +24,15 @@ endif()
 
 if(NOT DEFINED QtTesting_DIR)
 
-  set(revision_tag 828b35edbbac6b08668809c84391003a2f513d1b)
+  if("${CMAKE_CXX_STANDARD}" STREQUAL "98")
+    set(revision_tag c44b32fdea827be737e8c2f5608ffbc2e3bd08b2)
+  else()
+    set(revision_tag 6d1531564ae61f702fdd0d63f573fef08853460f) # ctk-2026-02-09-4e0a3eb
+  endif()
   if(${proj}_REVISION_TAG)
     set(revision_tag ${${proj}_REVISION_TAG})
   endif()
+  ExternalProject_Message(${proj} "${proj}[revision_tag:${revision_tag}]")
 
   set(location_args )
   if(${proj}_URL)
@@ -36,7 +41,7 @@ if(NOT DEFINED QtTesting_DIR)
     set(location_args GIT_REPOSITORY ${${proj}_GIT_REPOSITORY}
                       GIT_TAG ${revision_tag})
   else()
-    set(location_args GIT_REPOSITORY "${git_protocol}://github.com/commontk/QtTesting.git"
+    set(location_args GIT_REPOSITORY "https://github.com/commontk/QtTesting.git"
                       GIT_TAG ${revision_tag})
   endif()
 
@@ -51,11 +56,7 @@ if(NOT DEFINED QtTesting_DIR)
 
   set(ep_cache_args
     -DQtTesting_QT_VERSION:STRING=${CTK_QT_VERSION})
-  if(CTK_QT_VERSION VERSION_LESS "5")
-    list(APPEND ep_cache_args
-      -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE}
-      )
-  else()
+  if(CTK_QT_VERSION VERSION_EQUAL "5")
     list(APPEND ep_cache_args
       -DQt5_DIR:PATH=${Qt5_DIR}
       )
@@ -65,8 +66,14 @@ if(NOT DEFINED QtTesting_DIR)
         -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
         )
     endif()
+  elseif(CTK_QT_VERSION VERSION_EQUAL "6")
+    list(APPEND ep_cache_args
+      -DQt6_DIR:PATH=${Qt6_DIR}
+      )
+  else()
+    message(FATAL_ERROR "Support for Qt${CTK_QT_VERSION} is not implemented")
   endif()
-  message(STATUS "Adding project:${proj}")
+
   ExternalProject_Add(${proj}
     ${${proj}_EXTERNAL_PROJECT_ARGS}
     SOURCE_DIR ${CMAKE_BINARY_DIR}/${proj}
@@ -82,6 +89,21 @@ if(NOT DEFINED QtTesting_DIR)
     )
   set(QtTesting_INSTALL_DIR ${ep_install_dir})
   set(QtTesting_DIR ${CMAKE_BINARY_DIR}/${proj}-build)
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to build tree
+
+  # library paths
+  set(${proj}_LIBRARY_PATHS_LAUNCHER_BUILD ${QtTesting_DIR}/<CMAKE_CFG_INTDIR>)
+  mark_as_superbuild(
+    VARS ${proj}_LIBRARY_PATHS_LAUNCHER_BUILD
+    LABELS "LIBRARY_PATHS_LAUNCHER_BUILD"
+    )
+
+  #-----------------------------------------------------------------------------
+  # Launcher setting specific to install tree
+
+  # NA
 
 else()
   ExternalProject_Add_Empty(${proj} DEPENDS ${${proj}_DEPENDENCIES})

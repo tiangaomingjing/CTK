@@ -56,13 +56,13 @@ void ctkVTKScalarsToColorsComboBoxPrivate::init()
   Q_Q(ctkVTKScalarsToColorsComboBox);
 
   QObject::connect(q->model(),
-    SIGNAL(rowsAboutToBeRemoved(const QModelIndex&, int, int)),
-    q, SLOT(onRowsAboutToBeRemoved(const QModelIndex&, int, int)));
+    SIGNAL(rowsAboutToBeRemoved(QModelIndex,int,int)),
+    q, SLOT(onRowsAboutToBeRemoved(QModelIndex,int,int)));
 
   q->setIconSize(QSize(100, 20));
 
   // Add default raw
-  q->setDefaultText(q->tr("Select a color transfer function..."));
+  q->setDefaultText(ctkVTKScalarsToColorsComboBox::tr("Select a color transfer function..."));
   q->forceDefault(true);
 
   // Connect signals and slots
@@ -85,6 +85,7 @@ ctkVTKScalarsToColorsComboBox::ctkVTKScalarsToColorsComboBox(QWidget* _parent)
 // --------------------------------------------------------------------------
 ctkVTKScalarsToColorsComboBox::~ctkVTKScalarsToColorsComboBox()
 {
+  this->clear();
 }
 
 // --------------------------------------------------------------------------
@@ -92,9 +93,9 @@ int ctkVTKScalarsToColorsComboBox::addScalarsToColors(
   vtkScalarsToColors* scFunction, const QString& name)
 {
   QImage img;
-  if (scFunction != CTK_NULLPTR)
+  if (scFunction != nullptr)
   {
-    scFunction->Register(CTK_NULLPTR);
+    scFunction->Register(nullptr);
     img = ctk::scalarsToColorsImage(scFunction, this->iconSize());
   }
   else
@@ -115,7 +116,7 @@ vtkScalarsToColors* ctkVTKScalarsToColorsComboBox::getScalarsToColors(
   QVariant data = itemData(index);
   if (!data.isValid())
   {
-    return CTK_NULLPTR;
+    return nullptr;
   }
 
   vtkScalarsToColors* ctf =
@@ -161,13 +162,12 @@ void ctkVTKScalarsToColorsComboBox::onCurrentIndexChanged(int index)
 
 // --------------------------------------------------------------------------
 void ctkVTKScalarsToColorsComboBox::onRowsAboutToBeRemoved(
-  const QModelIndex& parent, int first, int last)
+  const QModelIndex&, int first, int last)
 {
   for (int i = first; i <= last; ++i)
   {
-    vtkScalarsToColors* scFunction = reinterpret_cast<vtkScalarsToColors*>(
-      model()->data(model()->index(i, 0, parent)).value<void*>());
-    if (scFunction != CTK_NULLPTR)
+    vtkScalarsToColors* scFunction = this->getScalarsToColors(i);
+    if (scFunction != nullptr)
     {
       scFunction->Delete();
     }

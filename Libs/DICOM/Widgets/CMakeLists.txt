@@ -6,7 +6,6 @@ project(CTKDICOMWidgets)
 
 set(KIT_export_directive "CTK_DICOM_WIDGETS_EXPORT")
 
-
 # Source files
 set(KIT_SRCS
   ctkDICOMAppWidget.cpp
@@ -23,8 +22,12 @@ set(KIT_SRCS
   ctkDICOMImportWidget.h
   ctkDICOMItemView.cpp
   ctkDICOMItemView.h
+  ctkDICOMJobListWidget.cpp
+  ctkDICOMJobListWidget.h
   ctkDICOMListenerWidget.cpp
   ctkDICOMListenerWidget.h
+  ctkDICOMMetadataDialog.cpp
+  ctkDICOMMetadataDialog.h
   ctkDICOMQueryResultsTabWidget.cpp
   ctkDICOMQueryResultsTabWidget.h
   ctkDICOMQueryRetrieveWidget.cpp
@@ -33,16 +36,30 @@ set(KIT_SRCS
   ctkDICOMQueryWidget.h
   ctkDICOMObjectListWidget.cpp
   ctkDICOMObjectListWidget.h
+  ctkDICOMPatientDelegate.cpp
+  ctkDICOMPatientDelegate.h
+  ctkDICOMPatientView.cpp
+  ctkDICOMPatientView.h
+  ctkDICOMSeriesDelegate.cpp
+  ctkDICOMSeriesDelegate.h
+  ctkDICOMSeriesTableView.cpp
+  ctkDICOMSeriesTableView.h
   ctkDICOMServerNodeWidget.cpp
   ctkDICOMServerNodeWidget.h
+  ctkDICOMServerNodeWidget2.cpp
+  ctkDICOMServerNodeWidget2.h
+  ctkDICOMStudyListView.cpp
+  ctkDICOMStudyListView.h
+  ctkDICOMStudyDelegate.cpp
+  ctkDICOMStudyDelegate.h
   ctkDICOMTableManager.h
   ctkDICOMTableManager.cpp
   ctkDICOMTableView.cpp
   ctkDICOMTableView.h
-  ctkDICOMThumbnailGenerator.cpp
-  ctkDICOMThumbnailGenerator.h
   ctkDICOMThumbnailListWidget.cpp
   ctkDICOMThumbnailListWidget.h
+  ctkDICOMVisualBrowserWidget.cpp
+  ctkDICOMVisualBrowserWidget.h
   )
 
 # Headers that should run through moc
@@ -53,15 +70,24 @@ set(KIT_MOC_SRCS
   ctkDICOMDirectoryListWidget.h
   ctkDICOMImage.h
   ctkDICOMImportWidget.h
+  ctkDICOMJobListWidget.h
+  ctkDICOMMetadataDialog.h
   ctkDICOMObjectListWidget.h
   ctkDICOMObjectModel.h
   ctkDICOMQueryRetrieveWidget.h
   ctkDICOMQueryWidget.h
+  ctkDICOMPatientDelegate.h
+  ctkDICOMPatientView.h
+  ctkDICOMSeriesDelegate.h
+  ctkDICOMSeriesTableView.h
   ctkDICOMServerNodeWidget.h
+  ctkDICOMServerNodeWidget2.h
+  ctkDICOMStudyListView.h
+  ctkDICOMStudyDelegate.h
   ctkDICOMTableManager.h
   ctkDICOMTableView.h
-  ctkDICOMThumbnailGenerator.h
   ctkDICOMThumbnailListWidget.h
+  ctkDICOMVisualBrowserWidget.h
   )
 
 # UI files - includes new widgets
@@ -70,28 +96,33 @@ set(KIT_UI_FORMS
   Resources/UI/ctkDICOMBrowser.ui
   Resources/UI/ctkDICOMDirectoryListWidget.ui
   Resources/UI/ctkDICOMImportWidget.ui
+  Resources/UI/ctkDICOMJobListWidget.ui
   Resources/UI/ctkDICOMListenerWidget.ui
   Resources/UI/ctkDICOMQueryRetrieveWidget.ui
   Resources/UI/ctkDICOMQueryWidget.ui
   Resources/UI/ctkDICOMObjectListWidget.ui
   Resources/UI/ctkDICOMServerNodeWidget.ui
+  Resources/UI/ctkDICOMServerNodeWidget2.ui
   Resources/UI/ctkDICOMTableManager.ui
   Resources/UI/ctkDICOMTableView.ui
+  Resources/UI/ctkDICOMVisualBrowserWidget.ui
 )
 
 # Resources
 set(KIT_resources
+  Resources/UI/ctkDICOMWidget.qrc
 )
 
 # Target libraries - See CMake/ctkFunctionGetTargetLibraries.cmake
 # The following macro will read the target libraries from the file 'target_libraries.cmake'
 ctkFunctionGetTargetLibraries(KIT_target_libraries)
 
+list(APPEND KIT_target_libraries Qt${CTK_QT_VERSION}::Svg)
+
 ctkMacroBuildLib(
   NAME ${PROJECT_NAME}
   EXPORT_DIRECTIVE ${KIT_export_directive}
   SRCS ${KIT_SRCS}
-  MOC_SRCS ${KIT_MOC_SRCS}
   UI_FORMS ${KIT_UI_FORMS}
   TARGET_LIBRARIES ${KIT_target_libraries}
   RESOURCES ${KIT_resources}

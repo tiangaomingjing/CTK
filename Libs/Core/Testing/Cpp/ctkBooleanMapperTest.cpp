@@ -32,7 +32,7 @@ class ctkObjectWithBoolProp: public QObject
   Q_OBJECT
   Q_PROPERTY(bool checked READ checked WRITE setChecked NOTIFY toggled);
 public:
-  ctkObjectWithBoolProp(){this->Checked = false;}
+  ctkObjectWithBoolProp(QObject* parent = nullptr) : QObject(parent) {this->Checked = false;}
   bool checked()const {return this->Checked;}
 
 public Q_SLOTS:
@@ -41,7 +41,7 @@ public Q_SLOTS:
       return;
     this->Checked = check;
     emit toggled(this->Checked);
-  }
+}
 Q_SIGNALS:
   void toggled(bool);
 private:
@@ -52,6 +52,8 @@ private:
 class ctkBooleanMapperTester: public QObject
 {
   Q_OBJECT
+public:
+  explicit ctkBooleanMapperTester(QObject* parent = nullptr) : QObject(parent) {}
 private Q_SLOTS:
   void testValue();
   void testComplement();
@@ -176,4 +178,4 @@ void ctkBooleanMapperTester::testSignals()
 
 // ----------------------------------------------------------------------------
 CTK_TEST_MAIN(ctkBooleanMapperTest)
-#include "moc_ctkBooleanMapperTest.cpp"
+#include "ctkBooleanMapperTest.moc"

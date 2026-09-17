@@ -22,6 +22,7 @@
 #include <QApplication>
 #include <QDebug>
 #include <QPointer>
+#include <QRegularExpression>
 #include <QStyle>
 
 // CTK includes
@@ -67,17 +68,17 @@ ctkWorkflowWidgetPrivate::ctkWorkflowWidgetPrivate()
 ctkWorkflowWidgetPrivate::~ctkWorkflowWidgetPrivate()
 {
   if (!this->Workflow.isNull())
-    {
+  {
     foreach(ctkWorkflowStep* step, this->Workflow.data()->steps())
-      {
+    {
       ctkWorkflowWidgetStep * widgetStep = dynamic_cast<ctkWorkflowWidgetStep*>(step);
       if (widgetStep)
-        {
+      {
         widgetStep->setVisible(false);
         widgetStep->setParent(0);
-        }
       }
     }
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -116,28 +117,28 @@ void ctkWorkflowWidget::setWorkflow(ctkWorkflow* newWorkflow)
   Q_D(ctkWorkflowWidget);
 
   if (!newWorkflow)
-    {
+  {
     qWarning() << "setWorkflow - cannot set workflow to NULL";
     return;
-    }
+  }
 
   if (!d->Workflow.isNull())
-    {
+  {
     QObject::disconnect(d->Workflow.data(), SIGNAL(currentStepChanged(ctkWorkflowStep*)),
                         this, SLOT(onCurrentStepChanged(ctkWorkflowStep)));
     QObject::disconnect(d->Workflow.data(), SIGNAL(stepRegistered(ctkWorkflowStep*)),
                         this, SLOT(onStepRegistered(ctkWorkflowStep)));
-    }
+  }
 
   d->Workflow = newWorkflow;
 
   if (!d->Workflow.isNull())
-    {
+  {
     foreach(ctkWorkflowStep* step, d->Workflow.data()->steps())
-      {
+    {
       this->onStepRegistered(step);
-      }
     }
+  }
 
   QObject::connect(newWorkflow, SIGNAL(currentStepChanged(ctkWorkflowStep*)), this, SLOT(onCurrentStepChanged(ctkWorkflowStep*)));
   QObject::connect(newWorkflow, SIGNAL(stepRegistered(ctkWorkflowStep*)), this, SLOT(onStepRegistered(ctkWorkflowStep*)));
@@ -157,22 +158,22 @@ ctkWorkflowWidgetStep* ctkWorkflowWidget::widgetStep(const QString& id)const
 void ctkWorkflowWidget::onCurrentStepChanged(ctkWorkflowStep* currentStep)
 {
   if (currentStep)
-    {
+  {
     this->updateStepUI(currentStep);
     this->updateButtonBoxUI(currentStep);
-    }
+  }
 }
 
 // --------------------------------------------------------------------------
 void ctkWorkflowWidget::onStepRegistered(ctkWorkflowStep* step)
 {
   if (step->isWidgetType())
-    {
+  {
     QWidget * widget = dynamic_cast<QWidget*>(step);
     Q_ASSERT(widget);
     widget->setParent(this);
     widget->setVisible(false);
-    }
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -184,18 +185,18 @@ void ctkWorkflowWidget::updateStepUI(ctkWorkflowStep* currentStep)
 
   // Create layout and WorkflowGroupBox if this is our first time here
   if (!this->layout())
-    {
+  {
     QVBoxLayout* layout = new QVBoxLayout();
     this->setLayout(layout);
     layout->addWidget(d->WorkflowGroupBox);
 
     if (d->ShowButtonBoxWidget)
-      {
+    {
       layout->addWidget(d->ButtonBoxWidget);
-      }
+    }
 
     layout->setContentsMargins(0,0,0,0);
-    }
+  }
 
   d->WorkflowGroupBox->updateGroupBox(currentStep);
 }
@@ -208,82 +209,89 @@ void ctkWorkflowWidget::updateButtonBoxUI(ctkWorkflowStep* currentStep)
 
   // Update the button box widget if we want to show it
   if (d->ShowButtonBoxWidget)
-    {
+  {
     d->ButtonBoxWidget->updateButtons(currentStep);
-    }
+  }
 }
 
 //-----------------------------------------------------------------------------
 QVariant ctkWorkflowWidget::buttonItem(QString item,
                                        ctkWorkflowWidgetStep* step)
 {
-  QRegExp backRegExp("^[\\{\\(\\[]back:(.*)[\\}\\)\\]]$");
-  QRegExp nextRegExp("^[\\{\\(\\[]next:(.*)[\\}\\)\\]]$");
-  QRegExp currentRegExp("^[\\{\\(\\[]current:(.*)[\\}\\)\\]]$");
-  if (backRegExp.exactMatch(item))
-    {
+  static const QRegularExpression backRegExp(QRegularExpression::anchoredPattern("[\\{\\(\\[]back:(.*)[\\}\\)\\]]"));
+  static const QRegularExpression nextRegExp(QRegularExpression::anchoredPattern("[\\{\\(\\[]next:(.*)[\\}\\)\\]]"));
+  static const QRegularExpression currentRegExp(QRegularExpression::anchoredPattern("[\\{\\(\\[]current:(.*)[\\}\\)\\]]"));
+  if (backRegExp.match(item).hasMatch())
+  {
     QList<ctkWorkflowStep*> backs =
       (step ? step->workflow()->backwardSteps(step) : QList<ctkWorkflowStep*>());
     step = (backs.size() ? dynamic_cast<ctkWorkflowWidgetStep*>(backs[0]) : 0);
     item.remove("back:");
     return ctkWorkflowWidget::buttonItem(item, step);
-    }
-  else if (nextRegExp.exactMatch(item))
-    {
+  }
+  else if (nextRegExp.match(item).hasMatch())
+  {
     QList<ctkWorkflowStep*> nexts =
       step ? step->workflow()->forwardSteps(step) : QList<ctkWorkflowStep*>();
     step = (nexts.size() ? dynamic_cast<ctkWorkflowWidgetStep*>(nexts[0]) : 0);
     item.remove("next:");
     return ctkWorkflowWidget::buttonItem(item, step);
-    }
-  else if (currentRegExp.exactMatch(item))
-    {
+  }
+  else if (currentRegExp.match(item).hasMatch())
+  {
     item.remove("current:");
-    }
+  }
   QVariant res;
-  QRegExp quotesRegExp("^\"(.*)\"$");
-  QRegExp propsRegExp("^[\\{\\(\\[](.*)[\\}\\)\\]]$");
+  static const QRegularExpression quotesRegExp(QRegularExpression::anchoredPattern("\"(.*)\""));
+  static const QRegularExpression propsRegExp(QRegularExpression::anchoredPattern("[\\{\\(\\[](.*)[\\}\\)\\]]"));
+  QRegularExpressionMatch match;
   QStyle* style = (step ? step->style() : qApp->style());
   if (item == "[<-]")
-    {
+  {
     res.setValue(style->standardIcon(QStyle::SP_ArrowLeft));
-    }
+  }
   else if (item == "[->]")
-    {
+  {
     res.setValue(style->standardIcon(QStyle::SP_ArrowRight));
-    }
+  }
   else if (item == "{#}" || item == "(#)")
-    {
+  {
     res = QVariant(step ? step->workflow()->backwardDistanceToStep(step) + 1 : 0);
-    }
+  }
   else if (item == "{!#}" || item == "(!#)")
-    {
+  {
     res = QVariant(step ? step->workflow()->steps().count() : 0);
-    }
-  else if (quotesRegExp.exactMatch(item))
+  }
+  else if ((match = quotesRegExp.match(item)).hasMatch())
+  {
+    res = match.captured(1);
+  }
+  else if ((match = propsRegExp.match(item)).hasMatch())
+  {
+    item = match.captured(1);
+    if ((match = quotesRegExp.match(item)).hasMatch())
     {
-    res = quotesRegExp.cap(1);
+      res = match.captured(1);
     }
-  else if (propsRegExp.exactMatch(item))
-    {
-    item = propsRegExp.cap(1);
-    if (quotesRegExp.exactMatch(item))
-      {
-      res = quotesRegExp.cap(1);
-      }
     else
-      {
+    {
       res = step ? step->property(item.toLatin1()) : QVariant();
-      if (res.isValid() && res.type() == QVariant::String && res.toString().isEmpty())
-        {
+      if (res.isValid() &&
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+          res.typeId() == QMetaType::QString &&
+#else
+          res.type() == QVariant::String &&
+#endif
+          res.toString().isEmpty())
+      {
         res = QVariant();
-        }
       }
     }
+  }
   else
-    {
+  {
     qWarning() << "Item" << item << "not supported";
-    }
+  }
   return res;
 }
 
@@ -296,10 +304,10 @@ void ctkWorkflowWidget
     ctkWorkflowWidget::parse(buttonFormat, step);
   button->setIcon(formats["icon"].value<QIcon>());
   if (qobject_cast<ctkPushButton*>(button))
-    {
+  {
     qobject_cast<ctkPushButton*>(button)->setIconAlignment(
       static_cast<Qt::Alignment>(formats["iconalignment"].toInt()));
-    }
+  }
   button->setText(formats["text"].toString());
   button->setToolTip(formats["tooltip"].toString());
 }
@@ -327,24 +335,22 @@ QMap<QString, QVariant> ctkWorkflowWidget
   QString toolTipRegExp("\\([^\\(\\)]+\\)");
   QString iconRegExp("\\[[^\\[\\]]+\\]");
 
-  //QRegExp splitBrackets("\\{([^}]+)\\}");
-  //QRegExp splitBrackets("(\\{[^{}]+\\}|\\([^\\(\\)]+\\)|\"[^\"]+\")");
-  QRegExp splitBrackets(QString("(%1|%2|%3|%4)")
-                        .arg(textRegExp).arg(simpleTextRegExp)
-                        .arg(toolTipRegExp)
-                        .arg(iconRegExp));
+  //QRegularExpression splitBrackets("\\{([^}]+)\\}");
+  //QRegularExpression splitBrackets("(\\{[^{}]+\\}|\\([^\\(\\)]+\\)|\"[^\"]+\")");
+  static const QRegularExpression splitBrackets(QString("(%1|%2|%3|%4)")
+                        .arg(textRegExp, simpleTextRegExp, toolTipRegExp, iconRegExp));
+
   QStringList brackets;
-  int pos = 0;
-  while ((pos = splitBrackets.indexIn(format, pos)) != -1)
-    {
-    brackets << splitBrackets.cap(1);
-    pos += splitBrackets.matchedLength();
-    }
+  QRegularExpressionMatchIterator matchIter = splitBrackets.globalMatch(format);
+  while (matchIter.hasNext())
+  {
+    brackets << matchIter.next().captured(1);
+  }
 
   foreach(const QString& withBracket, brackets)
-    {
+  {
     bool isSimpleText =
-      QRegExp(QString("^") + simpleTextRegExp + QString("$")).exactMatch(withBracket);
+      QRegularExpression(QRegularExpression::anchoredPattern(simpleTextRegExp)).match(withBracket).hasMatch();
 
     QString withoutBracket = withBracket.mid(1, withBracket.size() - 2);
     // If the item is empty, then check the next item. For example:
@@ -357,46 +363,59 @@ QMap<QString, QVariant> ctkWorkflowWidget
     Qt::Alignment iconAlignment = buttonIconAlignment;
     QString text;
     foreach (const QString& token, tokens)
-      {
+    {
       QString tokenWithBracket = withBracket[0] + token + withBracket[withBracket.size()-1];
       QVariant item = ctkWorkflowWidget::buttonItem(tokenWithBracket, step);
       if (item.isValid())
-        {
+      {
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+        switch (item.typeId())
+#else
         switch (item.type())
-          {
+#endif
+        {
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+          case QMetaType::QIcon:
+#else
           case QVariant::Icon:
+#endif
             icon = item.value<QIcon>();
             if (!buttonText.isEmpty())
-              {
+            {
               iconAlignment = Qt::AlignRight | Qt::AlignVCenter;
-              }
+            }
             break;
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+          case QMetaType::QString:
+          case QMetaType::Int:
+#else
           case QVariant::String:
           case QVariant::Int:
+#endif
             text += item.toString();
             break;
           default:
             break;
-          }
+        }
         // skip the other cases if the item was valid, otherwise keep on searching
         break;
-        }
-      }
-    if (QRegExp(QString("^") + textRegExp + QString("$")).exactMatch(withBracket) ||
-        isSimpleText)
-      {
-      buttonText += text;
-      }
-    else if (QRegExp(QString("^") + iconRegExp + QString("$")).exactMatch(withBracket))
-      {
-      buttonIcon = icon;
-      buttonIconAlignment = iconAlignment;
-      }
-    else if (QRegExp(QString("^") + toolTipRegExp + QString("$")).exactMatch(withBracket))
-      {
-      buttonToolTip = text;
       }
     }
+    if (QRegularExpression(QRegularExpression::anchoredPattern(textRegExp)).match(withBracket).hasMatch() ||
+        isSimpleText)
+    {
+      buttonText += text;
+    }
+    else if (QRegularExpression(QRegularExpression::anchoredPattern(iconRegExp)).match(withBracket).hasMatch())
+    {
+      buttonIcon = icon;
+      buttonIconAlignment = iconAlignment;
+    }
+    else if (QRegularExpression(QRegularExpression::anchoredPattern(toolTipRegExp)).match(withBracket).hasMatch())
+    {
+      buttonToolTip = text;
+    }
+  }
   QMap<QString, QVariant> formats;
   formats["icon"] = buttonIcon;
   formats["iconalignment"] = static_cast<int>(buttonIconAlignment);

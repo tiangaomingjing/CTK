@@ -62,9 +62,11 @@ macro(ctkMacroWrapPythonQt WRAPPING_NAMESPACE TARGET SRCS_LIST_NAME SOURCES IS_W
   # TODO: this find package seems not to work when called form a superbuild, but the call is needed
   # in general to find the python interpreter.  In CTK, the toplevel CMakeLists.txt does the find
   # package so this is a no-op.  Other uses of this file may need to have this call so it is still enabled.
-  find_package(PythonInterp)
   if(NOT PYTHONINTERP_FOUND)
-    message(FATAL_ERROR "PYTHON_EXECUTABLE not specified or inexistent when calling ctkMacroWrapPythonQt")
+    find_package(PythonInterp)
+    if(NOT PYTHONINTERP_FOUND)
+      message(FATAL_ERROR "PYTHON_EXECUTABLE not specified or inexistent when calling ctkMacroWrapPythonQt")
+    endif()
   endif()
 
   set(SOURCES_TO_WRAP)
@@ -163,11 +165,6 @@ macro(ctkMacroWrapPythonQt WRAPPING_NAMESPACE TARGET SRCS_LIST_NAME SOURCES IS_W
     COMMENT "PythonQt Wrapping - Generating ${wrapper_init_cpp_filename}"
     VERBATIM
     )
-  if(CTK_QT_VERSION VERSION_GREATER "4")
-    qt5_wrap_cpp(${TARGET}_MOC_CXX ${CMAKE_CURRENT_BINARY_DIR}/${wrapper_h_filename})
-  else()
-    QT4_WRAP_CPP(${TARGET}_MOC_CXX ${CMAKE_CURRENT_BINARY_DIR}/${wrapper_h_filename})
-  endif()
 
   # The following files are generated
   set_source_files_properties(
@@ -181,7 +178,7 @@ macro(ctkMacroWrapPythonQt WRAPPING_NAMESPACE TARGET SRCS_LIST_NAME SOURCES IS_W
     ${${SRCS_LIST_NAME}}
     ${wrapper_init_cpp_filename}
     ${wrapper_module_init_cpp_filename}
-    ${${TARGET}_MOC_CXX}
+    ${wrapper_h_filename}
     )
 
   #
@@ -194,4 +191,3 @@ macro(ctkMacroWrapPythonQt WRAPPING_NAMESPACE TARGET SRCS_LIST_NAME SOURCES IS_W
   include_directories(${PYTHON_INCLUDE_DIRS} ${PYTHONQT_INCLUDE_DIR})
 
 endmacro()
-

@@ -8,7 +8,7 @@
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
 
-      http://www.commontk.org/LICENSE
+      http://commontk.org/LICENSE
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,9 +43,6 @@ class CTK_WIDGETS_EXPORT ctkBasePopupWidget : public QFrame
 {
   Q_OBJECT
 
-  Q_ENUMS(AnimationEffect)
-  Q_ENUMS(VerticalDirection)
-
   /// This property controls the effect to apply when the popup is being
   /// opened or closed. The total duration and the easing curve of the effect
   /// are controlled by \a effectDuration and \easingCurve respectively.
@@ -72,12 +69,12 @@ class CTK_WIDGETS_EXPORT ctkBasePopupWidget : public QFrame
   /// To vertically justify, use Qt::AlignTop | Qt::AlignBottom.
   /// Qt::AlignJustify | Qt::AlignBottom by default
   Q_PROPERTY( Qt::Alignment alignment READ alignment WRITE setAlignment);
-  
+
   /// Direction of the scrolling effect, can be Qt::Vertical, Qt::Horizontal or
   /// both Qt::Vertical|Qt::Horizontal.
   /// Vertical by default
   Q_PROPERTY( Qt::Orientations orientation READ orientation WRITE setOrientation);
-  
+
   /// Control where the popup opens vertically.
   /// TopToBottom by default
   Q_PROPERTY( ctkBasePopupWidget::VerticalDirection verticalDirection READ verticalDirection WRITE setVerticalDirection);
@@ -111,6 +108,7 @@ public:
     ScrollEffect,
     FadeEffect
   };
+  Q_ENUM(AnimationEffect)
 
   /// Return the animationEffect property value.
   /// \sa animationEffect
@@ -146,11 +144,12 @@ public:
   /// Set the orientation property value.
   /// \sa orientation
   void setOrientation(Qt::Orientations orientation);
-  
+
   enum VerticalDirection{
     TopToBottom = 1,
     BottomToTop = 2
   };
+  Q_ENUM(VerticalDirection)
 
   /// Return the verticalDirection property value.
   /// \sa verticalDirection
@@ -167,10 +166,10 @@ public:
   void setHorizontalDirection(Qt::LayoutDirection direction);
 
 public Q_SLOTS:
-  /// Hide the popup if open or opening. It takes around 300ms 
+  /// Hide the popup if open or opening. It takes around 300ms
   /// for the fading effect to hide the popup.
   virtual void hidePopup();
-  /// Open the popup if closed or closing. It takes around 300ms 
+  /// Open the popup if closed or closing. It takes around 300ms
   /// for the fading effect to open the popup.
   virtual void showPopup();
   /// Show/hide the popup. It can be conveniently linked to a QPushButton
@@ -213,13 +212,13 @@ Q_DECLARE_METATYPE(ctkBasePopupWidget::VerticalDirection)
 void ctkBasePopupWidget::showPopup(bool show)
 {
   if (show)
-    {
+  {
     this->showPopup();
-    }
+  }
   else
-    {
+  {
     this->hidePopup();
-    }
+  }
 }
 
 #endif

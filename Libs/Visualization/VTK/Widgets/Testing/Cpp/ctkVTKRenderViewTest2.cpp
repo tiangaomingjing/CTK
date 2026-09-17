@@ -29,13 +29,11 @@
 #include <vtkPolyDataMapper.h>
 #include <vtkRenderer.h>
 #include <vtkSphereSource.h>
-#if CTK_USE_QVTKOPENGLWIDGET
-#include <QVTKOpenGLWidget.h>
-#endif
 
 // CTK includes
 #include "ctkVTKRenderView.h"
 #include "ctkCommandLineParser.h"
+#include "ctkVTKWidgetsUtils.h"
 
 // STD includes
 #include <iostream>
@@ -43,38 +41,39 @@
 //-----------------------------------------------------------------------------
 int ctkVTKRenderViewTest2(int argc, char * argv [] )
 {
-#if CTK_USE_QVTKOPENGLWIDGET
-    QSurfaceFormat format = QVTKOpenGLWidget::defaultFormat();
-    format.setSamples(0);
-    QSurfaceFormat::setDefaultFormat(format);
-#endif
+  ctk::vtkSetSurfaceDefaultFormat();
 
   QApplication app(argc, argv);
 
   // Command line parser
   ctkCommandLineParser parser;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  parser.addArgument("", "-I", QMetaType::Bool);
+  parser.addArgument("", "-D", QMetaType::QString);
+#else
   parser.addArgument("", "-I", QVariant::Bool);
   parser.addArgument("", "-D", QVariant::String);
+#endif
   bool ok = false;
   QHash<QString, QVariant> parsedArgs = parser.parseArguments(app.arguments(), &ok);
   if (!ok)
-    {
+  {
     std::cerr << qPrintable(parser.errorString()) << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   bool interactive = parsedArgs["-I"].toBool();
   QString data_directory = parsedArgs["-D"].toString();
   Q_UNUSED(data_directory);
 
-  // Instanciate widget
+  // Instantiate widget
   ctkVTKRenderView renderView;
   renderView.resize(300, 300);
   renderView.setBackgroundColor(QColor(Qt::red));
   renderView.setCornerAnnotationText("CTK Rocks !");
   renderView.show();
 
-  // Instanciate VTK objects
+  // Instantiate VTK objects
   vtkNew<vtkSphereSource> sphere;
   vtkNew<vtkPolyDataMapper> sphereMapper;
   vtkNew<vtkActor> sphereActor;
@@ -88,16 +87,16 @@ int ctkVTKRenderViewTest2(int argc, char * argv [] )
   renderView.renderer()->AddActor(sphereActor.GetPointer());
 
   renderView.lookFromAxis(ctkAxesWidget::Right);
-  renderView.lookFromAxis(ctkAxesWidget::Left, 10);
-  renderView.lookFromAxis(ctkAxesWidget::Anterior, 1.);
-  renderView.lookFromAxis(ctkAxesWidget::Posterior, 1.);
-  renderView.lookFromAxis(ctkAxesWidget::Superior, 0.333333);
-  renderView.lookFromAxis(ctkAxesWidget::Inferior, 0.333333);
-  renderView.lookFromAxis(ctkAxesWidget::None, 100.);
+  renderView.lookFromAxis(ctkAxesWidget::Left);
+  renderView.lookFromAxis(ctkAxesWidget::Anterior);
+  renderView.lookFromAxis(ctkAxesWidget::Posterior);
+  renderView.lookFromAxis(ctkAxesWidget::Superior);
+  renderView.lookFromAxis(ctkAxesWidget::Inferior);
+  renderView.lookFromAxis(ctkAxesWidget::None);
 
   if (!interactive)
-    {
+  {
     QTimer::singleShot(1000, &app, SLOT(quit()));
-    }
+  }
   return app.exec();
 }

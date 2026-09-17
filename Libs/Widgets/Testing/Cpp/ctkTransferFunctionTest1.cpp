@@ -8,7 +8,7 @@
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
 
-      http://www.commontk.org/LICENSE
+      http://commontk.org/LICENSE
 
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,7 @@
 
 class ctkDummyTransferFunction: public ctkTransferFunction
 {
+  Q_OBJECT
 public:
   ctkDummyTransferFunction(QObject* parent = 0):ctkTransferFunction(parent){}
   virtual ~ctkDummyTransferFunction(){}
@@ -76,7 +77,7 @@ public:
     Q_UNUSED(cp);
     return -1;
   }
-  
+
   virtual int insertControlPoint(qreal pos)
   {
     Q_UNUSED(pos);
@@ -111,65 +112,65 @@ int ctkTransferFunctionTest1(int argc, char * argv [])
   ctkDummyTransferFunction dummy;
 
   if (!dummy.isDiscrete())
-    {
+  {
     std::cerr << "Line : " << __LINE__
               << " - Problem with ctkHistogram::isDiscrete"
               <<std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   if (dummy.isEditable())
-    {
+  {
     std::cerr << "Line : " << __LINE__
               << " - Problem with ctkHistogram::isEditable"
               <<std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   qreal defaultIndex = 0.;
   if (dummy.controlPoint(defaultIndex) != 0)
-    {
+  {
     std::cerr << "Line : " << __LINE__
               << " - Problem with ctkHistogram::controlPoint"
               <<std::endl;
     return EXIT_FAILURE;
-    }
+  }
   if (dummy.count() != 0)
-    {
+  {
     std::cerr << "Line : " << __LINE__
               << " - Problem with ctkHistogram::count"
               <<std::endl;
     return EXIT_FAILURE;
-    }
+  }
   qreal defaultPos = 0.;
   if (dummy.value(defaultPos) != 0)
-    {
+  {
     std::cerr << "Line : " << __LINE__
               << " - Problem with ctkHistogram::value"
               <<std::endl;
     return EXIT_FAILURE;
-    }
+  }
   if (dummy.value(0) != 0)
-    {
+  {
     std::cerr << "Line : " << __LINE__
               << " - Problem with ctkHistogram::value"
               <<std::endl;
     return EXIT_FAILURE;
-    }
+  }
   if (dummy.minValue() != 0)
-    {
+  {
     std::cerr << "Line : " << __LINE__
               << " - Problem with ctkHistogram::minValue"
               <<std::endl;
     return EXIT_FAILURE;
-    }
+  }
   if (dummy.maxValue() != 0)
-    {
+  {
     std::cerr << "Line : " << __LINE__
               << " - Problem with ctkHistogram::maxValue"
               <<std::endl;
     return EXIT_FAILURE;
-    }
+  }
   if (dummy.insertControlPoint(defaultPos) != -1)
   {
     std::cerr << "Line : " << __LINE__
@@ -196,3 +197,4 @@ int ctkTransferFunctionTest1(int argc, char * argv [])
   return EXIT_SUCCESS;
 }
 
+#include "ctkTransferFunctionTest1.moc"

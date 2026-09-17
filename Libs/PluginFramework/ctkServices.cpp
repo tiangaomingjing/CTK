@@ -21,7 +21,7 @@
 
 #include "ctkServices_p.h"
 
-#include <QStringListIterator>
+#include <QStringList>
 #include <QMutexLocker>
 #include <QBuffer>
 
@@ -321,4 +321,3 @@ QList<ctkServiceRegistration> ctkServices::getUsedByPlugin(QSharedPointer<ctkPlu
   }
   return res;
 }
-

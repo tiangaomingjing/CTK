@@ -4,6 +4,7 @@ set(KIT ${PROJECT_NAME})
 # Tests
 #
 set(TEST_SOURCES
+  ctkVTKAbstractViewTest1.cpp
   ctkVTKColorTransferFunctionTest1.cpp
   ctkVTKDataSetArrayComboBoxTest1.cpp
   ctkVTKDataSetModelTest1.cpp
@@ -34,13 +35,14 @@ set(TEST_SOURCES
   ctkVTKThumbnailViewTest1.cpp
   ctkVTKTransferFunctionRepresentationTest1.cpp
   ctkVTKWidgetsUtilsTestGrabWidget.cpp
+  ctkVTKWidgetsUtilsTestImageConversion.cpp
   )
 
-if(CTK_USE_CHARTS)
+if(CTK_LIB_Visualization/VTK/Widgets_USE_TRANSFER_FUNCTION_CHARTS)
   set(TEST_SOURCES
       ctkVTKChartViewTest1.cpp
       ctkVTKVolumePropertyWidgetTest1.cpp
-	  ctkVTKDiscretizableColorTransferWidgetTest1.cpp
+      ctkVTKDiscretizableColorTransferWidgetTest1.cpp
       ctkVTKScalarsToColorsViewTest1.cpp
       ctkVTKScalarsToColorsViewTest2.cpp
       ctkVTKScalarsToColorsViewTest3.cpp
@@ -97,52 +99,38 @@ REMOVE (TestsToRun ${KIT}CppTests.cpp)
 
 set(LIBRARY_NAME ${PROJECT_NAME})
 
+set(Tests_RESOURCES )
+set(TEST_UI_FORMS )
 if(CTK_USE_QTTESTING)
   include(${CMAKE_SOURCE_DIR}/Libs/QtTesting/CMake/ctkQtTesting.cmake)
   ctkQtTesting(Tests TEST_MOC_SOURCES TEST_UI_FORMS Tests_RESOURCES)
 endif()
 
-set(TEST_MOC_CPP)
-set(TEST_UI_CPP)
-set(Tests_RESOURCES_SRCS)
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  if(TEST_MOC_SOURCES)
-    QT5_WRAP_CPP(TEST_MOC_CPP ${TEST_MOC_SOURCES})
-  endif()
-  QT5_GENERATE_MOCS(
-    ctkVTKPropertyWidgetTest.cpp
-    )
-  if(TEST_UI_FORMS)
-    QT5_WRAP_UI(TEST_UI_CPP ${TEST_UI_FORMS})
-  endif()
-  QT5_ADD_RESOURCES(Tests_RESOURCES_SRCS ${Tests_RESOURCES})
-else()
-  if(TEST_MOC_SOURCES)
-    QT4_WRAP_CPP(TEST_MOC_CPP ${TEST_MOC_SOURCES})
-  endif()
-  QT4_GENERATE_MOCS(
-    ctkVTKPropertyWidgetTest.cpp
-    )
-  if(TEST_UI_FORMS)
-    QT4_WRAP_UI(TEST_UI_CPP ${TEST_UI_FORMS})
-  endif()
-  QT4_ADD_RESOURCES(Tests_RESOURCES_SRCS ${Tests_RESOURCES})
-endif()
+ctk_add_executable_utf8(${KIT}CppTests ${Tests} ${Tests_RESOURCES})
+set(VTK_CHARTS_LIB)
 
-add_executable(${KIT}CppTests ${Tests} ${TEST_MOC_CPP} ${TEST_UI_CPP} ${Tests_RESOURCES_SRCS})
-if(${VTK_VERSION_MAJOR} GREATER 5)
-  set(VTK_CHARTS_LIB vtkChartsCore)
-else()
-  set(VTK_CHARTS_LIB vtkCharts)
-endif()
+# Configure CMake Qt automatic code generation
+set(uic_search_paths)
+foreach(ui_src IN LISTS TEST_UI_FORMS)
+  if(NOT IS_ABSOLUTE ${ui_src})
+    set(ui_src "${CMAKE_CURRENT_SOURCE_DIR}/${ui_src}")
+  endif()
+  get_filename_component(ui_path ${ui_src} PATH)
+  list(APPEND uic_search_paths ${ui_path})
+endforeach()
+list(REMOVE_DUPLICATES uic_search_paths)
 
+set_target_properties(${KIT}CppTests PROPERTIES
+  AUTOMOC ON
+  AUTORCC ON
+  AUTOUIC ON
+  AUTOUIC_SEARCH_PATHS "${uic_search_paths}"
+  )
 
 
 target_link_libraries(${KIT}CppTests ${LIBRARY_NAME} ${VTK_CHARTS_LIB} ${CTK_BASE_LIBRARIES})
 
-if(CTK_QT_VERSION VERSION_GREATER "4")
-  target_link_libraries(${KIT}CppTests ${Qt5Test_LIBRARIES})
-endif()
+target_link_libraries(${KIT}CppTests Qt${CTK_QT_VERSION}::Test)
 if(CTK_USE_QTTESTING)
   target_link_libraries(${KIT}CppTests CTKQtTesting)
 endif()
@@ -151,6 +139,7 @@ endif()
 # Add Tests
 #
 
+SIMPLE_TEST( ctkVTKAbstractViewTest1 )
 SIMPLE_TEST( ctkVTKColorTransferFunctionTest1 )
 SIMPLE_TEST( ctkVTKDataSetArrayComboBoxTest1 )
 SIMPLE_TEST( ctkVTKDataSetModelTest1 )
@@ -173,9 +162,10 @@ SIMPLE_TEST( ctkTransferFunctionViewTest2 )
 SIMPLE_TEST( ctkTransferFunctionViewTest3 )
 SIMPLE_TEST( ctkTransferFunctionViewTest4 )
 SIMPLE_TEST( ctkTransferFunctionViewTest5 )
-if(CTK_USE_CHARTS)
+if(CTK_LIB_Visualization/VTK/Widgets_USE_TRANSFER_FUNCTION_CHARTS)
   SIMPLE_TEST( ctkVTKChartViewTest1 )
   SIMPLE_TEST( ctkVTKVolumePropertyWidgetTest1 )
+  SIMPLE_TEST( ctkVTKDiscretizableColorTransferWidgetTest1 )
   SIMPLE_TEST( ctkVTKScalarsToColorsViewTest1 )
   SIMPLE_TEST( ctkVTKScalarsToColorsViewTest2 )
   SIMPLE_TEST( ctkVTKScalarsToColorsViewTest3 )
@@ -185,12 +175,14 @@ if(CTK_USE_CHARTS)
   SIMPLE_TEST( ctkVTKScalarsToColorsWidgetTest3 )
 endif()
 SIMPLE_TEST( ctkVTKRenderViewTest1 )
+SIMPLE_TEST( ctkVTKScalarsToColorsComboBoxTest1 )
 SIMPLE_TEST( ctkVTKSliceViewTest1 )
 SIMPLE_TEST( ctkVTKSurfaceMaterialPropertyWidgetTest1 )
 SIMPLE_TEST( ctkVTKTextPropertyWidgetTest1 )
 SIMPLE_TEST( ctkVTKThumbnailViewTest1 )
 SIMPLE_TEST( ctkVTKTransferFunctionRepresentationTest1 )
 SIMPLE_TEST( ctkVTKWidgetsUtilsTestGrabWidget )
+SIMPLE_TEST( ctkVTKWidgetsUtilsTestImageConversion )
 
 #
 # Add Tests expecting CTKData to be set
@@ -199,6 +191,7 @@ if(EXISTS "${CTKData_DIR}")
   set(baseline_relative_location Libs/Visualization/VTK/Widgets)
 
   macro(MAGNIFY_WIDGET_TEST TESTNAME TESTTYPE SIZE MAGNIFICATION)
+    set(${TESTNAME}${TESTTYPE}_TEST ${TESTNAME})
     SIMPLE_TEST_WITH_DATA(${TESTNAME}${TESTTYPE} ${baseline_relative_location}
       -T "${TESTTYPE}"
       -S "${SIZE}"
@@ -235,7 +228,8 @@ if(CTK_USE_QTTESTING)
     SIMPLE_TEST( ctkVTKDataSetModelEventTranslatorPlayerTest1 )
 #    SIMPLE_TEST( ctkVTKMagnifyViewEventTranslatorPlayerTest1 )
     SIMPLE_TEST( ctkVTKMatrixWidgetEventTranslatorPlayerTest1 )
-    SIMPLE_TEST( ctkVTKRenderViewEventTranslatorPlayerTest1 )
+    SIMPLE_TEST( ctkVTKRenderViewEventTranslatorPlayerTest1 ${CMAKE_CURRENT_BINARY_DIR} )
+    set_tests_properties(ctkVTKRenderViewEventTranslatorPlayerTest1 PROPERTIES TIMEOUT 180)
     SIMPLE_TEST( ctkVTKScalarBarWidgetEventTranslatorPlayerTest1 )
 #    SIMPLE_TEST( ctkVTKScalarsToColorsUtilsEventTranslatorPlayerTest1 )
 #    SIMPLE_TEST( ctkVTKScalarsToColorsViewEventTranslatorPlayerTest1 )

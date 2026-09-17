@@ -23,6 +23,7 @@
 
 // Qt includes
 #include <QPointer>
+#include <QVector>
 
 // CTK includes
 #include "ctkCoordinatesWidget.h"
@@ -60,6 +61,9 @@ public:
   /// \sa ctk::significantDecimals()
   static int spinBoxSignificantDecimals(ctkDoubleSpinBox* spinBox);
 
+  // Emit both versions of the coordinatesChanged signal
+  void emitCoordinatesChanged();
+
   int     Decimals;
   ctkDoubleSpinBox::DecimalsOptions DecimalsOption;
   double  SingleStep;
@@ -68,8 +72,11 @@ public:
   bool    Normalized;
   int     Dimension;
   ctkDoubleSpinBox::SizeHintPolicy SizeHintPolicy;
+  bool    Frame;
+  bool    ReadOnly;
 
   double* Coordinates;
+  QVector<double> LastEmittedCoordinates;
   QList<int> LastUserEditedCoordinates;
   bool    ChangingDecimals;
   QPointer<ctkValueProxy> Proxy;

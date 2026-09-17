@@ -27,6 +27,7 @@
 
 #include <dcmtk/dcmdata/dcdatset.h> // DCMTK DcmDataset
 
+#include <QCoreApplication>
 #include <QtCore>
 
 class DcmDataDictionary;
@@ -65,7 +66,9 @@ typedef ctkDICOMItem ctkDICOMItem;
 
 class CTK_DICOM_CORE_EXPORT ctkDICOMItem
 {
-public:
+  Q_DECLARE_TR_FUNCTIONS(ctkDICOMItem)
+
+  public:
     typedef QObject Superclass;
     ///
     /// \brief Create an empty object. This has to be initialized by one of
@@ -93,7 +96,10 @@ public:
                     const Uint32 maxReadLength = DCM_MaxReadLength,
                     const E_FileReadMode readMode = ERM_autoDetect);
 
-
+    /// \brief Clone this object.
+    ///
+    /// \returns deep copy of this object.
+    ctkDICOMItem* Clone();
 
     /// \brief Save dataset to file
     ///
@@ -169,6 +175,13 @@ public:
     static bool CheckCondition(const OFCondition&);
 
     ///
+    /// \brief Check if an element with the given attribute tag exists in the dataset
+    ///
+    /// @param key tag key to be searched
+    /// @return true if tag found, false otherwise
+    bool TagExists(const DcmTag& tag) const;
+
+    ///
     /// \brief Get-methods for for all subtypes of DcmByteString
     ///
     QString          GetAllElementValuesAsString( const DcmTag& tag ) const;
@@ -223,6 +236,9 @@ public:
     /// \brief Nicely formatted (group,element) version of a tag
     ///
     static QString TagKey( const DcmTag& tag );
+    /// \brief Formatted group,element version of a tag.
+    /// The difference from \sa TagKey is the lack of parentheses
+    static QString TagKeyStripped( const DcmTag& tag );
 
     ///
     /// \brief Description (name) of the tag
@@ -233,6 +249,16 @@ public:
     /// \brief Value Representation
     ///
     static QString TagVR( const DcmTag& tag );
+
+    ///
+    /// \brief return dcm item
+    ///
+    DcmItem& GetDcmItem() const;
+
+    ///
+    /// \brief return dcm item pointer
+    ///
+    DcmItem* GetDcmItemPointer() const;
 
 protected:
 
@@ -254,11 +280,8 @@ protected:
 
   QScopedPointer<ctkDICOMItemPrivate> d_ptr;
 
-  DcmItem& GetDcmItem() const;
-
 private:
   Q_DECLARE_PRIVATE(ctkDICOMItem);
 };
 
 #endif
-
